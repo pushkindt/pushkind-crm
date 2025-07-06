@@ -11,9 +11,15 @@
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link {%if current_page == 'index'%}active{%endif%}" href="/">Главная</a>
+                        <a class="nav-link {%if current_page == 'index'%}active{%endif%}" href="/">Клиенты</a>
                     </li>
                 </ul>
+                <form class="d-flex w-100" role="search" action="">
+                    <div class="input-group me-2">
+                        <input name="q" class="form-control" type="search" placeholder="Поиск" aria-label="Search" value="">
+                        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
             </div>
             <div class="dropdown-center">
                 <button class="btn btn-link nav-link align-items-center text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

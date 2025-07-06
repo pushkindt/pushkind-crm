@@ -1,0 +1,31 @@
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+pub struct Client {
+    pub id: i32,
+    pub hub_id: i32,
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub address: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct NewClient {
+    pub hub_id: i32,
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub address: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UpdateClient {
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub address: String,
+}
