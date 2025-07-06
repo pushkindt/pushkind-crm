@@ -39,9 +39,9 @@ fn get_pages(
 
 #[derive(Serialize)]
 pub struct Paginated<T> {
-    pub items: Vec<T>,
-    pub pages: Vec<Option<usize>>,
-    pub page: usize,
+    items: Vec<T>,
+    pages: Vec<Option<usize>>,
+    page: usize,
 }
 
 impl<T> Paginated<T> {
