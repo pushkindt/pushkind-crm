@@ -15,7 +15,7 @@ lazy_static! {
         match Tera::new("templates/**/*") {
             Ok(t) => t,
             Err(e) => {
-                println!("Parsing error(s): {}", e);
+                println!("Parsing error(s): {e}");
                 ::std::process::exit(1);
             }
         }
@@ -52,7 +52,7 @@ fn ensure_role(
 
 fn render_template(template: &str, context: &Context) -> HttpResponse {
     HttpResponse::Ok().body(TEMPLATES.render(template, context).unwrap_or_else(|e| {
-        error!("Failed to render template {}': {}", template, e);
+        error!("Failed to render template {template}': {e}");
         String::new()
     }))
 }
