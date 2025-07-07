@@ -25,7 +25,7 @@ pub async fn client(
     let client = match repo.get_by_id(client_id.into_inner()) {
         Ok(Some(client)) if client.hub_id == user.hub_id => client,
         Err(e) => {
-            error!("Failed to get client: {}", e);
+            error!("Failed to get client: {e}");
             return HttpResponse::InternalServerError().finish();
         }
         _ => {

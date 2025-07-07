@@ -45,4 +45,5 @@ jobs:
           scp ./target/release/pushkind-crm cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./assets/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./templates/ cicd@crm.pushkind.com:/var/www8/html/
-          ssh cicd@crm.pushkind.com "cd /var/www8/html/ && supervisorctl start crm"
+          scp -r ./migrations/ cicd@crm.pushkind.com:/var/www8/html/
+          ssh cicd@crm.pushkind.com "cd /var/www8/html/ && /home/cicd/.cargo/bin/diesel migration run && supervisorctl start crm"
