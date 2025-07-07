@@ -52,7 +52,7 @@ fn ensure_role(
 
 fn render_template(template: &str, context: &Context) -> HttpResponse {
     HttpResponse::Ok().body(TEMPLATES.render(template, context).unwrap_or_else(|e| {
-        error!("Failed to render template {template}': {e}");
+        error!("Failed to render template '{template}': {e}");
         String::new()
     }))
 }
