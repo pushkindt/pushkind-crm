@@ -7,6 +7,7 @@ use tera::{Context, Tera};
 
 use crate::models::auth::AuthenticatedUser;
 
+pub mod client;
 pub mod main;
 
 lazy_static! {
@@ -20,7 +21,6 @@ lazy_static! {
         }
     };
 }
-
 
 fn alert_level_to_str(level: &Level) -> &'static str {
     match level {

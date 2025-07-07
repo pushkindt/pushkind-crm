@@ -7,8 +7,15 @@ pub struct TestClientRepository;
 
 impl ClientRepository for TestClientRepository {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
-        let mut client = Client::default();
-        client.id = id;
+        let client = Client {
+            id,
+            hub_id: 1,
+            name: format!("Client Name #{id}"),
+            email: format!("client#{id}@email.com"),
+            phone: format!("123456789{id}"),
+            address: format!("Client Address #{id}"),
+            ..Client::default()
+        };
         Ok(Some(client))
     }
 
