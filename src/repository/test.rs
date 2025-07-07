@@ -18,7 +18,7 @@ impl ClientRepository for TestClientRepository {
             name: new_client.name.clone(),
             email: new_client.email.clone(),
             phone: new_client.phone.clone(),
-            address: new_client.phone.clone(),
+            address: new_client.address.clone(),
             ..Client::default()
         };
 
@@ -66,7 +66,7 @@ impl ClientRepository for TestClientRepository {
             name: updates.name.clone(),
             email: updates.email.clone(),
             phone: updates.phone.clone(),
-            address: updates.phone.clone(),
+            address: updates.address.clone(),
             ..Client::default()
         };
 
