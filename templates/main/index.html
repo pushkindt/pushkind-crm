@@ -20,7 +20,7 @@
         </div>
         <div id="clientList">
             {% for client in clients.items %}
-                <div class="row my-1 py-1 border-top client">
+                <div class="row my-1 py-1 border-top client selectable" data-id="{{client.id}}">
                     <div class="col-sm-2">
                         <span class="d-sm-none fw-bold">Название:</span>
                         <strong>{{ client.name }}</strong>
@@ -43,5 +43,22 @@
         {% set items = clients %}
         {% include 'pagination.html' %}
     </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        var selectableList = document.querySelectorAll(".selectable");
+        selectableList.forEach((selectable) => {
+            selectable.addEventListener("click",() => {
+                const clientId = selectable.dataset.id;
+                document.location.href = `/client/${clientId}`;
+            });
+        });
+    });
+</script>
 
 {% endblock %}

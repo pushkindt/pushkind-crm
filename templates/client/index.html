@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    {% include 'navigation.html' %}
+
+<div class="container">
+    <div class="row my-2">
+        <div class="col">
+            <span class="fw-bold">
+                {{client.name}}
+            </span>
+        </div>
+        <div class="col-auto">
+            <div class="dropdown">
+                <a class="dropdown-toggle" href="#" role="button" id="orderActionsLink" data-bs-toggle="dropdown" aria-expanded="true">
+                    Действия с клиентом
+                </a>
+                <ul class="dropdown-menu bg-light" aria-labelledby="orderActionsLink" data-popper-placement="bottom-start" data-popper-reference-hidden="" style="position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(0px, 25px);">
+                    <li class="dropdown-item">
+                        <i class="bi bi-pencil"></i>
+                        
+                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="comment">комментировать</a>
+                        
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-files"></i>
+                        
+                            <a href="/orders/duplicate/1093" onclick="return confirm('Клонировать заявку?')">клонировать</a>
+                        
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-layout-split"></i>
+                        
+                            <a href="#" id="startSplitting">разделить</a>
+                        
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-download"></i>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#excelModal">скачать</a>
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-envelope"></i>
+                        
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#sendModal">отправить</a>
+                        
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-check-circle"></i>
+                        
+                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="dealdone">законтрактовать</a>
+                        
+                    </li>
+                    <li class="dropdown-item">
+                        <i class="bi bi-x-circle"></i>
+                        
+                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="cancel">аннулировать</a>
+                        
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <span class="fw-bold">Электронный адрес:</span>
+            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.email}}</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <span class="fw-bold">Телефон:</span>
+            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.phone}}</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <span class="fw-bold">Адрес:</span>
+            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.address}}</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <span class="fw-bold">Менеджеры:</span>
+            <a role="button" tabindex="0" data-bs-trigger="focus" data-bs-toggle="popover" data-bs-html="true" title="" data-bs-content="shepytkotu@velesstroy.com&lt;br&gt;&lt;b&gt;начальник склада&lt;/b&gt;&lt;br&gt;+7 (928) 433-01-91&lt;br&gt;ТЛЦ Неберджаевская" data-bs-original-title="Шепитько Татьяна" aria-label="Шепитько Татьяна"><i class="bi bi-person-circle"></i></a>
+            Шепитько Татьяна
+        </div>
+    </div>
+
+
+<div class="container">
+    <div class="row my-2">
+        <div class="col">
+            <span class="fw-bold">ИСТОРИЯ</span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <input class="form-control" id="actionsFilter" type="text" placeholder="Фильтр..">
+        </div>
+    </div>
+    <div id="actionsSection">
+
+    </div>
+</div>
+
+{% endblock %}

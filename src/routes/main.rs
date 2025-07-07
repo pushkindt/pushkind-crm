@@ -27,17 +27,14 @@ pub async fn index(
         return response;
     };
 
-    let page = match params.page {
-        Some(page) => page,
-        None => 1,
-    };
+    let page = params.page.unwrap_or(1);
 
     let repo = TestClientRepository;
 
     let clients = match repo.list(user.hub_id, page) {
         Ok(clients) => clients,
         Err(e) => {
-            error!("Failed to list clients: {}", e);
+            error!("Failed to list clients: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -73,10 +70,7 @@ pub async fn search(
         return response;
     };
 
-    let page = match params.page {
-        Some(page) => page,
-        None => 1,
-    };
+    let page = params.page.unwrap_or(1);
 
     let query = match &params.q {
         Some(query) => query,
@@ -88,7 +82,7 @@ pub async fn search(
     let clients = match repo.search(user.hub_id, query, page) {
         Ok(clients) => clients,
         Err(e) => {
-            error!("Failed to list clients: {}", e);
+            error!("Failed to list clients: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };

@@ -7,6 +7,7 @@ use tera::{Context, Tera};
 
 use crate::models::auth::AuthenticatedUser;
 
+pub mod client;
 pub mod main;
 
 lazy_static! {
@@ -14,13 +15,12 @@ lazy_static! {
         match Tera::new("templates/**/*") {
             Ok(t) => t,
             Err(e) => {
-                println!("Parsing error(s): {}", e);
+                println!("Parsing error(s): {e}");
                 ::std::process::exit(1);
             }
         }
     };
 }
-
 
 fn alert_level_to_str(level: &Level) -> &'static str {
     match level {
@@ -52,7 +52,7 @@ fn ensure_role(
 
 fn render_template(template: &str, context: &Context) -> HttpResponse {
     HttpResponse::Ok().body(TEMPLATES.render(template, context).unwrap_or_else(|e| {
-        error!("Failed to render template '{}': {}", template, e);
+        error!("Failed to render template '{template}': {e}");
         String::new()
     }))
 }
