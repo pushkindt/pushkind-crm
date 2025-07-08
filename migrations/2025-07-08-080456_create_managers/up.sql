@@ -1,4 +1,4 @@
--- Your SQL goes here
+-- Create managers and client_manager tables
 CREATE TABLE managers (
     id INTEGER NOT NULL PRIMARY KEY,
     hub_id INTEGER NOT NULL,

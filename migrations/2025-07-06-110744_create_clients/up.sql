@@ -1,4 +1,4 @@
--- Your SQL goes here
+-- Create clients table
 CREATE TABLE clients (
     id INTEGER NOT NULL PRIMARY KEY,
     hub_id INTEGER NOT NULL,
