@@ -1,9 +1,11 @@
 use crate::domain::client::{Client, NewClient, UpdateClient};
+use crate::domain::manager::{Manager, NewManager};
 use crate::pagination::Paginated;
-use crate::repository::ClientRepository;
 use crate::repository::errors::RepositoryResult;
+use crate::repository::{ClientRepository, ManagerRepository};
 
 pub struct TestClientRepository;
+pub struct TestManagerRepository;
 
 impl ClientRepository for TestClientRepository {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
@@ -22,10 +24,10 @@ impl ClientRepository for TestClientRepository {
     fn create(&self, new_client: &NewClient) -> RepositoryResult<Client> {
         let client = Client {
             hub_id: new_client.hub_id,
-            name: new_client.name.clone(),
-            email: new_client.email.clone(),
-            phone: new_client.phone.clone(),
-            address: new_client.address.clone(),
+            name: new_client.name.to_string(),
+            email: new_client.email.to_string(),
+            phone: new_client.phone.to_string(),
+            address: new_client.address.to_string(),
             ..Client::default()
         };
 
@@ -37,6 +39,26 @@ impl ClientRepository for TestClientRepository {
             .map(|id| Client {
                 id,
                 hub_id,
+                name: format!("Client Name #{id}"),
+                email: format!("client#{id}@email.com"),
+                phone: format!("123456789{id}"),
+                address: format!("Client Address #{id}"),
+                ..Client::default()
+            })
+            .collect();
+        Ok(Paginated::new(clients, current_page, 20))
+    }
+
+    fn list_by_manager(
+        &self,
+        _manager_email: &str,
+        _hub_id: i32,
+        current_page: usize,
+    ) -> RepositoryResult<Paginated<Client>> {
+        let clients = (1..20)
+            .map(|id| Client {
+                id,
+                hub_id: 1,
                 name: format!("Client Name #{id}"),
                 email: format!("client#{id}@email.com"),
                 phone: format!("123456789{id}"),
@@ -70,10 +92,10 @@ impl ClientRepository for TestClientRepository {
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
         let client = Client {
             id: client_id,
-            name: updates.name.clone(),
-            email: updates.email.clone(),
-            phone: updates.phone.clone(),
-            address: updates.address.clone(),
+            name: updates.name.to_string(),
+            email: updates.email.to_string(),
+            phone: updates.phone.to_string(),
+            address: updates.address.to_string(),
             ..Client::default()
         };
 
@@ -82,5 +104,24 @@ impl ClientRepository for TestClientRepository {
 
     fn delete(&self, _client_id: i32) -> RepositoryResult<()> {
         Ok(())
+    }
+}
+
+impl ManagerRepository for TestManagerRepository {
+    fn get_by_email(
+        &self,
+        _email: &str,
+        _hub_id: i32,
+    ) -> RepositoryResult<Option<crate::domain::manager::Manager>> {
+        Ok(None)
+    }
+    fn create_or_update(&self, new_manager: &NewManager) -> RepositoryResult<Manager> {
+        let manager = Manager {
+            id: 1,
+            hub_id: new_manager.hub_id,
+            name: new_manager.name.to_string(),
+            email: new_manager.email.to_string(),
+        };
+        Ok(manager)
     }
 }
