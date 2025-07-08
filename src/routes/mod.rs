@@ -37,12 +37,20 @@ fn redirect(location: &str) -> HttpResponse {
         .finish()
 }
 
+fn check_role<I, S>(role: &str, roles: I) -> bool
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    roles.into_iter().any(|r| r.as_ref() == role)
+}
+
 fn ensure_role(
     user: &AuthenticatedUser,
     role: &str,
     redirect_url: Option<&str>,
 ) -> Result<(), HttpResponse> {
-    if user.roles.iter().any(|r| r == role) {
+    if check_role(role, &user.roles) {
         Ok(())
     } else {
         FlashMessage::error("Недостаточно прав.").send();

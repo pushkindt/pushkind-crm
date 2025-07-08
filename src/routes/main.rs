@@ -5,11 +5,12 @@ use log::error;
 use serde::Deserialize;
 use tera::Context;
 
+use crate::domain::manager::NewManager;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::ClientRepository;
-use crate::repository::test::TestClientRepository;
-use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
+use crate::repository::test::{TestClientRepository, TestManagerRepository};
+use crate::repository::{ClientRepository, ManagerRepository};
+use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
@@ -27,15 +28,41 @@ pub async fn index(
         return response;
     };
 
-    let page = params.page.unwrap_or(1);
-
-    let repo = TestClientRepository;
-
-    let clients = match repo.list(user.hub_id, page) {
-        Ok(clients) => clients,
+    let repo = TestManagerRepository;
+    let manager = match repo.create_or_update(&NewManager {
+        hub_id: user.hub_id,
+        name: &user.name,
+        email: &user.email,
+    }) {
+        Ok(manager) => manager,
         Err(e) => {
-            error!("Failed to list clients: {e}");
+            error!("Failed to update manager: {e}");
             return HttpResponse::InternalServerError().finish();
+        }
+    };
+
+    let page = params.page.unwrap_or(1);
+    let repo = TestClientRepository;
+    let clients = match check_role("crm_manager", &user.roles) {
+        true => {
+            let clients = match repo.list_by_manager(&manager.email, manager.hub_id, page) {
+                Ok(clients) => clients,
+                Err(e) => {
+                    error!("Failed to list clients: {e}");
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            clients
+        }
+        false => {
+            let clients = match repo.list(user.hub_id, page) {
+                Ok(clients) => clients,
+                Err(e) => {
+                    error!("Failed to list clients: {e}");
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            clients
         }
     };
 

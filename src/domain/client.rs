@@ -14,18 +14,18 @@ pub struct Client {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct NewClient {
+pub struct NewClient<'a> {
     pub hub_id: i32,
-    pub name: String,
-    pub email: String,
-    pub phone: String,
-    pub address: String,
+    pub name: &'a str,
+    pub email: &'a str,
+    pub phone: &'a str,
+    pub address: &'a str,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct UpdateClient {
-    pub name: String,
-    pub email: String,
-    pub phone: String,
-    pub address: String,
+pub struct UpdateClient<'a> {
+    pub name: &'a str,
+    pub email: &'a str,
+    pub phone: &'a str,
+    pub address: &'a str,
 }

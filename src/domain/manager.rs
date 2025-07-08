@@ -9,16 +9,16 @@ pub struct Manager {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct NewManager {
+pub struct NewManager<'a> {
     pub hub_id: i32,
-    pub name: String,
-    pub email: String,
+    pub name: &'a str,
+    pub email: &'a str,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct UpdateManager {
-    pub name: String,
-    pub email: String,
+pub struct UpdateManager<'a> {
+    pub name: &'a str,
+    pub email: &'a str,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
