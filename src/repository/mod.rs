@@ -3,6 +3,7 @@ pub mod test;
 
 use crate::{
     domain::client::{Client, NewClient, UpdateClient},
+    domain::manager::{ClientManager, Manager, NewClientManager, NewManager, UpdateManager},
     pagination::Paginated,
     repository::errors::RepositoryResult,
 };
@@ -19,4 +20,10 @@ pub trait ClientRepository {
     ) -> RepositoryResult<Paginated<Client>>;
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client>;
     fn delete(&self, client_id: i32) -> RepositoryResult<()>;
+}
+
+pub trait ManagerRepository {
+    fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>>;
+    fn create(&self, new_manager: &NewManager) -> RepositoryResult<Manager>;
+    fn delete(&self, manager_id: i32) -> RepositoryResult<()>;
 }
