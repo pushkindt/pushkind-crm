@@ -21,17 +21,8 @@ impl ClientRepository for TestClientRepository {
         Ok(Some(client))
     }
 
-    fn create(&self, new_client: &NewClient) -> RepositoryResult<Client> {
-        let client = Client {
-            hub_id: new_client.hub_id,
-            name: new_client.name.to_string(),
-            email: new_client.email.to_string(),
-            phone: new_client.phone.to_string(),
-            address: new_client.address.to_string(),
-            ..Client::default()
-        };
-
-        Ok(client)
+    fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
+        Ok(new_clients.len())
     }
 
     fn list(&self, hub_id: i32, current_page: usize) -> RepositoryResult<Paginated<Client>> {

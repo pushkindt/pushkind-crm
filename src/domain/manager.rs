@@ -18,7 +18,6 @@ pub struct NewManager<'a> {
 #[derive(Clone, Debug, Deserialize)]
 pub struct UpdateManager<'a> {
     pub name: &'a str,
-    pub email: &'a str,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

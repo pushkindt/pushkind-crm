@@ -3,7 +3,8 @@ CREATE TABLE managers (
     id INTEGER NOT NULL PRIMARY KEY,
     hub_id INTEGER NOT NULL,
     name VARCHAR NOT NULL,
-    email VARCHAR NOT NULL
+    email VARCHAR NOT NULL,
+    UNIQUE (hub_id, email)
 );
 
 CREATE TABLE client_manager (

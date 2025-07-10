@@ -1,4 +1,6 @@
+pub mod client;
 pub mod errors;
+pub mod manager;
 pub mod test;
 
 use crate::{
@@ -10,7 +12,7 @@ use crate::{
 
 pub trait ClientRepository {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
-    fn create(&self, new_client: &NewClient) -> RepositoryResult<Client>;
+    fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
     fn list(&self, hub_id: i32, current_page: usize) -> RepositoryResult<Paginated<Client>>;
     fn list_by_manager(
         &self,
