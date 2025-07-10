@@ -1,6 +1,10 @@
 use diesel::prelude::*;
 
-use crate::{db::DbPool, domain::client::Client, repository::{errors::RepositoryResult, ClientRepository}};
+use crate::{
+    db::DbPool,
+    domain::client::Client,
+    repository::{ClientRepository, errors::RepositoryResult},
+};
 
 /// Diesel implementation of [`ClientRepository`].
 pub struct DieselClientRepository<'a> {

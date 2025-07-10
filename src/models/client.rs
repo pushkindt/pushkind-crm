@@ -55,8 +55,8 @@ impl From<Client> for DomainClient {
     }
 }
 
-impl<'a> From<DomainNewClient<'a>> for NewClient<'a> {
-    fn from(client: DomainNewClient<'a>) -> Self {
+impl<'a> From<&DomainNewClient<'a>> for NewClient<'a> {
+    fn from(client: &DomainNewClient<'a>) -> Self {
         Self {
             hub_id: client.hub_id,
             name: client.name,
@@ -67,13 +67,25 @@ impl<'a> From<DomainNewClient<'a>> for NewClient<'a> {
     }
 }
 
-impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
-    fn from(client: DomainUpdateClient<'a>) -> Self {
+impl<'a> From<DomainNewClient<'a>> for NewClient<'a> {
+    fn from(client: DomainNewClient<'a>) -> Self {
+        Self::from(&client)
+    }
+}
+
+impl<'a> From<&DomainUpdateClient<'a>> for UpdateClient<'a> {
+    fn from(client: &DomainUpdateClient<'a>) -> Self {
         Self {
             name: client.name,
             email: client.email,
             phone: client.phone,
             address: client.address,
         }
+    }
+}
+
+impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
+    fn from(client: DomainUpdateClient<'a>) -> Self {
+        Self::from(&client)
     }
 }

@@ -115,4 +115,8 @@ impl ManagerRepository for TestManagerRepository {
         };
         Ok(manager)
     }
+
+    fn list(&self, _hub_id: i32) -> RepositoryResult<Vec<(Manager, Vec<Client>)>> {
+        Ok(vec![])
+    }
 }
