@@ -44,26 +44,20 @@ pub async fn index(
     let page = params.page.unwrap_or(1);
     let repo = TestClientRepository;
     let clients = match check_role("crm_manager", &user.roles) {
-        true => {
-            let clients = match repo.list_by_manager(&manager.email, manager.hub_id, page) {
-                Ok(clients) => clients,
-                Err(e) => {
-                    error!("Failed to list clients: {e}");
-                    return HttpResponse::InternalServerError().finish();
-                }
-            };
-            clients
-        }
-        false => {
-            let clients = match repo.list(user.hub_id, page) {
-                Ok(clients) => clients,
-                Err(e) => {
-                    error!("Failed to list clients: {e}");
-                    return HttpResponse::InternalServerError().finish();
-                }
-            };
-            clients
-        }
+        true => match repo.list_by_manager(&manager.email, manager.hub_id, page) {
+            Ok(clients) => clients,
+            Err(e) => {
+                error!("Failed to list clients: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        },
+        false => match repo.list(user.hub_id, page) {
+            Ok(clients) => clients,
+            Err(e) => {
+                error!("Failed to list clients: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        },
     };
 
     let alerts = flash_messages

@@ -13,6 +13,11 @@
                     <li class="nav-item">
                         <a class="nav-link {%if current_page == 'index'%}active{%endif%}" href="/">Клиенты</a>
                     </li>
+                    {% if 'crm_admin' in current_user.roles %}
+                        <li class="nav-item">
+                            <a class="nav-link {%if current_page == 'settings'%}active{%endif%}" href="/settings">Настройки</a>
+                        </li>
+                    {% endif %}
                 </ul>
                 <form class="d-flex w-100" role="search" action="/search">
                     <div class="input-group me-2">
