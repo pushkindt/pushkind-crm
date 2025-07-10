@@ -9,17 +9,19 @@ use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageSto
 use dotenvy::dotenv;
 use log::error;
 
+use pushkind_crm::db::establish_connection_pool;
 use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::client::client;
 use pushkind_crm::routes::main::{index, logout, not_assigned, search};
-use pushkind_crm::routes::settings::settings;
+use pushkind_crm::routes::managers::{add_manager, managers};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
     dotenv().ok(); // Load .env file
 
+    let database_url = env::var("DATABASE_URL").unwrap_or("app.db".to_string());
     let port = env::var("PORT").unwrap_or("8080".to_string());
     let port = port.parse::<u16>().unwrap_or(8080);
     let address = env::var("ADDRESS").unwrap_or("127.0.0.1".to_string());
@@ -46,6 +48,14 @@ async fn main() -> std::io::Result<()> {
 
     let domain = env::var("DOMAIN").unwrap_or("localhost".to_string());
 
+    let pool = match establish_connection_pool(&database_url) {
+        Ok(pool) => pool,
+        Err(e) => {
+            error!("Failed to establish database connection: {e}");
+            std::process::exit(1);
+        }
+    };
+
     let message_store = CookieMessageStore::builder(secret_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
@@ -69,9 +79,11 @@ async fn main() -> std::io::Result<()> {
                     .service(index)
                     .service(search)
                     .service(client)
-                    .service(settings)
+                    .service(managers)
+                    .service(add_manager)
                     .service(logout),
             )
+            .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(server_config.clone()))
     })
     .bind((address, port))?

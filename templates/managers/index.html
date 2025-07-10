@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block styles %}
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css"
+        integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    />
+{% endblock %}
+
+{% block content %}
+    {% include 'navigation.html' %}
+
+
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <form method="POST" action="/managers/add">
+                    <div class="row">
+                        <div class="col">
+                            <select class="form-control my-1" id="manager-add-form-id" name="id" placeholder="Добавить менеджера" required>
+                            </select>
+                            <input type="hidden" id="manager-name" name="name" required>
+                            <input type="hidden" id="manager-email" name="email" required>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary my-1" type="submit"><i class="bi bi-plus"></i></button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+<div class="container border bg-white" id="items">
+        <div class="row mb-3 fw-bold">
+            <div class="col overflow-hidden">
+                Имя
+            </div>
+            <div class="col overflow-hidden">
+                Email
+            </div>
+            <div class="col overflow-hidden">
+                Клиенты
+            </div>
+        </div>
+
+        {% for manager_clients in managers %}
+            {% set manager = manager_clients.0 %}
+            {% set clients = manager_clients.1 %}
+
+            <div class="row mb-3 border-bottom selectable" data-bs-toggle="modal" data-bs-target="#userModal" hx-post="/admin/user/modal/1" hx-swap="innerHTML" hx-target="#userModalBody">
+                <div class="col overflow-hidden">
+                    {{manager.name}}
+                </div>
+                <div class="col overflow-hidden">
+                    {{manager.email}}
+                </div>
+                <div class="col overflow-hidden">
+                    {% for client in clients %}
+                        <span class="badge rounded-pill text-bg-light">{{client.name}}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script
+        src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"
+        integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            let manager_select = $("#manager-add-form-id");
+            manager_select.selectize({
+                valueField: "sub",
+                labelField: "name",
+                searchField: ["name", "email"],
+                render: {
+                    option: function(item, escape) {
+                        let result = `<div class="border-bottom"><strong>${escape(item.name)} (${escape(item.email)})</strong>`;
+                        result += '</div>';
+                        return result
+                    }
+                },
+                options: [],
+                load: function(query, callback) {
+                    if (!query.length) return callback();
+                    $.ajax({
+                        url: '{{home_url|safe}}/api/v1/users?role=crm_manager&query=' + encodeURIComponent(query),
+                        type: 'GET',
+                        error: function() {
+                            callback();
+                        },
+                        success: function(res) {
+                            callback(res.slice(0, 20));
+                        },
+                        xhrFields: {
+                            withCredentials: true
+                        },
+                    });
+                },
+            });
+            let selectize_instance = manager_select[0].selectize;
+
+            selectize_instance.on("change", function(value) {
+                const selected = selectize_instance.options[value];
+                if (selected) {
+                    $("#manager-name").val(selected.name);
+                    $("#manager-email").val(selected.email);
+                } else {
+                    $("#manager-name").val('');
+                    $("#manager-email").val('');
+                }
+            });
+        });
+    </script>
+{% endblock %}

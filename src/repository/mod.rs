@@ -1,16 +1,20 @@
+pub mod client;
 pub mod errors;
+pub mod manager;
 pub mod test;
 
 use crate::{
-    domain::client::{Client, NewClient, UpdateClient},
-    domain::manager::{ClientManager, Manager, NewClientManager, NewManager, UpdateManager},
+    domain::{
+        client::{Client, NewClient, UpdateClient},
+        manager::{ClientManager, Manager, NewClientManager, NewManager, UpdateManager},
+    },
     pagination::Paginated,
     repository::errors::RepositoryResult,
 };
 
 pub trait ClientRepository {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
-    fn create(&self, new_client: &NewClient) -> RepositoryResult<Client>;
+    fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
     fn list(&self, hub_id: i32, current_page: usize) -> RepositoryResult<Paginated<Client>>;
     fn list_by_manager(
         &self,
@@ -31,4 +35,5 @@ pub trait ClientRepository {
 pub trait ManagerRepository {
     fn get_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>>;
     fn create_or_update(&self, new_manager: &NewManager) -> RepositoryResult<Manager>;
+    fn list(&self, hub_id: i32) -> RepositoryResult<Vec<(Manager, Vec<Client>)>>;
 }

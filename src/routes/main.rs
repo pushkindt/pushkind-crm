@@ -5,10 +5,12 @@ use log::error;
 use serde::Deserialize;
 use tera::Context;
 
+use crate::db::DbPool;
 use crate::domain::manager::NewManager;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::test::{TestClientRepository, TestManagerRepository};
+use crate::repository::manager::DieselManagerRepository;
+use crate::repository::test::TestClientRepository;
 use crate::repository::{ClientRepository, ManagerRepository};
 use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
 
@@ -21,6 +23,7 @@ struct IndexQueryParams {
 pub async fn index(
     params: web::Query<IndexQueryParams>,
     user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<ServerConfig>,
 ) -> impl Responder {
@@ -28,30 +31,31 @@ pub async fn index(
         return response;
     };
 
-    let repo = TestManagerRepository;
-    let manager = match repo.create_or_update(&NewManager {
-        hub_id: user.hub_id,
-        name: &user.name,
-        email: &user.email,
-    }) {
-        Ok(manager) => manager,
-        Err(e) => {
-            error!("Failed to update manager: {e}");
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-
     let page = params.page.unwrap_or(1);
-    let repo = TestClientRepository;
+    let client_repo = TestClientRepository;
     let clients = match check_role("crm_manager", &user.roles) {
-        true => match repo.list_by_manager(&manager.email, manager.hub_id, page) {
-            Ok(clients) => clients,
-            Err(e) => {
-                error!("Failed to list clients: {e}");
-                return HttpResponse::InternalServerError().finish();
+        true => {
+            let manager_repo = DieselManagerRepository::new(&pool);
+            let manager = match manager_repo.create_or_update(&NewManager {
+                hub_id: user.hub_id,
+                name: &user.name,
+                email: &user.email,
+            }) {
+                Ok(manager) => manager,
+                Err(e) => {
+                    error!("Failed to update manager: {e}");
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            match client_repo.list_by_manager(&manager.email, manager.hub_id, page) {
+                Ok(clients) => clients,
+                Err(e) => {
+                    error!("Failed to list clients: {e}");
+                    return HttpResponse::InternalServerError().finish();
+                }
             }
-        },
-        false => match repo.list(user.hub_id, page) {
+        }
+        false => match client_repo.list(user.hub_id, page) {
             Ok(clients) => clients,
             Err(e) => {
                 error!("Failed to list clients: {e}");
