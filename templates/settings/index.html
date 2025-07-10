@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    {% include 'navigation.html' %}
+
+<div class="container border bg-white" id="items">
+        <div class="row mb-3 fw-bold">
+            <div class="col overflow-hidden">
+                Имя
+            </div>
+            <div class="col overflow-hidden">
+                Email
+            </div>
+            <div class="col overflow-hidden">
+                Клиенты
+            </div>
+        </div>
+        
+            
+            
+            <div class="row mb-3 border-bottom selectable" data-bs-toggle="modal" data-bs-target="#userModal" hx-post="/admin/user/modal/1" hx-swap="innerHTML" hx-target="#userModalBody">
+                <div class="col overflow-hidden">
+                    Админ
+                </div>
+                <div class="col overflow-hidden">
+                    matrizaev@gmail.com
+                </div>
+                <div class="col overflow-hidden">
+                    
+                        <span class="badge rounded-pill text-bg-light">Client Name #1</span>
+                    
+                        <span class="badge rounded-pill text-bg-light">Client Name #2</span>
+
+                </div>
+            </div>
+        
+            
+            
+            <div class="row mb-3 border-bottom selectable" data-bs-toggle="modal" data-bs-target="#userModal" hx-post="/admin/user/modal/2" hx-swap="innerHTML" hx-target="#userModalBody">
+                <div class="col overflow-hidden">
+                    Test
+                </div>
+                <div class="col overflow-hidden">
+                    test@test.test
+                </div>
+                <div class="col overflow-hidden">
+                    
+                        <span class="badge rounded-pill text-bg-light">Client Name #1</span>
+                    
+                        <span class="badge rounded-pill text-bg-light">Client Name #2</span>
+                    
+                </div>
+            </div>
+        
+    </div>
+
+{% endblock %}

@@ -9,6 +9,7 @@ use crate::models::auth::AuthenticatedUser;
 
 pub mod client;
 pub mod main;
+pub mod settings;
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {

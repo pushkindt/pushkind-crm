@@ -13,6 +13,7 @@ use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::client::client;
 use pushkind_crm::routes::main::{index, logout, not_assigned, search};
+use pushkind_crm::routes::settings::settings;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -68,6 +69,7 @@ async fn main() -> std::io::Result<()> {
                     .service(index)
                     .service(search)
                     .service(client)
+                    .service(settings)
                     .service(logout),
             )
             .app_data(web::Data::new(server_config.clone()))
