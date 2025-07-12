@@ -131,3 +131,42 @@ impl From<DomainNewClientManager> for NewClientManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_domain_newmanager() {
+        let domain = DomainNewManager {
+            hub_id: 1,
+            name: "Alice",
+            email: "a@b.c",
+        };
+        let new: NewManager = (&domain).into();
+        assert_eq!(new.hub_id, domain.hub_id);
+        assert_eq!(new.name, domain.name);
+        assert_eq!(new.email, domain.email);
+
+        let update: UpdateManager = (&domain).into();
+        assert_eq!(update.name, domain.name);
+
+        let update_from_new: UpdateManager = new.into();
+        assert_eq!(update_from_new.name, domain.name);
+    }
+
+    #[test]
+    fn from_manager_into_domain() {
+        let db = Manager {
+            id: 1,
+            hub_id: 2,
+            name: "Bob".into(),
+            email: "b@c.d".into(),
+        };
+        let domain: DomainManager = db.into();
+        assert_eq!(domain.id, 1);
+        assert_eq!(domain.hub_id, 2);
+        assert_eq!(domain.name, "Bob");
+        assert_eq!(domain.email, "b@c.d");
+    }
+}
