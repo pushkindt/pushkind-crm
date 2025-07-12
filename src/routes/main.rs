@@ -9,8 +9,8 @@ use crate::db::DbPool;
 use crate::domain::manager::NewManager;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
+use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
-use crate::repository::test::TestClientRepository;
 use crate::repository::{ClientRepository, ManagerRepository};
 use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
 
@@ -32,7 +32,7 @@ pub async fn index(
     };
 
     let page = params.page.unwrap_or(1);
-    let client_repo = TestClientRepository;
+    let client_repo = DieselClientRepository::new(&pool);
     let clients = match check_role("crm_manager", &user.roles) {
         true => {
             let manager_repo = DieselManagerRepository::new(&pool);
@@ -88,6 +88,7 @@ struct SearchQueryParams {
 pub async fn search(
     params: web::Query<SearchQueryParams>,
     user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<ServerConfig>,
 ) -> impl Responder {
@@ -102,9 +103,9 @@ pub async fn search(
         None => "",
     };
 
-    let repo = TestClientRepository;
+    let client_repo = DieselClientRepository::new(&pool);
 
-    let clients = match repo.search(user.hub_id, query, page) {
+    let clients = match client_repo.search(user.hub_id, query, page) {
         Ok(clients) => clients,
         Err(e) => {
             error!("Failed to list clients: {e}");

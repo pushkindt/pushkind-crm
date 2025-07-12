@@ -57,3 +57,40 @@ impl<T> Paginated<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pages_without_ellipses() {
+        let pages = get_pages(10, 5, 2, 2, 4, 2);
+        let expected = (1..=10).map(Some).collect::<Vec<_>>();
+        assert_eq!(pages, expected);
+    }
+
+    #[test]
+    fn pages_with_ellipses() {
+        let pages = get_pages(100, 1, 2, 2, 4, 2);
+        assert_eq!(
+            pages,
+            vec![
+                Some(1),
+                Some(2),
+                Some(3),
+                Some(4),
+                Some(5),
+                None,
+                Some(99),
+                Some(100),
+            ]
+        );
+    }
+
+    #[test]
+    fn paginated_sets_page_to_one_when_zero() {
+        let paginated: Paginated<i32> = Paginated::new(vec![1, 2, 3], 0, 3);
+        assert_eq!(paginated.page, 1);
+        assert_eq!(paginated.pages, vec![Some(1), Some(2), Some(3)]);
+    }
+}

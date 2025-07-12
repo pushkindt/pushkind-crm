@@ -3,16 +3,18 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use log::error;
 use tera::Context;
 
+use crate::db::DbPool;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
 use crate::repository::ClientRepository;
-use crate::repository::test::TestClientRepository;
+use crate::repository::client::DieselClientRepository;
 use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
 
 #[get("/client/{client_id}")]
 pub async fn client(
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<ServerConfig>,
 ) -> impl Responder {
@@ -20,7 +22,7 @@ pub async fn client(
         return response;
     };
 
-    let repo = TestClientRepository;
+    let repo = DieselClientRepository::new(&pool);
 
     let client = match repo.get_by_id(client_id.into_inner()) {
         Ok(Some(client)) if client.hub_id == user.hub_id => client,

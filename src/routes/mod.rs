@@ -65,3 +65,22 @@ fn render_template(template: &str, context: &Context) -> HttpResponse {
         String::new()
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::http::StatusCode;
+
+    #[test]
+    fn check_role_detects_role() {
+        assert!(check_role("admin", &["user", "admin"]));
+        assert!(!check_role("admin", &["user", "manager"]));
+    }
+
+    #[test]
+    fn redirect_sets_location_header() {
+        let resp = redirect("/target");
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        assert_eq!(resp.headers().get(header::LOCATION).unwrap(), "/target");
+    }
+}
