@@ -9,8 +9,7 @@ use crate::{
     models::{
         client::Client as DbClient,
         manager::{
-            self, Manager as DbManager, NewManager as DbNewManager,
-            UpdateManager as DbUpdateManager,
+            Manager as DbManager, NewManager as DbNewManager, UpdateManager as DbUpdateManager,
         },
     },
     repository::{ManagerRepository, errors::RepositoryResult},
