@@ -93,6 +93,7 @@ impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     fn sample_domain_new() -> DomainNewClient<'static> {
         DomainNewClient {
@@ -132,7 +133,7 @@ mod tests {
 
     #[test]
     fn client_into_domain() {
-        let now = NaiveDateTime::from_timestamp_opt(0, 0).unwrap();
+        let now: NaiveDateTime = Utc::now().naive_utc();
         let db_client = Client {
             id: 1,
             hub_id: 2,
