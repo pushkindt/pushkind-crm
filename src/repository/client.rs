@@ -20,8 +20,8 @@ impl<'a> DieselClientRepository<'a> {
 
 impl ClientRepository for DieselClientRepository<'_> {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
-        use crate::schema::clients;
         use crate::models::client::Client as DbClient;
+        use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
         let client = clients::table
@@ -33,8 +33,8 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
-        use crate::schema::clients;
         use crate::models::client::NewClient as DbNewClient;
+        use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
         let insertables: Vec<DbNewClient> = new_clients.iter().map(|c| c.into()).collect();
@@ -46,17 +46,17 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn list(&self, hub_id: i32, current_page: usize) -> RepositoryResult<Paginated<Client>> {
-        use crate::schema::clients::dsl as c;
         use crate::models::client::Client as DbClient;
+        use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
         let per_page: i64 = 20;
         let page = if current_page == 0 { 1 } else { current_page } as i64;
         let offset = (page - 1) * per_page;
 
-        let items = c::clients
-            .filter(c::hub_id.eq(hub_id))
-            .order(c::id.asc())
+        let items = clients::table
+            .filter(clients::hub_id.eq(hub_id))
+            .order(clients::id.asc())
             .limit(per_page)
             .offset(offset)
             .load::<DbClient>(&mut conn)?
@@ -64,8 +64,8 @@ impl ClientRepository for DieselClientRepository<'_> {
             .map(Into::into)
             .collect::<Vec<Client>>();
 
-        let total: i64 = c::clients
-            .filter(c::hub_id.eq(hub_id))
+        let total: i64 = clients::table
+            .filter(clients::hub_id.eq(hub_id))
             .count()
             .get_result(&mut conn)?;
 
@@ -73,14 +73,15 @@ impl ClientRepository for DieselClientRepository<'_> {
 
         Ok(Paginated::new(items, page as usize, total_pages))
     }
+
     fn list_by_manager(
         &self,
         manager_email: &str,
         hub_id: i32,
         current_page: usize,
     ) -> RepositoryResult<Paginated<Client>> {
-        use crate::schema::{clients, managers, client_manager};
         use crate::models::client::Client as DbClient;
+        use crate::schema::{client_manager, clients, managers};
 
         let mut conn = self.pool.get()?;
         let per_page: i64 = 20;
@@ -94,7 +95,7 @@ impl ClientRepository for DieselClientRepository<'_> {
 
         let items = clients::table
             .inner_join(client_manager::table.on(client_manager::client_id.eq(clients::id)))
-            .filter(client_manager::manager_id.eq_any(manager_id.clone()))
+            .filter(client_manager::manager_id.eq_any(manager_id))
             .order(clients::id.asc())
             .limit(per_page)
             .offset(offset)
@@ -114,32 +115,33 @@ impl ClientRepository for DieselClientRepository<'_> {
 
         Ok(Paginated::new(items, page as usize, total_pages))
     }
+
     fn search(
         &self,
         hub_id: i32,
         search_key: &str,
         current_page: usize,
     ) -> RepositoryResult<Paginated<Client>> {
-        use crate::schema::clients::dsl as c;
         use crate::models::client::Client as DbClient;
+        use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
         let per_page: i64 = 20;
         let page = if current_page == 0 { 1 } else { current_page } as i64;
         let offset = (page - 1) * per_page;
 
-        let pattern = format!("%{}%", search_key);
+        let pattern = format!("%{search_key}%");
 
-        let items = c::clients
-            .filter(c::hub_id.eq(hub_id))
+        let items = clients::table
+            .filter(clients::hub_id.eq(hub_id))
             .filter(
-                c::name
+                clients::name
                     .like(&pattern)
-                    .or(c::email.like(&pattern))
-                    .or(c::phone.like(&pattern))
-                    .or(c::address.like(&pattern)),
+                    .or(clients::email.like(&pattern))
+                    .or(clients::phone.like(&pattern))
+                    .or(clients::address.like(&pattern)),
             )
-            .order(c::id.asc())
+            .order(clients::id.asc())
             .limit(per_page)
             .offset(offset)
             .load::<DbClient>(&mut conn)?
@@ -147,14 +149,14 @@ impl ClientRepository for DieselClientRepository<'_> {
             .map(Into::into)
             .collect::<Vec<Client>>();
 
-        let total: i64 = c::clients
-            .filter(c::hub_id.eq(hub_id))
+        let total: i64 = clients::table
+            .filter(clients::hub_id.eq(hub_id))
             .filter(
-                c::name
+                clients::name
                     .like(&pattern)
-                    .or(c::email.like(&pattern))
-                    .or(c::phone.like(&pattern))
-                    .or(c::address.like(&pattern)),
+                    .or(clients::email.like(&pattern))
+                    .or(clients::phone.like(&pattern))
+                    .or(clients::address.like(&pattern)),
             )
             .count()
             .get_result(&mut conn)?;
@@ -165,8 +167,8 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
-        use crate::schema::clients;
         use crate::models::client::{Client as DbClient, UpdateClient as DbUpdateClient};
+        use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
         let db_updates: DbUpdateClient = updates.into();
@@ -179,9 +181,13 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn delete(&self, client_id: i32) -> RepositoryResult<()> {
+        use crate::schema::client_manager;
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
+
+        diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
+            .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
         Ok(())
     }
