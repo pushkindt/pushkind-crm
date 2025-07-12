@@ -89,3 +89,68 @@ impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
         Self::from(&client)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_domain_new() -> DomainNewClient<'static> {
+        DomainNewClient {
+            hub_id: 1,
+            name: "John",
+            email: "john@example.com",
+            phone: "123",
+            address: "addr",
+        }
+    }
+
+    #[test]
+    fn from_domain_new_creates_newclient() {
+        let domain = sample_domain_new();
+        let new: NewClient = (&domain).into();
+        assert_eq!(new.hub_id, domain.hub_id);
+        assert_eq!(new.name, domain.name);
+        assert_eq!(new.email, domain.email);
+        assert_eq!(new.phone, domain.phone);
+        assert_eq!(new.address, domain.address);
+    }
+
+    #[test]
+    fn from_domain_update_creates_updateclient() {
+        let domain = DomainUpdateClient {
+            name: "Jane",
+            email: "jane@example.com",
+            phone: "321",
+            address: "addr2",
+        };
+        let update: UpdateClient = (&domain).into();
+        assert_eq!(update.name, domain.name);
+        assert_eq!(update.email, domain.email);
+        assert_eq!(update.phone, domain.phone);
+        assert_eq!(update.address, domain.address);
+    }
+
+    #[test]
+    fn client_into_domain() {
+        let now = NaiveDateTime::from_timestamp_opt(0, 0).unwrap();
+        let db_client = Client {
+            id: 1,
+            hub_id: 2,
+            name: "n".into(),
+            email: "e".into(),
+            phone: "p".into(),
+            address: "a".into(),
+            created_at: now,
+            updated_at: now,
+        };
+        let domain: DomainClient = db_client.into();
+        assert_eq!(domain.id, 1);
+        assert_eq!(domain.hub_id, 2);
+        assert_eq!(domain.name, "n");
+        assert_eq!(domain.email, "e");
+        assert_eq!(domain.phone, "p");
+        assert_eq!(domain.address, "a");
+        assert_eq!(domain.created_at, now);
+        assert_eq!(domain.updated_at, now);
+    }
+}
