@@ -47,6 +47,44 @@ impl AuthenticatedUser {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{DecodingKey, Validation, decode};
+
+    fn sample_user() -> AuthenticatedUser {
+        AuthenticatedUser {
+            sub: "1".to_string(),
+            email: "test@example.com".to_string(),
+            hub_id: 1,
+            name: "Test".to_string(),
+            roles: vec!["crm".to_string()],
+            exp: 0,
+        }
+    }
+
+    #[test]
+    fn jwt_round_trip() {
+        let secret = "secret";
+        let mut user = sample_user();
+        let token = user.to_jwt(secret).unwrap();
+        let decoded = decode::<AuthenticatedUser>(
+            &token,
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &Validation::default(),
+        )
+        .unwrap()
+        .claims;
+
+        assert_eq!(decoded.sub, user.sub);
+        assert_eq!(decoded.email, user.email);
+        assert_eq!(decoded.hub_id, user.hub_id);
+        assert_eq!(decoded.name, user.name);
+        assert_eq!(decoded.roles, user.roles);
+        assert_eq!(decoded.exp, user.exp);
+    }
+}
+
 impl FromRequest for AuthenticatedUser {
     type Error = Error;
     type Future = Ready<Result<Self, Self::Error>>;

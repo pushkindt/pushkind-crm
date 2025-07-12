@@ -9,8 +9,8 @@ use crate::{
     models::{
         client::Client as DbClient,
         manager::{
-            self, Manager as DbManager, NewManager as DbNewManager,
-            UpdateManager as DbUpdateManager,
+            Manager as DbManager, NewClientManager as DbNewClientManager,
+            NewManager as DbNewManager, UpdateManager as DbUpdateManager,
         },
     },
     repository::{ManagerRepository, errors::RepositoryResult},
@@ -87,12 +87,35 @@ impl ManagerRepository for DieselManagerRepository<'_> {
                 let manager_clients = clients
                     .iter()
                     .filter(|(manager_id, _)| *manager_id == manager.id)
-                    .map(|(_, role)| role.clone().into())
+                    .map(|(_, client)| client.clone().into())
                     .collect();
                 (manager.into(), manager_clients)
             })
             .collect();
 
         Ok(manager_with_clients) // Convert DbUser to DomainUser
+    }
+
+    fn assign_clients(&self, manager_id: i32, client_ids: &[i32]) -> RepositoryResult<usize> {
+        use crate::schema::client_manager;
+
+        let mut conn = self.pool.get()?;
+
+        let db_client_manager = client_ids
+            .iter()
+            .map(|client_id| DbNewClientManager {
+                client_id: *client_id,
+                manager_id,
+            })
+            .collect::<Vec<_>>();
+
+        diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
+            .execute(&mut conn)?;
+
+        let result = diesel::insert_into(client_manager::table)
+            .values(db_client_manager)
+            .execute(&mut conn)?;
+
+        Ok(result)
     }
 }

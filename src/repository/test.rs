@@ -119,4 +119,8 @@ impl ManagerRepository for TestManagerRepository {
     fn list(&self, _hub_id: i32) -> RepositoryResult<Vec<(Manager, Vec<Client>)>> {
         Ok(vec![])
     }
+
+    fn assign_clients(&self, _manager_id: i32, client_ids: &[i32]) -> RepositoryResult<usize> {
+        Ok(client_ids.len())
+    }
 }

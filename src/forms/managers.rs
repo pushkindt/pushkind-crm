@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-use crate::domain::manager::NewManager;
 
 #[derive(Deserialize)]
 pub struct AddManagerForm {
