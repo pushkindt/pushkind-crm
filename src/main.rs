@@ -13,7 +13,7 @@ use pushkind_crm::db::establish_connection_pool;
 use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::client::client;
-use pushkind_crm::routes::main::{index, logout, not_assigned, search};
+use pushkind_crm::routes::main::{add_client, index, logout, not_assigned, search};
 use pushkind_crm::routes::managers::{add_manager, managers};
 
 #[actix_web::main]
@@ -77,6 +77,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("")
                     .wrap(RedirectUnauthorized)
                     .service(index)
+                    .service(add_client)
                     .service(search)
                     .service(client)
                     .service(managers)

@@ -23,7 +23,7 @@ lazy_static! {
     };
 }
 
-pub fn alert_level_to_str(level: &Level) -> &'static str {
+fn alert_level_to_str(level: &Level) -> &'static str {
     match level {
         Level::Error => "danger",
         Level::Warning => "warning",
@@ -70,6 +70,7 @@ fn render_template(template: &str, context: &Context) -> HttpResponse {
 mod tests {
     use super::*;
     use actix_web::http::StatusCode;
+    use actix_web_flash_messages::Level;
 
     #[test]
     fn check_role_detects_role() {
@@ -82,5 +83,14 @@ mod tests {
         let resp = redirect("/target");
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(resp.headers().get(header::LOCATION).unwrap(), "/target");
+    }
+
+    #[test]
+    fn test_alert_level_to_str_mappings() {
+        assert_eq!(alert_level_to_str(&Level::Error), "danger");
+        assert_eq!(alert_level_to_str(&Level::Warning), "warning");
+        assert_eq!(alert_level_to_str(&Level::Success), "success");
+        assert_eq!(alert_level_to_str(&Level::Info), "info");
+        assert_eq!(alert_level_to_str(&Level::Debug), "info");
     }
 }
