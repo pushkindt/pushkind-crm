@@ -9,7 +9,7 @@ use crate::{
 
 /// Diesel implementation of [`ClientRepository`].
 pub struct DieselClientRepository<'a> {
-    pub pool: &'a DbPool,
+    pool: &'a DbPool,
 }
 
 impl<'a> DieselClientRepository<'a> {

@@ -18,7 +18,7 @@ use crate::{
 
 /// Diesel implementation of [`ManagerRepository`].
 pub struct DieselManagerRepository<'a> {
-    pub pool: &'a DbPool,
+    pool: &'a DbPool,
 }
 
 impl<'a> DieselManagerRepository<'a> {

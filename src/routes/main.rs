@@ -1,14 +1,17 @@
 use actix_identity::Identity;
 use actix_web::{HttpResponse, Responder, get, post, web};
-use actix_web_flash_messages::IncomingFlashMessages;
+use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use log::error;
 use serde::Deserialize;
 use tera::Context;
 
 use crate::db::DbPool;
+use crate::domain::client::{Client, NewClient};
 use crate::domain::manager::NewManager;
+use crate::forms::main::AddClientForm;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
+use crate::pagination::Paginated;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{ClientRepository, ManagerRepository};
@@ -33,47 +36,52 @@ pub async fn index(
 
     let page = params.page.unwrap_or(1);
     let client_repo = DieselClientRepository::new(&pool);
-    let clients = match check_role("crm_manager", &user.roles) {
-        true => {
-            let manager_repo = DieselManagerRepository::new(&pool);
-            let manager = match manager_repo.create_or_update(&NewManager {
-                hub_id: user.hub_id,
-                name: &user.name,
-                email: &user.email,
-            }) {
-                Ok(manager) => manager,
-                Err(e) => {
-                    error!("Failed to update manager: {e}");
-                    return HttpResponse::InternalServerError().finish();
-                }
-            };
-            match client_repo.list_by_manager(&manager.email, manager.hub_id, page) {
-                Ok(clients) => clients,
-                Err(e) => {
-                    error!("Failed to list clients: {e}");
-                    return HttpResponse::InternalServerError().finish();
-                }
-            }
-        }
-        false => match client_repo.list(user.hub_id, page) {
+    let mut context = Context::new();
+
+    if check_role("crm_admin", &user.roles) {
+        let clients = match client_repo.list(user.hub_id, page) {
             Ok(clients) => clients,
             Err(e) => {
                 error!("Failed to list clients: {e}");
                 return HttpResponse::InternalServerError().finish();
             }
-        },
-    };
+        };
+        context.insert("clients", &clients);
+    } else if check_role("crm_manager", &user.roles) {
+        let manager_repo = DieselManagerRepository::new(&pool);
+        let manager = match manager_repo.create_or_update(&NewManager {
+            hub_id: user.hub_id,
+            name: &user.name,
+            email: &user.email,
+        }) {
+            Ok(manager) => manager,
+            Err(e) => {
+                error!("Failed to update manager: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+        let clients = match client_repo.list_by_manager(&manager.email, manager.hub_id, page) {
+            Ok(clients) => clients,
+            Err(e) => {
+                error!("Failed to list clients: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+        context.insert("clients", &clients);
+    } else {
+        let clients: Paginated<Client> = Paginated::new(vec![], 0, 0);
+        context.insert("clients", &clients);
+    }
 
     let alerts = flash_messages
         .iter()
         .map(|f| (f.content(), alert_level_to_str(&f.level())))
         .collect::<Vec<_>>();
-    let mut context = Context::new();
+
     context.insert("alerts", &alerts);
     context.insert("current_user", &user);
     context.insert("current_page", "index");
     context.insert("home_url", &server_config.auth_service_url);
-    context.insert("clients", &clients);
 
     render_template("main/index.html", &context)
 }
@@ -125,6 +133,31 @@ pub async fn search(
     context.insert("clients", &clients);
 
     render_template("main/index.html", &context)
+}
+
+#[post("/client/add")]
+pub async fn add_client(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    web::Form(form): web::Form<AddClientForm>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let new_client: NewClient = (&form).into();
+
+    let repo = DieselClientRepository::new(&pool);
+    match repo.create(&[new_client]) {
+        Ok(_) => {
+            FlashMessage::success("Клиент добавлен.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to add a client: {err}");
+            FlashMessage::error(format!("Ошибка при добавлении клиента: {err}")).send();
+        }
+    }
+    redirect("/")
 }
 
 #[post("/logout")]
