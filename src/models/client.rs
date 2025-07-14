@@ -5,8 +5,9 @@ use crate::domain::client::{
     Client as DomainClient, NewClient as DomainNewClient, UpdateClient as DomainUpdateClient,
 };
 
-#[derive(Debug, Clone, Identifiable, Queryable)]
+#[derive(Debug, Clone, Identifiable, Queryable, QueryableByName)]
 #[diesel(table_name = crate::schema::clients)]
+#[diesel(foreign_derive)]
 /// Diesel model for [`crate::domain::client::Client`].
 pub struct Client {
     pub id: i32,
@@ -17,6 +18,12 @@ pub struct Client {
     pub address: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+}
+
+#[derive(QueryableByName)]
+pub struct ClientCount {
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub count: i64,
 }
 
 #[derive(Insertable)]

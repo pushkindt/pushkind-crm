@@ -7,6 +7,7 @@ use tera::{Context, Tera};
 
 use crate::models::auth::AuthenticatedUser;
 
+pub mod api;
 pub mod client;
 pub mod main;
 pub mod managers;

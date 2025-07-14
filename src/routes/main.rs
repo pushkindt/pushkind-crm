@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tera::Context;
 
 use crate::db::DbPool;
-use crate::domain::client::{Client, NewClient};
+use crate::domain::client::NewClient;
 use crate::domain::manager::NewManager;
 use crate::forms::main::AddClientForm;
 use crate::models::auth::AuthenticatedUser;
@@ -19,9 +19,9 @@ use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, rende
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
+    q: Option<String>,
     page: Option<usize>,
 }
-
 #[get("/")]
 pub async fn index(
     params: web::Query<IndexQueryParams>,
@@ -32,88 +32,35 @@ pub async fn index(
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
-    };
+    }
 
     let page = params.page.unwrap_or(1);
+    let q = params.q.as_deref().unwrap_or("").trim();
     let client_repo = DieselClientRepository::new(&pool);
     let mut context = Context::new();
 
-    if check_role("crm_admin", &user.roles) {
-        let clients = match client_repo.list(user.hub_id, page) {
-            Ok(clients) => clients,
-            Err(e) => {
-                error!("Failed to list clients: {e}");
-                return HttpResponse::InternalServerError().finish();
-            }
-        };
-        context.insert("clients", &clients);
+    let clients_result = if !q.is_empty() {
+        client_repo.search_paginated(user.hub_id, q, page)
+    } else if check_role("crm_admin", &user.roles) {
+        client_repo.list(user.hub_id, page)
     } else if check_role("crm_manager", &user.roles) {
         let manager_repo = DieselManagerRepository::new(&pool);
-        let manager = match manager_repo.create_or_update(&NewManager {
+        match manager_repo.create_or_update(&NewManager {
             hub_id: user.hub_id,
             name: &user.name,
             email: &user.email,
         }) {
-            Ok(manager) => manager,
+            Ok(manager) => client_repo.list_by_manager(&manager.email, manager.hub_id, page),
             Err(e) => {
                 error!("Failed to update manager: {e}");
                 return HttpResponse::InternalServerError().finish();
             }
-        };
-        let clients = match client_repo.list_by_manager(&manager.email, manager.hub_id, page) {
-            Ok(clients) => clients,
-            Err(e) => {
-                error!("Failed to list clients: {e}");
-                return HttpResponse::InternalServerError().finish();
-            }
-        };
-        context.insert("clients", &clients);
+        }
     } else {
-        let clients: Paginated<Client> = Paginated::new(vec![], 0, 0);
-        context.insert("clients", &clients);
-    }
-
-    let alerts = flash_messages
-        .iter()
-        .map(|f| (f.content(), alert_level_to_str(&f.level())))
-        .collect::<Vec<_>>();
-
-    context.insert("alerts", &alerts);
-    context.insert("current_user", &user);
-    context.insert("current_page", "index");
-    context.insert("home_url", &server_config.auth_service_url);
-
-    render_template("main/index.html", &context)
-}
-
-#[derive(Deserialize)]
-struct SearchQueryParams {
-    q: Option<String>,
-    page: Option<usize>,
-}
-
-#[get("/search")]
-pub async fn search(
-    params: web::Query<SearchQueryParams>,
-    user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
-    flash_messages: IncomingFlashMessages,
-    server_config: web::Data<ServerConfig>,
-) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
+        Ok(Paginated::new(vec![], 0, 0))
     };
 
-    let page = params.page.unwrap_or(1);
-
-    let query = match &params.q {
-        Some(query) => query,
-        None => "",
-    };
-
-    let client_repo = DieselClientRepository::new(&pool);
-
-    let clients = match client_repo.search(user.hub_id, query, page) {
+    let clients = match clients_result {
         Ok(clients) => clients,
         Err(e) => {
             error!("Failed to list clients: {e}");
@@ -125,12 +72,15 @@ pub async fn search(
         .iter()
         .map(|f| (f.content(), alert_level_to_str(&f.level())))
         .collect::<Vec<_>>();
-    let mut context = Context::new();
+
     context.insert("alerts", &alerts);
     context.insert("current_user", &user);
     context.insert("current_page", "index");
     context.insert("home_url", &server_config.auth_service_url);
     context.insert("clients", &clients);
+    if !q.is_empty() {
+        context.insert("search_query", q); // optional: show search term in UI
+    }
 
     render_template("main/index.html", &context)
 }

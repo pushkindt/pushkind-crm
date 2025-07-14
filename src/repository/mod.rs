@@ -22,12 +22,13 @@ pub trait ClientRepository {
         hub_id: i32,
         current_page: usize,
     ) -> RepositoryResult<Paginated<Client>>;
-    fn search(
+    fn search_paginated(
         &self,
         hub_id: i32,
         search_key: &str,
         current_page: usize,
     ) -> RepositoryResult<Paginated<Client>>;
+    fn search(&self, hub_id: i32, search_key: &str) -> RepositoryResult<Vec<Client>>;
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client>;
     fn delete(&self, client_id: i32) -> RepositoryResult<()>;
 }

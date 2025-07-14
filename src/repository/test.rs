@@ -60,7 +60,7 @@ impl ClientRepository for TestClientRepository {
         Ok(Paginated::new(clients, current_page, 20))
     }
 
-    fn search(
+    fn search_paginated(
         &self,
         hub_id: i32,
         search_key: &str,
@@ -78,6 +78,21 @@ impl ClientRepository for TestClientRepository {
             })
             .collect();
         Ok(Paginated::new(clients, current_page, 3))
+    }
+
+    fn search(&self, hub_id: i32, search_key: &str) -> RepositoryResult<Vec<Client>> {
+        let clients = (1..20)
+            .map(|id| Client {
+                id,
+                hub_id,
+                name: format!("Client Name #{id}"),
+                email: format!("client#{id}@email.com"),
+                phone: format!("123456789{id}"),
+                address: format!("Client Address #{search_key}"),
+                ..Client::default()
+            })
+            .collect();
+        Ok(clients)
     }
 
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
