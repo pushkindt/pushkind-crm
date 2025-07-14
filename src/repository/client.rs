@@ -1,8 +1,12 @@
-use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Integer, Text};
+use diesel::{prelude::*, sql_query};
 
 use crate::{
     db::DbPool,
     domain::client::{Client, NewClient, UpdateClient},
+    models::client::{
+        Client as DbClient, ClientCount, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
+    },
     pagination::Paginated,
     repository::{ClientRepository, errors::RepositoryResult},
 };
@@ -20,7 +24,6 @@ impl<'a> DieselClientRepository<'a> {
 
 impl ClientRepository for DieselClientRepository<'_> {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
-        use crate::models::client::Client as DbClient;
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
@@ -33,7 +36,6 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
-        use crate::models::client::NewClient as DbNewClient;
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
@@ -46,7 +48,6 @@ impl ClientRepository for DieselClientRepository<'_> {
     }
 
     fn list(&self, hub_id: i32, current_page: usize) -> RepositoryResult<Paginated<Client>> {
-        use crate::models::client::Client as DbClient;
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
@@ -80,7 +81,6 @@ impl ClientRepository for DieselClientRepository<'_> {
         hub_id: i32,
         current_page: usize,
     ) -> RepositoryResult<Paginated<Client>> {
-        use crate::models::client::Client as DbClient;
         use crate::schema::{client_manager, clients, managers};
 
         let mut conn = self.pool.get()?;
@@ -116,58 +116,7 @@ impl ClientRepository for DieselClientRepository<'_> {
         Ok(Paginated::new(items, page as usize, total_pages))
     }
 
-    fn search(
-        &self,
-        hub_id: i32,
-        search_key: &str,
-        current_page: usize,
-    ) -> RepositoryResult<Paginated<Client>> {
-        use crate::models::client::Client as DbClient;
-        use crate::schema::clients;
-
-        let mut conn = self.pool.get()?;
-        let per_page: i64 = 20;
-        let page = if current_page == 0 { 1 } else { current_page } as i64;
-        let offset = (page - 1) * per_page;
-
-        let pattern = format!("%{search_key}%");
-
-        let items = clients::table
-            .filter(clients::hub_id.eq(hub_id))
-            .filter(
-                clients::name
-                    .like(&pattern)
-                    .or(clients::email.like(&pattern))
-                    .or(clients::phone.like(&pattern))
-                    .or(clients::address.like(&pattern)),
-            )
-            .order(clients::id.asc())
-            .limit(per_page)
-            .offset(offset)
-            .load::<DbClient>(&mut conn)?
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<Client>>();
-
-        let total: i64 = clients::table
-            .filter(clients::hub_id.eq(hub_id))
-            .filter(
-                clients::name
-                    .like(&pattern)
-                    .or(clients::email.like(&pattern))
-                    .or(clients::phone.like(&pattern))
-                    .or(clients::address.like(&pattern)),
-            )
-            .count()
-            .get_result(&mut conn)?;
-
-        let total_pages = ((total + per_page - 1) / per_page) as usize;
-
-        Ok(Paginated::new(items, page as usize, total_pages))
-    }
-
     fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
-        use crate::models::client::{Client as DbClient, UpdateClient as DbUpdateClient};
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
@@ -190,5 +139,80 @@ impl ClientRepository for DieselClientRepository<'_> {
             .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
         Ok(())
+    }
+
+    fn search_paginated(
+        &self,
+        hub_id: i32,
+        search_key: &str,
+        current_page: usize,
+    ) -> RepositoryResult<Paginated<Client>> {
+        let mut connection = self.pool.get()?;
+
+        let per_page: i64 = 20;
+        let page = if current_page == 0 { 1 } else { current_page } as i64;
+        let offset = (page - 1) * per_page;
+        let match_query = format!("{}*", search_key.to_lowercase());
+
+        // Count total matching items
+        let total: i64 = sql_query(
+            r#"
+            SELECT COUNT(*) as count
+            FROM clients
+            JOIN client_fts ON clients.id = client_fts.rowid
+            WHERE client_fts MATCH ?
+            AND clients.hub_id = ?
+            "#,
+        )
+        .bind::<Text, _>(&match_query)
+        .bind::<Integer, _>(hub_id)
+        .get_result::<ClientCount>(&mut connection)?
+        .count;
+
+        let items = sql_query(
+            r#"
+            SELECT clients.*
+            FROM clients
+            JOIN client_fts ON clients.id = client_fts.rowid
+            WHERE client_fts MATCH ?
+            AND clients.hub_id = ?
+            LIMIT ?
+            OFFSET ?
+            "#,
+        )
+        .bind::<Text, _>(&match_query)
+        .bind::<Integer, _>(hub_id)
+        .bind::<BigInt, _>(per_page)
+        .bind::<BigInt, _>(offset)
+        .load::<DbClient>(&mut connection)?;
+
+        let total_pages = ((total + per_page - 1) / per_page) as usize;
+
+        Ok(Paginated::new(
+            items.into_iter().map(Into::into).collect(),
+            page as usize,
+            total_pages,
+        ))
+    }
+
+    fn search(&self, hub_id: i32, search_key: &str) -> RepositoryResult<Vec<Client>> {
+        let mut connection = self.pool.get()?;
+
+        let match_query = format!("{}*", search_key.to_lowercase());
+
+        let items = sql_query(
+            r#"
+            SELECT clients.*
+            FROM clients
+            JOIN client_fts ON clients.id = client_fts.rowid
+            WHERE client_fts MATCH ?
+            AND clients.hub_id = ?
+            "#,
+        )
+        .bind::<Text, _>(&match_query)
+        .bind::<Integer, _>(hub_id)
+        .load::<DbClient>(&mut connection)?;
+
+        Ok(items.into_iter().map(Into::into).collect())
     }
 }

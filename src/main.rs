@@ -12,8 +12,9 @@ use log::error;
 use pushkind_crm::db::establish_connection_pool;
 use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
+use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::client;
-use pushkind_crm::routes::main::{add_client, index, logout, not_assigned, search};
+use pushkind_crm::routes::main::{add_client, index, logout, not_assigned};
 use pushkind_crm::routes::managers::{add_manager, managers};
 
 #[actix_web::main]
@@ -73,12 +74,12 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .service(Files::new("/assets", "./assets"))
             .service(not_assigned)
+            .service(web::scope("/api").service(api_v1_clients))
             .service(
                 web::scope("")
                     .wrap(RedirectUnauthorized)
                     .service(index)
                     .service(add_client)
-                    .service(search)
                     .service(client)
                     .service(managers)
                     .service(add_manager)
