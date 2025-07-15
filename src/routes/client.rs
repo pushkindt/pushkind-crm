@@ -6,7 +6,7 @@ use tera::Context;
 use crate::db::DbPool;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::ClientRepository;
+use crate::repository::ClientReader;
 use crate::repository::client::DieselClientRepository;
 use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
 

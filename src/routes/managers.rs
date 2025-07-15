@@ -8,8 +8,9 @@ use crate::domain::manager::NewManager;
 use crate::forms::managers::AddManagerForm;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::ManagerRepository;
+use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
+use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
 
 #[get("/managers")]
@@ -74,4 +75,42 @@ pub async fn add_manager(
         }
     }
     redirect("/managers")
+}
+
+#[post("/managers/modal/{manager_id}")]
+pub async fn managers_modal(
+    manager_id: web::Path<i32>,
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let manager_repo = DieselManagerRepository::new(&pool);
+
+    let mut context = Context::new();
+
+    let manager_id = manager_id.into_inner();
+
+    let manager = match manager_repo.get_by_id(manager_id) {
+        Ok(Some(manager)) => manager,
+        _ => return HttpResponse::InternalServerError().finish(),
+    };
+
+    context.insert("manager", &manager);
+    let client_repo = DieselClientRepository::new(&pool);
+
+    let clients =
+        match client_repo.list(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
+            Ok((total, clients)) => clients,
+            Err(err) => {
+                error!("Failed to list clients: {err}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+
+    context.insert("clients", &clients);
+
+    render_template("managers/modal_body.html", &context)
 }

@@ -4,8 +4,8 @@ use serde::Deserialize;
 
 use crate::db::DbPool;
 use crate::models::auth::AuthenticatedUser;
-use crate::repository::ClientRepository;
 use crate::repository::client::DieselClientRepository;
+use crate::repository::{ClientReader, ClientSearchQuery};
 use crate::routes::ensure_role;
 
 #[derive(Deserialize)]
@@ -24,8 +24,8 @@ pub async fn api_v1_clients(
     }
     let repo = DieselClientRepository::new(&pool);
 
-    match repo.search(user.hub_id, &params.query) {
-        Ok(clients) => HttpResponse::Ok().json(clients),
+    match repo.search(ClientSearchQuery::new(user.hub_id, &params.query)) {
+        Ok((total, clients)) => HttpResponse::Ok().json(clients),
         Err(e) => {
             error!("Failed to list clients: {e}");
             HttpResponse::InternalServerError().finish()

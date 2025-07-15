@@ -12,6 +12,8 @@ pub mod client;
 pub mod main;
 pub mod managers;
 
+const DEFAULT_ITEMS_PER_PAGE: usize = 20;
+
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
         match Tera::new("templates/**/*") {

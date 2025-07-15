@@ -14,8 +14,12 @@ use crate::models::config::ServerConfig;
 use crate::pagination::Paginated;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
-use crate::repository::{ClientRepository, ManagerRepository};
-use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
+use crate::repository::{
+    ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter, ManagerWriter,
+};
+use crate::routes::{
+    DEFAULT_ITEMS_PER_PAGE, alert_level_to_str, check_role, ensure_role, redirect, render_template,
+};
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
@@ -40,9 +44,10 @@ pub async fn index(
     let mut context = Context::new();
 
     let clients_result = if !q.is_empty() {
-        client_repo.search_paginated(user.hub_id, q, page)
+        client_repo
+            .search(ClientSearchQuery::new(user.hub_id, q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_admin", &user.roles) {
-        client_repo.list(user.hub_id, page)
+        client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
         let manager_repo = DieselManagerRepository::new(&pool);
         match manager_repo.create_or_update(&NewManager {
@@ -50,18 +55,26 @@ pub async fn index(
             name: &user.name,
             email: &user.email,
         }) {
-            Ok(manager) => client_repo.list_by_manager(&manager.email, manager.hub_id, page),
+            Ok(manager) => client_repo.list(
+                ClientListQuery::new(user.hub_id)
+                    .manager_email(&manager.email)
+                    .paginate(page, DEFAULT_ITEMS_PER_PAGE),
+            ),
             Err(e) => {
                 error!("Failed to update manager: {e}");
                 return HttpResponse::InternalServerError().finish();
             }
         }
     } else {
-        Ok(Paginated::new(vec![], 0, 0))
+        Ok((0, vec![]))
     };
 
     let clients = match clients_result {
-        Ok(clients) => clients,
+        Ok((total, clients)) => Paginated::new(
+            clients,
+            page,
+            ((total + DEFAULT_ITEMS_PER_PAGE - 1) / DEFAULT_ITEMS_PER_PAGE) as usize,
+        ),
         Err(e) => {
             error!("Failed to list clients: {e}");
             return HttpResponse::InternalServerError().finish();

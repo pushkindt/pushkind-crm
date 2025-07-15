@@ -51,7 +51,7 @@
             {% set manager = manager_clients.0 %}
             {% set clients = manager_clients.1 %}
 
-            <div class="row mb-3 border-bottom selectable" data-bs-toggle="modal" data-bs-target="#userModal" hx-post="/admin/user/modal/1" hx-swap="innerHTML" hx-target="#userModalBody">
+            <div class="row mb-3 border-bottom selectable" data-bs-toggle="modal" data-bs-target="#managerModal" hx-post="/managers/modal/{{manager.id}}" hx-swap="innerHTML" hx-target="#managerModalBody">
                 <div class="col overflow-hidden">
                     {{manager.name}}
                 </div>
@@ -67,6 +67,19 @@
 
         {% endfor %}
 
+    </div>
+
+    <div class="modal fade" id="managerModal" tabindex="-1" aria-labelledby="managerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="managerModalLabel">Редактировать получателя</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="managerModalBody">
+                </div>
+            </div>
+        </div>
     </div>
 
 {% endblock %}

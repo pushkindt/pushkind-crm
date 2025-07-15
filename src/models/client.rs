@@ -20,12 +20,6 @@ pub struct Client {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(QueryableByName)]
-pub struct ClientCount {
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub count: i64,
-}
-
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::clients)]
 /// Insertable form of [`Client`].

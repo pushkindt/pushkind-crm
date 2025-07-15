@@ -1,0 +1,33 @@
+<div class="modal-body">
+    <form action="/managers/save" method="POST">
+        <input type="hidden" value="{{manager.id}}" name="id" required>
+        <div class="row mb-3">
+            <label for="modalManagerName" class="col-md-2 col-form-label">Имя</label>
+            <div class="col-md-10">
+                <input type="text" class="form-control-plaintext" id="modalManagerName" value="{{manager.name}}" placeholder="Имя">
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="modalManagerEmail" class="col-md-2 col-form-label">Электронный адрес</label>
+            <div class="col-md-10">
+                <input type="email" class="form-control-plaintext" id="modalManagerEmail" value="{{manager.email}}" placeholder="Электронный адрес">
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="managers-assign-form-client-id" class="col-md-2 col-form-label">Группы</label>
+            <div class="col-md-10">
+                <select multiple class="form-control my-1" name="clients" id="managers-assign-form-client-id">
+                    {% for client in clients|default(value=[]) %}
+                        <option value="{{client.id}}" selected>{{client.name}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+         <div class="row mb-3">
+            <div class="col">
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </div>
+    </form>
+</div>
