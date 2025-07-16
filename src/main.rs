@@ -15,7 +15,7 @@ use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::client;
 use pushkind_crm::routes::main::{add_client, index, logout, not_assigned};
-use pushkind_crm::routes::managers::{add_manager, managers};
+use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -83,6 +83,8 @@ async fn main() -> std::io::Result<()> {
                     .service(client)
                     .service(managers)
                     .service(add_manager)
+                    .service(managers_modal)
+                    .service(assign_manager)
                     .service(logout),
             )
             .app_data(web::Data::new(pool.clone()))

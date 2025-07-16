@@ -5,11 +5,12 @@ use tera::Context;
 
 use crate::db::DbPool;
 use crate::domain::manager::NewManager;
-use crate::forms::managers::AddManagerForm;
+use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::ManagerRepository;
+use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
+use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
 
 #[get("/managers")]
@@ -71,6 +72,75 @@ pub async fn add_manager(
         Err(err) => {
             error!("Failed to save the manager: {err}");
             FlashMessage::error(format!("Ошибка при добавлении менеджера: {err}")).send();
+        }
+    }
+    redirect("/managers")
+}
+
+#[post("/managers/modal/{manager_id}")]
+pub async fn managers_modal(
+    manager_id: web::Path<i32>,
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let manager_repo = DieselManagerRepository::new(&pool);
+
+    let mut context = Context::new();
+
+    let manager_id = manager_id.into_inner();
+
+    let manager = match manager_repo.get_by_id(manager_id) {
+        Ok(Some(manager)) => manager,
+        _ => return HttpResponse::InternalServerError().finish(),
+    };
+
+    context.insert("manager", &manager);
+    let client_repo = DieselClientRepository::new(&pool);
+
+    let clients =
+        match client_repo.list(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
+            Ok((_total, clients)) => clients,
+            Err(err) => {
+                error!("Failed to list clients: {err}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+
+    context.insert("clients", &clients);
+
+    render_template("managers/modal_body.html", &context)
+}
+
+#[post("/managers/assign")]
+pub async fn assign_manager(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    form: web::Bytes,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let form: AssignManagerForm = match serde_html_form::from_bytes(&form) {
+        Ok(form) => form,
+        Err(err) => {
+            FlashMessage::error(format!("Ошибка при обработке формы: {}", err)).send();
+            return redirect("/managers");
+        }
+    };
+
+    let repo = DieselManagerRepository::new(&pool);
+    match repo.assign_clients(form.manager_id, &form.client_ids) {
+        Ok(_) => {
+            FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to assign clients to the manager: {err}");
+            FlashMessage::error(format!("Ошибка при назначении клиентов менеджера: {err}")).send();
         }
     }
     redirect("/managers")
