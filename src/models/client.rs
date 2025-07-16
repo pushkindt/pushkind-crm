@@ -62,21 +62,15 @@ impl From<Client> for DomainClient {
     }
 }
 
-impl<'a> From<&DomainNewClient<'a>> for NewClient<'a> {
-    fn from(client: &DomainNewClient<'a>) -> Self {
+impl<'a> From<&'a DomainNewClient> for NewClient<'a> {
+    fn from(client: &'a DomainNewClient) -> Self {
         Self {
             hub_id: client.hub_id,
-            name: client.name,
-            email: client.email,
-            phone: client.phone,
-            address: client.address,
+            name: client.name.as_str(),
+            email: client.email.as_str(),
+            phone: client.phone.as_str(),
+            address: client.address.as_str(),
         }
-    }
-}
-
-impl<'a> From<DomainNewClient<'a>> for NewClient<'a> {
-    fn from(client: DomainNewClient<'a>) -> Self {
-        Self::from(&client)
     }
 }
 
@@ -102,13 +96,13 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    fn sample_domain_new() -> DomainNewClient<'static> {
+    fn sample_domain_new() -> DomainNewClient {
         DomainNewClient {
             hub_id: 1,
-            name: "John",
-            email: "john@example.com",
-            phone: "123",
-            address: "addr",
+            name: "John".to_string(),
+            email: "john@example.com".to_string(),
+            phone: "123".to_string(),
+            address: "addr".to_string(),
         }
     }
 

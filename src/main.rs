@@ -14,7 +14,7 @@ use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::client;
-use pushkind_crm::routes::main::{add_client, index, logout, not_assigned};
+use pushkind_crm::routes::main::{add_client, clients_upload, index, logout, not_assigned};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 #[actix_web::main]
@@ -80,6 +80,7 @@ async fn main() -> std::io::Result<()> {
                     .wrap(RedirectUnauthorized)
                     .service(index)
                     .service(add_client)
+                    .service(clients_upload)
                     .service(client)
                     .service(managers)
                     .service(add_manager)

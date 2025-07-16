@@ -1,5 +1,9 @@
+use std::io::Read;
+
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};
+use csv;
 use serde::Deserialize;
+use thiserror::Error;
 
 use crate::domain::client::NewClient;
 
@@ -12,14 +16,14 @@ pub struct AddClientForm {
     pub address: String,
 }
 
-impl<'a> From<&'a AddClientForm> for NewClient<'a> {
-    fn from(form: &'a AddClientForm) -> Self {
+impl From<AddClientForm> for NewClient {
+    fn from(form: AddClientForm) -> Self {
         Self {
             hub_id: form.hub_id,
-            name: form.name.as_str(),
-            email: form.email.as_str(),
-            phone: form.phone.as_str(),
-            address: form.address.as_str(),
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            address: form.address,
         }
     }
 }
@@ -30,50 +34,55 @@ pub struct UploadClientsForm {
     pub csv: TempFile,
 }
 
-// impl UploadClientsForm {
-//     pub fn parse_clients_csv(&self) -> Result<Vec<NewClient>, Box<dyn std::error::Error>> {
-//         let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+#[derive(Debug, Error)]
+pub enum UploadClientsFormError {
+    #[error("Error reading csv file")]
+    FileReadError,
+    #[error("Error parsing csv file")]
+    CsvParseError,
+}
 
-//         let headers = rdr.headers()?.clone();
-//         let mut recipients = Vec::new();
+impl From<std::io::Error> for UploadClientsFormError {
+    fn from(_: std::io::Error) -> Self {
+        UploadClientsFormError::FileReadError
+    }
+}
 
-//         for result in rdr.records() {
-//             let record = result?;
-//             let mut optional_fields = HashMap::new();
+impl From<csv::Error> for UploadClientsFormError {
+    fn from(_: csv::Error) -> Self {
+        UploadClientsFormError::CsvParseError
+    }
+}
 
-//             let mut name = String::new();
-//             let mut email = String::new();
-//             let mut groups = Vec::new();
+#[derive(Debug, Deserialize)]
+struct CsvClientRow {
+    name: String,
+    email: String,
+    phone: String,
+    address: String,
+}
 
-//             for (i, field) in record.iter().enumerate() {
-//                 match headers.get(i) {
-//                     Some("name") => name = field.to_string(),
-//                     Some("email") => email = field.to_string(),
-//                     Some("groups") => {
-//                         groups = field
-//                             .split(',')
-//                             .map(|s| s.trim().to_string())
-//                             .filter(|s| !s.is_empty())
-//                             .collect();
-//                     }
-//                     Some(header) => {
-//                         if field.len() == 0 {
-//                             continue;
-//                         }
-//                         optional_fields.insert(header.to_string(), field.to_string());
-//                     }
-//                     None => continue,
-//                 }
-//             }
+impl UploadClientsForm {
+    pub fn parse(&mut self, hub_id: i32) -> Result<Vec<NewClient>, UploadClientsFormError> {
+        let mut csv_content = String::new();
+        self.csv.file.read_to_string(&mut csv_content)?;
 
-//             recipients.push(RecipientCSV {
-//                 name,
-//                 email,
-//                 groups,
-//                 optional_fields,
-//             });
-//         }
+        let mut rdr = csv::Reader::from_reader(csv_content.as_bytes());
 
-//         Ok(recipients)
-//     }
-// }
+        let mut clients = Vec::new();
+
+        for result in rdr.deserialize::<CsvClientRow>() {
+            let row = result?;
+
+            clients.push(NewClient {
+                hub_id,
+                name: row.name,
+                email: row.email,
+                phone: row.phone,
+                address: row.address,
+            });
+        }
+
+        Ok(clients)
+    }
+}

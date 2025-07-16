@@ -1,4 +1,5 @@
 use actix_identity::Identity;
+use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use log::error;
@@ -8,7 +9,7 @@ use tera::Context;
 use crate::db::DbPool;
 use crate::domain::client::NewClient;
 use crate::domain::manager::NewManager;
-use crate::forms::main::AddClientForm;
+use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
 use crate::pagination::Paginated;
@@ -106,7 +107,7 @@ pub async fn add_client(
         return response;
     };
 
-    let new_client: NewClient = (&form).into();
+    let new_client: NewClient = form.into();
 
     let repo = DieselClientRepository::new(&pool);
     match repo.create(&[new_client]) {
@@ -144,4 +145,37 @@ pub async fn not_assigned(
     context.insert("home_url", &server_config.auth_service_url);
 
     render_template("main/not_assigned.html", &context)
+}
+
+#[post("/clients/upload")]
+pub async fn clients_upload(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    MultipartForm(mut form): MultipartForm<UploadClientsForm>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let client_repo = DieselClientRepository::new(&pool);
+
+    let clients = match form.parse(user.hub_id) {
+        Ok(clients) => clients,
+        Err(err) => {
+            FlashMessage::error(format!("Ошибка при парсинге клиентов: {err}")).send();
+            return redirect("/");
+        }
+    };
+
+    match client_repo.create(&clients) {
+        Ok(_) => {
+            FlashMessage::success("Клиенты добавлены.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to add clients: {err}");
+            FlashMessage::error(format!("Ошибка при добавлении клиентов: {err}")).send();
+        }
+    }
+
+    redirect("/")
 }
