@@ -128,7 +128,7 @@ pub async fn assign_manager(
     let form: AssignManagerForm = match serde_html_form::from_bytes(&form) {
         Ok(form) => form,
         Err(err) => {
-            FlashMessage::error(format!("Ошибка при обработке формы: {}", err)).send();
+            FlashMessage::error(format!("Ошибка при обработке формы: {err}")).send();
             return redirect("/managers");
         }
     };

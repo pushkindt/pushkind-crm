@@ -70,11 +70,9 @@ pub async fn index(
     };
 
     let clients = match clients_result {
-        Ok((total, clients)) => Paginated::new(
-            clients,
-            page,
-            total.div_ceil(DEFAULT_ITEMS_PER_PAGE),
-        ),
+        Ok((total, clients)) => {
+            Paginated::new(clients, page, total.div_ceil(DEFAULT_ITEMS_PER_PAGE))
+        }
         Err(e) => {
             error!("Failed to list clients: {e}");
             return HttpResponse::InternalServerError().finish();
