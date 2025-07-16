@@ -103,7 +103,7 @@ pub async fn managers_modal(
 
     let clients =
         match client_repo.list(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
-            Ok((total, clients)) => clients,
+            Ok((_total, clients)) => clients,
             Err(err) => {
                 error!("Failed to list clients: {err}");
                 return HttpResponse::InternalServerError().finish();

@@ -1,4 +1,3 @@
-use crate::models::manager::ClientManager;
 use serde::Deserialize;
 
 #[derive(Deserialize)]

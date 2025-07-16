@@ -19,13 +19,13 @@ pub async fn api_v1_clients(
     user: AuthenticatedUser,
     pool: web::Data<DbPool>,
 ) -> impl Responder {
-    if let Err(_) = ensure_role(&user, "crm", Some("/na")) {
+    if ensure_role(&user, "crm", Some("/na")).is_err() {
         return HttpResponse::Unauthorized().finish();
     }
     let repo = DieselClientRepository::new(&pool);
 
     match repo.search(ClientSearchQuery::new(user.hub_id, &params.query)) {
-        Ok((total, clients)) => HttpResponse::Ok().json(clients),
+        Ok((_total, clients)) => HttpResponse::Ok().json(clients),
         Err(e) => {
             error!("Failed to list clients: {e}");
             HttpResponse::InternalServerError().finish()

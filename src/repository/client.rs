@@ -1,5 +1,5 @@
-use diesel::sql_types::{Integer, Text, Timestamp};
-use diesel::{prelude::*, sql_query};
+use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Integer, Text};
 
 use crate::{
     db::DbPool,
@@ -85,55 +85,84 @@ impl ClientReader for DieselClientRepository<'_> {
             .map(Into::into)
             .collect::<Vec<Client>>();
 
-        Ok((total as usize, items))
+        Ok((total, items))
     }
 
     fn search(&self, query: ClientSearchQuery) -> RepositoryResult<(usize, Vec<Client>)> {
-        Ok((0, vec![]))
+        use crate::models::client::ClientCount;
+
+        let mut conn = self.pool.get()?;
+
+        let match_query = format!("{}*", query.search.to_lowercase());
+
+        // Build base SQL
+        let mut sql = String::from(
+            r#"
+            SELECT clients.*
+            FROM clients
+            JOIN client_fts ON clients.id = client_fts.rowid
+            WHERE client_fts MATCH ?
+            AND clients.hub_id = ?
+            "#,
+        );
+
+        if query.manager_email.is_some() {
+            let manager_filter = r#"
+                AND clients.id IN (
+                    SELECT client_manager.client_id
+                    FROM client_manager
+                    JOIN managers ON client_manager.manager_id = managers.id
+                    WHERE managers.email = ?
+                    AND managers.hub_id = ?
+                )
+            "#;
+            sql.push_str(manager_filter);
+        }
+
+        let total_sql = format!("SELECT COUNT(*) as count FROM ({sql})");
+
+        // Now add pagination to SQL (but not count)
+        if query.pagination.is_some() {
+            sql.push_str(" LIMIT ? OFFSET ? ");
+        }
+
+        // Build final data query
+        let mut data_query = diesel::sql_query(&sql)
+            .into_boxed()
+            .bind::<Text, _>(&match_query)
+            .bind::<Integer, _>(query.hub_id);
+
+        let mut total_query = diesel::sql_query(&total_sql)
+            .into_boxed()
+            .bind::<Text, _>(&match_query)
+            .bind::<Integer, _>(query.hub_id);
+
+        if let Some(manager_email) = &query.manager_email {
+            data_query = data_query
+                .bind::<Text, _>(manager_email)
+                .bind::<Integer, _>(query.hub_id);
+            total_query = total_query
+                .bind::<Text, _>(manager_email)
+                .bind::<Integer, _>(query.hub_id);
+        }
+
+        if let Some(pagination) = &query.pagination {
+            let limit = pagination.per_page as i64;
+            let offset = ((pagination.page.max(1) - 1) * pagination.per_page) as i64;
+            data_query = data_query
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset);
+        }
+
+        let items = data_query
+            .load::<DbClient>(&mut conn)?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        let total = total_query.get_result::<ClientCount>(&mut conn)?.count as usize;
+        Ok((total, items))
     }
-
-    // fn search(&self, query: ClientSearchQuery) -> RepositoryResult<(usize, Vec<Client>)> {
-    //     let mut connection = self.pool.get()?;
-
-    //     let match_query = format!("{}*", query.search.to_lowercase());
-
-    //     let mut base_sql_query = r#"
-    //         SELECT clients.*
-    //         FROM clients
-    //         JOIN client_fts ON clients.id = client_fts.rowid
-    //         WHERE client_fts MATCH ?
-    //         AND clients.hub_id = ?
-    //         "#
-    //     .to_string();
-
-    //     // Count total matching items
-    //     let total: i64 = sql_query(
-    //         r#"
-    //         SELECT COUNT(*) as count
-    //         FROM clients
-    //         JOIN client_fts ON clients.id = client_fts.rowid
-    //         WHERE client_fts MATCH ?
-    //         AND clients.hub_id = ?
-    //         "#,
-    //     )
-    //     .bind::<Text, _>(&match_query)
-    //     .bind::<Integer, _>(query.hub_id)
-    //     .get_result::<ClientCount>(&mut connection)?
-    //     .count;
-
-    //     if let Some(pagination) = query.pagination {
-    //         base_sql_query.push_str("LIMIT ? OFFSET ?");
-    //     }
-
-    //     let items = sql_query(base_sql_query)
-    //         .bind::<Text, _>(&match_query)
-    //         .bind::<Integer, _>(hub_id)
-    //         .bind::<BigInt, _>(per_page)
-    //         .bind::<BigInt, _>(offset)
-    //         .load::<DbClient>(&mut connection)?;
-
-    //     Ok((total, items))
-    // }
 }
 
 impl ClientWriter for DieselClientRepository<'_> {

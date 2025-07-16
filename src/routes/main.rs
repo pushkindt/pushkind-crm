@@ -73,7 +73,7 @@ pub async fn index(
         Ok((total, clients)) => Paginated::new(
             clients,
             page,
-            ((total + DEFAULT_ITEMS_PER_PAGE - 1) / DEFAULT_ITEMS_PER_PAGE) as usize,
+            total.div_ceil(DEFAULT_ITEMS_PER_PAGE),
         ),
         Err(e) => {
             error!("Failed to list clients: {e}");
