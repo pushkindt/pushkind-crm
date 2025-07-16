@@ -1,6 +1,6 @@
 <div class="modal-body">
-    <form action="/managers/save" method="POST">
-        <input type="hidden" value="{{manager.id}}" name="id" required>
+    <form action="/managers/assign" method="POST">
+        <input type="hidden" value="{{manager.id}}" name="manager_id" required>
         <div class="row mb-3">
             <label for="modalManagerName" class="col-md-2 col-form-label">Имя</label>
             <div class="col-md-10">
@@ -16,7 +16,7 @@
         <div class="row mb-3">
             <label for="managers-assign-form-client-id" class="col-md-2 col-form-label">Группы</label>
             <div class="col-md-10">
-                <select multiple class="form-control my-1" name="clients" id="managers-assign-form-client-id">
+                <select multiple class="form-control my-1" name="client_ids" id="managers-assign-form-client-id">
                     {% for client in clients|default(value=[]) %}
                         <option value="{{client.id}}" selected>{{client.name}}</option>
                     {% endfor %}

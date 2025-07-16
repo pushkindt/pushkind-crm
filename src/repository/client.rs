@@ -4,9 +4,11 @@ use diesel::sql_types::{BigInt, Integer, Text};
 use crate::{
     db::DbPool,
     domain::client::{Client, NewClient, UpdateClient},
+    domain::manager::Manager,
     models::client::{
         Client as DbClient, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
     },
+    models::manager::Manager as DbManager,
     repository::{
         ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter, errors::RepositoryResult,
     },
@@ -162,6 +164,20 @@ impl ClientReader for DieselClientRepository<'_> {
 
         let total = total_query.get_result::<ClientCount>(&mut conn)?.count as usize;
         Ok((total, items))
+    }
+
+    fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>> {
+        use crate::schema::{client_manager, managers};
+        let mut conn = self.pool.get()?;
+        let managers = client_manager::table
+            .filter(client_manager::client_id.eq(id))
+            .inner_join(managers::table)
+            .select(managers::all_columns)
+            .load::<DbManager>(&mut conn)?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        Ok(managers)
     }
 }
 

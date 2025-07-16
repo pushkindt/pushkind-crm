@@ -81,8 +81,11 @@
     <div class="row">
         <div class="col">
             <span class="fw-bold">Менеджеры:</span>
-            <a role="button" tabindex="0" data-bs-trigger="focus" data-bs-toggle="popover" data-bs-html="true" title="" data-bs-content="shepytkotu@velesstroy.com&lt;br&gt;&lt;b&gt;начальник склада&lt;/b&gt;&lt;br&gt;+7 (928) 433-01-91&lt;br&gt;ТЛЦ Неберджаевская" data-bs-original-title="Шепитько Татьяна" aria-label="Шепитько Татьяна"><i class="bi bi-person-circle"></i></a>
-            Шепитько Татьяна
+            {% for manager in managers | default(value=[]) %}
+                <a role="button" tabindex="0" data-bs-trigger="focus" data-bs-toggle="popover" title="{{manager.name}}" data-bs-content="{{manager.email}}" data-bs-original-title="{{manager.name}}" aria-label="{{manager.name}}">
+                    <i class="bi bi-person-circle"></i>&nbsp;{{manager.name}}
+                </a>
+            {% endfor %}
         </div>
     </div>
 

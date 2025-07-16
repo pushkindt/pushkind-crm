@@ -8,7 +8,7 @@ pub struct AddManagerForm {
 }
 
 #[derive(Deserialize)]
-pub struct AssignClientsForm {
+pub struct AssignManagerForm {
     pub manager_id: i32,
     #[serde(default)]
     pub client_ids: Vec<i32>,

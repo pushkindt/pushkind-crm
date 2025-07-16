@@ -76,6 +76,7 @@ pub trait ClientReader {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
     fn list(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn search(&self, query: ClientSearchQuery) -> RepositoryResult<(usize, Vec<Client>)>;
+    fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>>;
 }
 
 pub trait ClientWriter {

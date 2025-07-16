@@ -22,9 +22,11 @@ pub async fn client(
         return response;
     };
 
-    let repo = DieselClientRepository::new(&pool);
+    let client_repo = DieselClientRepository::new(&pool);
 
-    let client = match repo.get_by_id(client_id.into_inner()) {
+    let client_id = client_id.into_inner();
+
+    let client = match client_repo.get_by_id(client_id) {
         Ok(Some(client)) if client.hub_id == user.hub_id => client,
         Err(e) => {
             error!("Failed to get client: {e}");
@@ -33,6 +35,14 @@ pub async fn client(
         _ => {
             FlashMessage::error("Клиент не найден.").send();
             return redirect("/");
+        }
+    };
+
+    let managers = match client_repo.list_managers(client_id) {
+        Ok(managers) => managers,
+        Err(e) => {
+            error!("Failed to get managers: {e}");
+            return HttpResponse::InternalServerError().finish();
         }
     };
 
@@ -46,6 +56,7 @@ pub async fn client(
     context.insert("current_page", "client");
     context.insert("home_url", &server_config.auth_service_url);
     context.insert("client", &client);
+    context.insert("managers", &managers);
 
     render_template("client/index.html", &context)
 }

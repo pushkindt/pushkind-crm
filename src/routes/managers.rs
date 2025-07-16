@@ -5,7 +5,7 @@ use tera::Context;
 
 use crate::db::DbPool;
 use crate::domain::manager::NewManager;
-use crate::forms::managers::AddManagerForm;
+use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
 use crate::repository::client::DieselClientRepository;
@@ -113,4 +113,35 @@ pub async fn managers_modal(
     context.insert("clients", &clients);
 
     render_template("managers/modal_body.html", &context)
+}
+
+#[post("/managers/assign")]
+pub async fn assign_manager(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    form: web::Bytes,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let form: AssignManagerForm = match serde_html_form::from_bytes(&form) {
+        Ok(form) => form,
+        Err(err) => {
+            FlashMessage::error(format!("Ошибка при обработке формы: {}", err)).send();
+            return redirect("/managers");
+        }
+    };
+
+    let repo = DieselManagerRepository::new(&pool);
+    match repo.assign_clients(form.manager_id, &form.client_ids) {
+        Ok(_) => {
+            FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to assign clients to the manager: {err}");
+            FlashMessage::error(format!("Ошибка при назначении клиентов менеджера: {err}")).send();
+        }
+    }
+    redirect("/managers")
 }

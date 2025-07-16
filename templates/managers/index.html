@@ -96,8 +96,10 @@
         crossorigin="anonymous" referrerpolicy="no-referrer">
     </script>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
 
+        var client_select = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
             let manager_select = $("#manager-add-form-id");
             manager_select.selectize({
                 valueField: "sub",
@@ -139,6 +141,48 @@
                     $("#manager-name").val('');
                     $("#manager-email").val('');
                 }
+            });
+        });
+
+        document.addEventListener("htmx:beforeSwap", function(evt) {
+            if (client_select) {
+                let selectize_instance = client_select[0].selectize;
+                selectize_instance.destroy();
+                client_select.remove();
+                client_select = null;
+            }
+        });
+
+        document.addEventListener("htmx:afterSwap", function(evt) {
+            client_select = $("#managers-assign-form-client-id");
+            client_select.selectize({
+                valueField: "id",
+                labelField: "name",
+                searchField: ["name", "email"],
+                render: {
+                    option: function(item, escape) {
+                        let result = `<div class="border-bottom"><strong>${escape(item.name)} (${escape(item.email)})</strong>`;
+                        result += '</div>';
+                        return result
+                    }
+                },
+                options: [],
+                load: function(query, callback) {
+                    if (!query.length) return callback();
+                    $.ajax({
+                        url: '/api/v1/clients?query=' + encodeURIComponent(query),
+                        type: 'GET',
+                        error: function() {
+                            callback();
+                        },
+                        success: function(res) {
+                            callback(res.slice(0, 20));
+                        },
+                        xhrFields: {
+                            withCredentials: true
+                        },
+                    });
+                },
             });
         });
     </script>
