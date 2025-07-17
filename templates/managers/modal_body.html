@@ -18,7 +18,7 @@
             <div class="col-md-10">
                 <select multiple class="form-control my-1" name="client_ids" id="managers-assign-form-client-id">
                     {% for client in clients|default(value=[]) %}
-                        <option value="{{client.id}}" selected>{{client.name}}</option>
+                        <option value="{{client.id}}" selected data-data='{"email": "{{client.email}}", "phone": "{{client.phone}}", "address": "{{client.address}}"}'>{{client.name}}</option>
                     {% endfor %}
                 </select>
             </div>
