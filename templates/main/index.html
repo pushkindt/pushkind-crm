@@ -85,63 +85,7 @@
         {% include 'pagination.html' %}
     </div>
 
-    <div class="modal fade" id="clientModal" tabindex="-1" aria-labelledby="clientModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="clientModalLabel">Добавить клиента</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form action="/client/add" method="POST">
-                        <input type="hidden" name="hub_id" value="{{current_user.hub_id}}" required readonly>
-                        <div class="row mb-3">
-                            <label for="clientModalName" class="col-md-2 col-form-label">Имя</label>
-                            <div class="col-md-10">
-                                <input name="name" type="text" class="form-control" id="clientModalName" value="" placeholder="Имя" required>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label for="clientModalEmail" class="col-md-2 col-form-label">Электронный адрес</label>
-                            <div class="col-md-10">
-                                <input name="email" type="email" class="form-control" id="clientModalEmail" value="" placeholder="Электронный адрес" required>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label for="clientModalPhone" class="col-md-2 col-form-label">Телефон</label>
-                            <div class="col-md-10">
-                                <input name="phone" type="tel" class="form-control" id="clientModalPhone" value="" placeholder="Телефон" required>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label for="clientModalAddress" class="col-md-2 col-form-label">Адрес</label>
-                            <div class="col-md-10">
-                                <input name="address" type="text" class="form-control" id="clientModalAddress" value="" placeholder="Адрес" required>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col">
-                                <button class="btn btn-primary" type="submit">Сохранить</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <form class="w-100" action="/clients/upload" method="POST" enctype="multipart/form-data">
-                        <div class="row">
-                            <div class="col">
-                                <input class="form-control" type="file" name="csv" accept=".csv" required>
-                                <div class="w-100"><sup><small class="text-muted">"name","email","phone", "address"</small></sup></div>
-                            </div>
-                            <div class="col-auto">
-                                <button class="btn btn-success" type="submit">Из csv</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% include 'main/add_client_modal.html' %}
 
 {% endblock %}
 

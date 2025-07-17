@@ -63,19 +63,19 @@
     <div class="row">
         <div class="col">
             <span class="fw-bold">Электронный адрес:</span>
-            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.email}}</a>
+            <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
         </div>
     </div>
     <div class="row">
         <div class="col">
             <span class="fw-bold">Телефон:</span>
-            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.phone}}</a>
+            <a href="#clientModal" data-bs-toggle="modal">{{client.phone}}</a>
         </div>
     </div>
     <div class="row">
         <div class="col">
             <span class="fw-bold">Адрес:</span>
-            <a href="#initiativeSettingsModal" data-bs-toggle="modal">{{client.address}}</a>
+            <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
         </div>
     </div>
     <div class="row">
@@ -88,6 +88,10 @@
             {% endfor %}
         </div>
     </div>
+
+{% include 'client/save_client_modal.html' %}
+
+</div>
 
 
 <div class="container">

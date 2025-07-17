@@ -179,6 +179,27 @@ impl ClientReader for DieselClientRepository<'_> {
             .collect();
         Ok(managers)
     }
+
+    fn check_manager_assigned(
+        &self,
+        client_id: i32,
+        manager_email: &str,
+    ) -> RepositoryResult<bool> {
+        use crate::schema::{client_manager, clients, managers};
+        let mut conn = self.pool.get()?;
+
+        let assigned = client_manager::table
+            .filter(client_manager::client_id.eq(client_id))
+            .inner_join(managers::table)
+            .filter(managers::email.eq(manager_email))
+            .inner_join(clients::table)
+            .filter(clients::id.eq(client_id))
+            .filter(clients::hub_id.eq(managers::hub_id))
+            .select(client_manager::client_id)
+            .first::<i32>(&mut conn)
+            .optional()?;
+        Ok(assigned.is_some())
+    }
 }
 
 impl ClientWriter for DieselClientRepository<'_> {
