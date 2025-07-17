@@ -158,10 +158,11 @@
             client_select.selectize({
                 valueField: "id",
                 labelField: "name",
-                searchField: ["name", "email"],
+                searchField: ["name", "email", "phone", "address"],
                 render: {
                     option: function(item, escape) {
                         let result = `<div class="border-bottom"><strong>${escape(item.name)} (${escape(item.email)})</strong>`;
+                        result += `<br>${escape(item.phone)} ${escape(item.address)}`;
                         result += '</div>';
                         return result
                     }
