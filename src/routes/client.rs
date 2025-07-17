@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, Responder, get, web};
+use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use log::error;
 use tera::Context;
@@ -6,7 +6,9 @@ use tera::Context;
 use crate::db::DbPool;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
-use crate::repository::ClientReader;
+use crate::repository::{ClientReader, ClientWriter};
+use crate::forms::client::SaveClientForm;
+use crate::domain::client::UpdateClient;
 use crate::repository::client::DieselClientRepository;
 use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
 
@@ -59,4 +61,30 @@ pub async fn client(
     context.insert("managers", &managers);
 
     render_template("client/index.html", &context)
+}
+
+#[post("/client/save")]
+pub async fn save_client(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    web::Form(form): web::Form<SaveClientForm>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
+        return response;
+    };
+
+    let client_repo = DieselClientRepository::new(&pool);
+    let updates: UpdateClient = (&form).into();
+
+    match client_repo.update(form.id, &updates) {
+        Ok(_) => {
+            FlashMessage::success("Клиент обновлен.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to update client: {err}");
+            FlashMessage::error(format!("Ошибка при обновлении клиента: {err}")).send();
+        }
+    }
+
+    redirect(&format!("/client/{}", form.id))
 }
