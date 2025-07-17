@@ -7,6 +7,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 
+use crate::domain::manager::NewManager;
 use crate::models::config::ServerConfig;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +45,16 @@ impl AuthenticatedUser {
             &validation,
         )?;
         Ok(token_data.claims)
+    }
+}
+
+impl<'a> From<&'a AuthenticatedUser> for NewManager<'a> {
+    fn from(value: &'a AuthenticatedUser) -> Self {
+        NewManager {
+            name: &value.name,
+            email: &value.email,
+            hub_id: value.hub_id,
+        }
     }
 }
 

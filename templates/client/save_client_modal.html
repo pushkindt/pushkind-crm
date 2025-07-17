@@ -1,0 +1,44 @@
+<div class="modal fade" id="clientModal" tabindex="-1" aria-labelledby="clientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="clientModalLabel">Изменить клиента</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="/client/save" method="POST">
+                    <input type="hidden" name="id" value="{{client.id}}" required readonly>
+                    <div class="row mb-3">
+                        <label for="clientModalName" class="col-md-2 col-form-label">Имя</label>
+                        <div class="col-md-10">
+                            <input name="name" type="text" class="form-control" id="clientModalName" value="{{client.name}}" placeholder="Имя" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="clientModalEmail" class="col-md-2 col-form-label">Электронный адрес</label>
+                        <div class="col-md-10">
+                            <input name="email" type="email" class="form-control" id="clientModalEmail" value="{{client.email}}" placeholder="Электронный адрес" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="clientModalPhone" class="col-md-2 col-form-label">Телефон</label>
+                        <div class="col-md-10">
+                            <input name="phone" type="tel" class="form-control" id="clientModalPhone" value="{{client.phone}}" placeholder="Телефон" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="clientModalAddress" class="col-md-2 col-form-label">Адрес</label>
+                        <div class="col-md-10">
+                            <input name="address" type="text" class="form-control" id="clientModalAddress" value="{{client.address}}" placeholder="Адрес" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <button class="btn btn-primary" type="submit">Сохранить</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

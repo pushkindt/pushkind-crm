@@ -8,7 +8,6 @@ use tera::Context;
 
 use crate::db::DbPool;
 use crate::domain::client::NewClient;
-use crate::domain::manager::NewManager;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
@@ -51,11 +50,7 @@ pub async fn index(
         client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
         let manager_repo = DieselManagerRepository::new(&pool);
-        match manager_repo.create_or_update(&NewManager {
-            hub_id: user.hub_id,
-            name: &user.name,
-            email: &user.email,
-        }) {
+        match manager_repo.create_or_update(&(&user).into()) {
             Ok(manager) => client_repo.list(
                 ClientListQuery::new(user.hub_id)
                     .manager_email(&manager.email)
