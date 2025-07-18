@@ -2,9 +2,11 @@ use diesel::prelude::*;
 
 use crate::db::DbPool;
 use crate::domain::client_event::{ClientEvent, NewClientEvent};
+use crate::domain::manager::Manager;
 use crate::models::client_event::{
     ClientEvent as DbClientEvent, NewClientEvent as DbNewClientEvent,
 };
+use crate::models::manager::Manager as DbManager;
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, errors::RepositoryResult,
 };
@@ -21,8 +23,12 @@ impl<'a> DieselClientEventRepository<'a> {
 }
 
 impl<'a> ClientEventReader for DieselClientEventRepository<'a> {
-    fn list(&self, query: ClientEventListQuery) -> RepositoryResult<(usize, Vec<ClientEvent>)> {
-        use crate::schema::client_events;
+    fn list(
+        &self,
+        query: ClientEventListQuery,
+    ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)> {
+        use crate::schema::{client_events, managers};
+        use std::collections::{HashMap, HashSet};
 
         let mut conn = self.pool.get().unwrap();
 
@@ -49,15 +55,37 @@ impl<'a> ClientEventReader for DieselClientEventRepository<'a> {
             items = items.offset(offset).limit(limit);
         }
 
-        // Final load
-        let items = items
+        // --- 4. Load the events ---
+        let db_events = items
             .order(client_events::created_at.desc())
-            .load::<DbClientEvent>(&mut conn)?
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<ClientEvent>>();
+            .load::<DbClientEvent>(&mut conn)?;
 
-        Ok((total, items))
+        // --- 5. Load the managers using IN clause ---
+        let manager_ids: Vec<i32> = db_events.iter().map(|e| e.manager_id).collect();
+        let unique_manager_ids: Vec<i32> = {
+            let set: HashSet<_> = manager_ids.into_iter().collect();
+            set.into_iter().collect()
+        };
+
+        let db_managers = managers::table
+            .filter(managers::id.eq_any(unique_manager_ids))
+            .load::<DbManager>(&mut conn)?;
+
+        // --- 6. Map managers by id ---
+        let manager_map: HashMap<i32, DbManager> =
+            db_managers.into_iter().map(|m| (m.id, m)).collect();
+
+        // --- 7. Combine events with managers ---
+        let combined: Vec<(ClientEvent, Manager)> = db_events
+            .into_iter()
+            .filter_map(|event| {
+                manager_map
+                    .get(&event.manager_id)
+                    .map(|manager| (event.into(), manager.clone().into()))
+            })
+            .collect();
+
+        Ok((total, combined))
     }
 }
 

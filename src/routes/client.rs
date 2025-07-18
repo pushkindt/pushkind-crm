@@ -59,8 +59,8 @@ pub async fn show_client(
     };
 
     let event_repo = DieselClientEventRepository::new(&pool);
-    let events = match event_repo.list(ClientEventListQuery::new(client_id)) {
-        Ok(events) => events,
+    let events_with_managers = match event_repo.list(ClientEventListQuery::new(client_id)) {
+        Ok((_total_events, events_with_managers)) => events_with_managers,
         Err(e) => {
             error!("Failed to get events: {e}");
             return HttpResponse::InternalServerError().finish();
@@ -78,7 +78,7 @@ pub async fn show_client(
     context.insert("home_url", &server_config.auth_service_url);
     context.insert("client", &client);
     context.insert("managers", &managers);
-    context.insert("events", &events);
+    context.insert("events", &events_with_managers);
 
     render_template("client/index.html", &context)
 }

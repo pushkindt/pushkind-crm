@@ -127,7 +127,10 @@ pub trait ManagerWriter {
 }
 
 pub trait ClientEventReader {
-    fn list(&self, query: ClientEventListQuery) -> RepositoryResult<(usize, Vec<ClientEvent>)>;
+    fn list(
+        &self,
+        query: ClientEventListQuery,
+    ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)>;
 }
 
 pub trait ClientEventWriter {
