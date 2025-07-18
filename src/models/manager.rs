@@ -9,7 +9,7 @@ use crate::models::client::Client;
 
 #[derive(Debug, Clone, Identifiable, Queryable)]
 #[diesel(table_name = crate::schema::managers)]
-/// Diesel model for [`crate::domain::client::Manager`].
+/// Diesel model for [`crate::domain::manager::Manager`].
 pub struct Manager {
     pub id: i32,
     pub hub_id: i32,
