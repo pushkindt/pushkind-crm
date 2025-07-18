@@ -9,7 +9,8 @@ use crate::forms::client::SaveClientForm;
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
 use crate::repository::client::DieselClientRepository;
-use crate::repository::{ClientReader, ClientWriter};
+use crate::repository::client_event::DieselClientEventRepository;
+use crate::repository::{ClientEventListQuery, ClientEventReader, ClientReader, ClientWriter};
 use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
 
 #[get("/client/{client_id}")]
@@ -57,6 +58,15 @@ pub async fn show_client(
         }
     };
 
+    let event_repo = DieselClientEventRepository::new(&pool);
+    let events = match event_repo.list(ClientEventListQuery::new(client_id)) {
+        Ok(events) => events,
+        Err(e) => {
+            error!("Failed to get events: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+
     let alerts = flash_messages
         .iter()
         .map(|f| (f.content(), alert_level_to_str(&f.level())))
@@ -68,6 +78,7 @@ pub async fn show_client(
     context.insert("home_url", &server_config.auth_service_url);
     context.insert("client", &client);
     context.insert("managers", &managers);
+    context.insert("events", &events);
 
     render_template("client/index.html", &context)
 }

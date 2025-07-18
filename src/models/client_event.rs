@@ -57,7 +57,7 @@ impl<'a> From<&'a DomainNewClientEvent> for NewClientEvent {
     }
 }
 
-impl<'a> From<DomainNewClientEvent> for NewClientEvent {
+impl From<DomainNewClientEvent> for NewClientEvent {
     fn from(event: DomainNewClientEvent) -> Self {
         Self::from(&event)
     }

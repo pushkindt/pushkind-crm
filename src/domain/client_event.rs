@@ -35,7 +35,7 @@ impl Display for ClientEventType {
         match self {
             ClientEventType::Comment => write!(f, "Comment"),
             ClientEventType::DocumentLink => write!(f, "DocumentLink"),
-            ClientEventType::Other(s) => write!(f, "{}", s),
+            ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
 }

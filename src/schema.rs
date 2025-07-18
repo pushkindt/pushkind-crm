@@ -6,7 +6,7 @@ diesel::table! {
         client_id -> Integer,
         manager_id -> Integer,
         event_type -> Text,
-        event_data -> Nullable<Text>,
+        event_data -> Text,
         created_at -> Timestamp,
     }
 }
