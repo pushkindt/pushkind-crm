@@ -1,5 +1,4 @@
--- Your SQL goes here
--- Your SQL goes here
+-- Create client_fts for full-text search on client fields
 CREATE VIRTUAL TABLE client_fts USING fts5(
     name,
     email,

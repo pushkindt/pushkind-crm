@@ -44,6 +44,7 @@ pub async fn index(
     let mut context = Context::new();
 
     let clients_result = if !q.is_empty() {
+        context.insert("search_query", q);
         client_repo
             .search(ClientSearchQuery::new(user.hub_id, q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_admin", &user.roles) {

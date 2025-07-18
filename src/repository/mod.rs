@@ -1,12 +1,14 @@
 use crate::{
     domain::{
         client::{Client, NewClient, UpdateClient},
+        client_event::{ClientEvent, ClientEventType, NewClientEvent},
         manager::{Manager, NewManager},
     },
     repository::errors::RepositoryResult,
 };
 
 pub mod client;
+pub mod client_event;
 pub mod errors;
 pub mod manager;
 
@@ -20,6 +22,13 @@ pub struct Pagination {
 pub struct ClientListQuery {
     pub hub_id: i32,
     pub manager_email: Option<String>,
+    pub pagination: Option<Pagination>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientEventListQuery {
+    pub client_id: i32,
+    pub event_type: Option<ClientEventType>,
     pub pagination: Option<Pagination>,
 }
 
@@ -72,6 +81,26 @@ impl ClientSearchQuery {
     }
 }
 
+impl ClientEventListQuery {
+    pub fn new(client_id: i32) -> Self {
+        Self {
+            client_id,
+            event_type: None,
+            pagination: None,
+        }
+    }
+
+    pub fn event_type(mut self, event_type: ClientEventType) -> Self {
+        self.event_type = Some(event_type);
+        self
+    }
+
+    pub fn paginate(mut self, page: usize, per_page: usize) -> Self {
+        self.pagination = Some(Pagination { page, per_page });
+        self
+    }
+}
+
 pub trait ClientReader {
     fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
     fn list(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
@@ -95,4 +124,15 @@ pub trait ManagerReader {
 pub trait ManagerWriter {
     fn create_or_update(&self, new_manager: &NewManager) -> RepositoryResult<Manager>;
     fn assign_clients(&self, manager_id: i32, client_ids: &[i32]) -> RepositoryResult<usize>;
+}
+
+pub trait ClientEventReader {
+    fn list(
+        &self,
+        query: ClientEventListQuery,
+    ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)>;
+}
+
+pub trait ClientEventWriter {
+    fn create(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
 }

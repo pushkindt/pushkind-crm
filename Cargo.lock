@@ -1932,6 +1932,7 @@ dependencies = [
  "log",
  "serde",
  "serde_html_form",
+ "serde_json",
  "tera",
  "thiserror 2.0.12",
 ]
