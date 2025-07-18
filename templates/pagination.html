@@ -6,7 +6,7 @@
                 {% if page %}
                     {% if page != items.page %}
                         <li class="page-item">
-                        <a class="page-link" href="?page={{page}}">
+                        <a class="page-link" href="?page={{page}}{% if search_query %}&q={{search_query}}{% endif %}">
                                 {{ page }}
                             </a>
                         </li>
