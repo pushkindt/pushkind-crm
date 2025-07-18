@@ -93,4 +93,10 @@ mod tests {
         assert_eq!(paginated.page, 1);
         assert_eq!(paginated.pages, vec![Some(1), Some(2), Some(3)]);
     }
+
+    #[test]
+    fn pages_empty_when_no_pages() {
+        let pages = get_pages(0, 1, 2, 2, 4, 2);
+        assert!(pages.is_empty());
+    }
 }
