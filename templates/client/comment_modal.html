@@ -8,11 +8,15 @@
             <div class="modal-body">
                 <form action="/client/comment" method="POST">
                     <input type="hidden" name="id" value="{{client.id}}" required readonly>
-                    <input type="hidden" name="event_type" value="Comment" required readonly>
                     <div class="row mb-3">
-                        <label for="commentModalText" class="col-md-2 col-form-label">Имя</label>
-                        <div class="col-md-10">
-                            <input name="text" type="text" class="form-control" id="commentModalText" value="" placeholder="Комментарий" required>
+                        <div class="col-md">
+                            <textarea name="text" class="form-control" id="commentModalText" value="" placeholder="Комментарий" required></textarea>
+                        </div>
+                        <div class="col-auto">
+                            <select name="event_type" class="form-select" aria-label="Select event type" required>
+                                <option value="Comment">Комментарий</option>
+                                <option value="Call">Звонок</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row mb-3">
