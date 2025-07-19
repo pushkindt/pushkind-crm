@@ -13,7 +13,7 @@ use pushkind_crm::db::establish_connection_pool;
 use pushkind_crm::middleware::RedirectUnauthorized;
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::routes::api::api_v1_clients;
-use pushkind_crm::routes::client::{comment_client, save_client, show_client};
+use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
 use pushkind_crm::routes::main::{add_client, clients_upload, index, logout, not_assigned};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
@@ -84,6 +84,7 @@ async fn main() -> std::io::Result<()> {
                     .service(show_client)
                     .service(save_client)
                     .service(comment_client)
+                    .service(attachment_client)
                     .service(managers)
                     .service(add_manager)
                     .service(managers_modal)
