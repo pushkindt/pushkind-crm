@@ -35,12 +35,7 @@ impl From<ClientEvent> for DomainClientEvent {
             id: event.id,
             client_id: event.client_id,
             manager_id: event.manager_id,
-            event_type: match event.event_type.as_str() {
-                "Comment" => ClientEventType::Comment,
-                "DocumentLink" => ClientEventType::DocumentLink,
-                "Call" => ClientEventType::Call,
-                other => ClientEventType::Other(other.to_owned()),
-            },
+            event_type: ClientEventType::from(event.event_type.as_str()),
             event_data: serde_json::from_str(&event.event_data).unwrap_or_default(),
             created_at: event.created_at,
         }

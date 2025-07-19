@@ -41,3 +41,25 @@ impl Display for ClientEventType {
         }
     }
 }
+
+impl From<&str> for ClientEventType {
+    fn from(s: &str) -> Self {
+        match s {
+            "Comment" => ClientEventType::Comment,
+            "DocumentLink" => ClientEventType::DocumentLink,
+            "Call" => ClientEventType::Call,
+            _ => ClientEventType::Other(s.to_string()),
+        }
+    }
+}
+
+impl From<String> for ClientEventType {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Comment" => ClientEventType::Comment,
+            "DocumentLink" => ClientEventType::DocumentLink,
+            "Call" => ClientEventType::Call,
+            _ => ClientEventType::Other(s),
+        }
+    }
+}
