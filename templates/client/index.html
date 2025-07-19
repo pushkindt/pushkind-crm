@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    {% include 'navigation.html' %}
+    {% include 'components/navigation.html' %}
 
 <div class="container">
     <div class="row my-2">
@@ -82,7 +82,7 @@
         <div class="col">
             <span class="fw-bold">Менеджеры:</span>
             {% for manager in managers | default(value=[]) %}
-                {% include 'user_popover.html' %}
+                {% include 'components/user_popover.html' %}
             {% endfor %}
         </div>
     </div>
@@ -102,7 +102,7 @@
         {% for event_manager in events %}
             {% set event = event_manager.0 %}
             {% set manager = event_manager.1 %}
-            {% include 'client_event.html' %}
+            {% include 'components/client_event.html' %}
         {% endfor %}
     </div>
 </div>
