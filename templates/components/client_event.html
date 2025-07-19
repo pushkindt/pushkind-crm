@@ -3,12 +3,12 @@
         <div class="d-flex justify-content-between small text-muted mb-2">
             <span>{{ event.created_at | date(format="%Y-%m-%d %H:%M") }}</span>
             <span>
-                {% include 'user_popover.html' %}
+                {% include 'components/user_popover.html' %}
                 {% set event_type = event.event_type %}
                 {% set event_data = event.event_data %}
-                {% include 'client_event_type.html' %}
+                {% include 'components/client_event_type.html' %}
             </span>
         </div>
-        {% include 'client_event_data.html' %}
+        {% include 'components/client_event_data.html' %}
     </div>
 </div>

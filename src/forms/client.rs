@@ -11,6 +11,13 @@ pub struct SaveClientForm {
     pub address: String,
 }
 
+#[derive(Deserialize)]
+pub struct AddCommentForm {
+    pub id: i32,
+    pub text: String,
+    pub event_type: String,
+}
+
 impl<'a> From<&'a SaveClientForm> for UpdateClient<'a> {
     fn from(form: &'a SaveClientForm) -> Self {
         Self {

@@ -27,7 +27,7 @@
 {% endblock %}
 
 {% block content %}
-    {% include 'navigation.html' %}
+    {% include 'components/navigation.html' %}
 
     <div class="container bg-white border rounded my-2">
 
@@ -81,7 +81,7 @@
             {% endfor %}
         </div>
         {% set items = clients %}
-        {% include 'pagination.html' %}
+        {% include 'components/pagination.html' %}
     </div>
 
     {% include 'main/add_client_modal.html' %}

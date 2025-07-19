@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    {% include 'navigation.html' %}
+    {% include 'components/navigation.html' %}
 
 <div class="container">
     <div class="row my-2">
@@ -11,53 +11,7 @@
             </span>
         </div>
         <div class="col-auto">
-            <div class="dropdown">
-                <a class="dropdown-toggle" href="#" role="button" id="orderActionsLink" data-bs-toggle="dropdown" aria-expanded="true">
-                    Действия с клиентом
-                </a>
-                <ul class="dropdown-menu bg-light" aria-labelledby="orderActionsLink" data-popper-placement="bottom-start" data-popper-reference-hidden="" style="position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(0px, 25px);">
-                    <li class="dropdown-item">
-                        <i class="bi bi-pencil"></i>
-                        
-                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="comment">комментировать</a>
-                        
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-files"></i>
-                        
-                            <a href="/orders/duplicate/1093" onclick="return confirm('Клонировать заявку?')">клонировать</a>
-                        
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-layout-split"></i>
-                        
-                            <a href="#" id="startSplitting">разделить</a>
-                        
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-download"></i>
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#excelModal">скачать</a>
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-envelope"></i>
-                        
-                            <a href="#" data-bs-toggle="modal" data-bs-target="#sendModal">отправить</a>
-                        
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-check-circle"></i>
-                        
-                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="dealdone">законтрактовать</a>
-                        
-                    </li>
-                    <li class="dropdown-item">
-                        <i class="bi bi-x-circle"></i>
-                        
-                            <a class="leaveComment" href="#" data-bs-toggle="modal" data-bs-target="#leaveCommentModal" data-target="cancel">аннулировать</a>
-                        
-                    </li>
-                </ul>
-            </div>
+            {% include 'client/actions.html' %}
         </div>
     </div>
     <div class="row">
@@ -82,12 +36,13 @@
         <div class="col">
             <span class="fw-bold">Менеджеры:</span>
             {% for manager in managers | default(value=[]) %}
-                {% include 'user_popover.html' %}
+                {% include 'components/user_popover.html' %}
             {% endfor %}
         </div>
     </div>
 
 {% include 'client/save_client_modal.html' %}
+{% include 'client/comment_modal.html' %}
 
 </div>
 
@@ -102,7 +57,7 @@
         {% for event_manager in events %}
             {% set event = event_manager.0 %}
             {% set manager = event_manager.1 %}
-            {% include 'client_event.html' %}
+            {% include 'components/client_event.html' %}
         {% endfor %}
     </div>
 </div>
