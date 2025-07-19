@@ -18,6 +18,13 @@ pub struct AddCommentForm {
     pub event_type: String,
 }
 
+#[derive(Deserialize)]
+pub struct AddAttachmentForm {
+    pub id: i32,
+    pub text: String,
+    pub url: String,
+}
+
 impl<'a> From<&'a SaveClientForm> for UpdateClient<'a> {
     fn from(form: &'a SaveClientForm) -> Self {
         Self {

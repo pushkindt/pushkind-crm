@@ -8,7 +8,7 @@ use tera::Context;
 use crate::db::DbPool;
 use crate::domain::client::UpdateClient;
 use crate::domain::client_event::{ClientEventType, NewClientEvent};
-use crate::forms::client::{AddCommentForm, SaveClientForm};
+use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::config::ServerConfig;
 use crate::repository::client::DieselClientRepository;
@@ -154,6 +154,63 @@ pub async fn comment_client(
         created_at: Utc::now().naive_utc(),
         event_data: json!({
             "text": &form.text,
+        }),
+    };
+
+    if check_role("crm_manager", &user.roles)
+        && !client_repo
+            .check_manager_assigned(form.id, &user.email)
+            .is_ok_and(|result| result)
+    {
+        FlashMessage::error("Этот клиент для вас не доступен").send();
+        return redirect("/");
+    }
+
+    let client_event_repo = DieselClientEventRepository::new(&pool);
+
+    match client_event_repo.create(&updates) {
+        Ok(_) => {
+            FlashMessage::success("Событие добавлено.".to_string()).send();
+        }
+        Err(err) => {
+            error!("Failed to update client: {err}");
+            FlashMessage::error(format!("Ошибка при добавлении события: {err}")).send();
+        }
+    }
+
+    redirect(&format!("/client/{}", form.id))
+}
+
+#[post("/client/attachment")]
+pub async fn attachment_client(
+    user: AuthenticatedUser,
+    pool: web::Data<DbPool>,
+    web::Form(form): web::Form<AddAttachmentForm>,
+) -> impl Responder {
+    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
+        return response;
+    }
+
+    let manager_repo = DieselManagerRepository::new(&pool);
+
+    let manager = match manager_repo.create_or_update(&(&user).into()) {
+        Ok(manager) => manager,
+        Err(err) => {
+            error!("Failed to create or update manager: {err}");
+            FlashMessage::error("Ошибка при добавлении вложения.").send();
+            return redirect(&format!("/client/{}", form.id));
+        }
+    };
+
+    let client_repo = DieselClientRepository::new(&pool);
+    let updates = NewClientEvent {
+        client_id: form.id,
+        event_type: ClientEventType::DocumentLink,
+        manager_id: manager.id,
+        created_at: Utc::now().naive_utc(),
+        event_data: json!({
+            "text": &form.text,
+            "url": &form.url,
         }),
     };
 
