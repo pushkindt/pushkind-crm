@@ -95,11 +95,6 @@
 <div class="container">
     <div class="row my-2">
         <div class="col">
-            <span class="fw-bold">ИСТОРИЯ</span>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col">
             <input class="form-control" id="actionsFilter" type="text" placeholder="Фильтр..">
         </div>
     </div>
@@ -107,20 +102,7 @@
         {% for event_manager in events %}
             {% set event = event_manager.0 %}
             {% set manager = event_manager.1 %}
-            <div class="action" data-datetime="{{ event.created_at }}">
-                <div class="row">
-                    <div class="col">
-                        {{ event.created_at }}
-                        {% include 'user_popover.html' %}
-                        <span class="fw-bold">{{event.event_type}}</span>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col px-5 overflow-hidden">
-                        &boxur; {{ event.event_data["text"] }}
-                    </div>
-                </div>
-            </div>
+            {% include 'client_event.html' %}
         {% endfor %}
     </div>
 </div>

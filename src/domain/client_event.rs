@@ -18,6 +18,7 @@ pub struct ClientEvent {
 pub enum ClientEventType {
     Comment,
     DocumentLink,
+    Call,
     Other(String),
 }
 
@@ -35,6 +36,7 @@ impl Display for ClientEventType {
         match self {
             ClientEventType::Comment => write!(f, "Comment"),
             ClientEventType::DocumentLink => write!(f, "DocumentLink"),
+            ClientEventType::Call => write!(f, "Call"),
             ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
