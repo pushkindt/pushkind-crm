@@ -51,10 +51,10 @@
 <div class="container">
     <div class="row my-2">
         <div class="col">
-            <input class="form-control" id="actionsFilter" type="text" placeholder="Фильтр..">
+            <input class="form-control" id="event-filter" type="text" placeholder="Фильтр..">
         </div>
     </div>
-    <div id="actionsSection">
+    <div id="events">
         {% for event_manager in events %}
             {% set event = event_manager.0 %}
             {% set manager = event_manager.1 %}
@@ -63,4 +63,12 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            createFilter("event-filter", "events", ".event");
+        });
+    </script>
 {% endblock %}
