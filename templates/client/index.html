@@ -32,14 +32,28 @@
             <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
         </div>
     </div>
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Менеджеры:</span>
-            {% for manager in managers | default(value=[]) %}
-                {% include 'components/user_popover.html' %}
-            {% endfor %}
+    {% if managers %}
+        <div class="row">
+            <div class="col">
+                <span class="fw-bold">Менеджеры:</span>
+                {% for manager in managers %}
+                    {% include 'components/user_popover.html' %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
+    {% endif %}
+    {% if documents %}
+        <div class="row">
+            <div class="col">
+                <span class="fw-bold">Документы:</span>
+                {% for document in documents %}
+                    <a class="text-warning" href="{{ document.event_data["url"] }}">
+                        {{ document.event_data["text"] }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
 {% include 'client/save_client_modal.html' %}
 {% include 'client/comment_modal.html' %}

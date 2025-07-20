@@ -73,6 +73,18 @@ pub async fn show_client(
             return HttpResponse::InternalServerError().finish();
         }
     };
+    let documents = match event_repo
+        .list(ClientEventListQuery::new(client_id).event_type(ClientEventType::DocumentLink))
+    {
+        Ok((_total_events, events_with_managers)) => events_with_managers
+            .into_iter()
+            .map(|(documents, _manager)| documents)
+            .collect::<Vec<_>>(),
+        Err(e) => {
+            error!("Failed to get events: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
 
     let alerts = flash_messages
         .iter()
@@ -86,6 +98,7 @@ pub async fn show_client(
     context.insert("client", &client);
     context.insert("managers", &managers);
     context.insert("events", &events_with_managers);
+    context.insert("documents", &documents);
 
     render_template("client/index.html", &context)
 }

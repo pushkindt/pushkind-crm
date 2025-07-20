@@ -39,7 +39,7 @@ impl<'a> ClientEventReader for DieselClientEventRepository<'a> {
                 .into_boxed::<diesel::sqlite::Sqlite>();
 
             if let Some(event_type) = &query.event_type {
-                items = items.filter(client_events::event_data.eq(event_type.to_string()));
+                items = items.filter(client_events::event_type.eq(event_type.to_string()));
             }
             items
         };
