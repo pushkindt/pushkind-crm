@@ -32,14 +32,28 @@
             <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
         </div>
     </div>
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Менеджеры:</span>
-            {% for manager in managers | default(value=[]) %}
-                {% include 'components/user_popover.html' %}
-            {% endfor %}
+    {% if managers %}
+        <div class="row">
+            <div class="col">
+                <span class="fw-bold">Менеджеры:</span>
+                {% for manager in managers %}
+                    {% include 'components/user_popover.html' %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
+    {% endif %}
+    {% if documents %}
+        <div class="row">
+            <div class="col">
+                <span class="fw-bold">Документы:</span>
+                {% for document in documents %}
+                    <a class="text-warning" href="{{ document.event_data["url"] }}">
+                        {{ document.event_data["text"] }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
 {% include 'client/save_client_modal.html' %}
 {% include 'client/comment_modal.html' %}
@@ -51,10 +65,10 @@
 <div class="container">
     <div class="row my-2">
         <div class="col">
-            <input class="form-control" id="actionsFilter" type="text" placeholder="Фильтр..">
+            <input class="form-control" id="event-filter" type="text" placeholder="Фильтр..">
         </div>
     </div>
-    <div id="actionsSection">
+    <div id="events">
         {% for event_manager in events %}
             {% set event = event_manager.0 %}
             {% set manager = event_manager.1 %}
@@ -63,4 +77,12 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            createFilter("event-filter", "events", ".event");
+        });
+    </script>
 {% endblock %}
