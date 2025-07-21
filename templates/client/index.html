@@ -46,11 +46,15 @@
         <div class="row">
             <div class="col">
                 <span class="fw-bold">Документы:</span>
-                {% for document in documents %}
-                    <a class="text-warning" href="{{ document.event_data["url"] }}">
-                        {{ document.event_data["text"] }}
-                    </a>
-                {% endfor %}
+                <ul>
+                    {% for document in documents %}
+                        <li>
+                            <a class="text-warning" href="{{ document.event_data["url"] }}">
+                                {{ document.event_data["text"] }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     {% endif %}
