@@ -7,14 +7,14 @@ use actix_web::cookie::Key;
 use actix_web::{App, HttpServer, middleware, web};
 use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
 use dotenvy::dotenv;
-
 use pushkind_common::db::establish_connection_pool;
 use pushkind_common::middleware::RedirectUnauthorized;
 use pushkind_common::models::config::CommonServerConfig;
+use pushkind_common::routes::logout;
 
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
-use pushkind_crm::routes::main::{add_client, clients_upload, index, logout, not_assigned};
+use pushkind_crm::routes::main::{add_client, clients_upload, index, not_assigned};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 #[actix_web::main]
