@@ -1,24 +1,25 @@
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use log::error;
+use pushkind_common::db::DbPool;
+use pushkind_common::models::auth::AuthenticatedUser;
+use pushkind_common::models::config::CommonServerConfig;
+use pushkind_common::routes::{alert_level_to_str, ensure_role, redirect};
 use tera::Context;
 
-use crate::db::DbPool;
 use crate::domain::manager::NewManager;
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
-use crate::models::auth::AuthenticatedUser;
-use crate::models::config::ServerConfig;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
-use crate::routes::{alert_level_to_str, ensure_role, redirect, render_template};
+use crate::routes::render_template;
 
 #[get("/managers")]
 pub async fn managers(
     user: AuthenticatedUser,
     pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
-    server_config: web::Data<ServerConfig>,
+    server_config: web::Data<CommonServerConfig>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;

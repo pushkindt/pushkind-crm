@@ -2,15 +2,16 @@ use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use chrono::Utc;
 use log::error;
+use pushkind_common::db::DbPool;
+use pushkind_common::models::auth::AuthenticatedUser;
+use pushkind_common::models::config::CommonServerConfig;
+use pushkind_common::routes::{alert_level_to_str, check_role, ensure_role, redirect};
 use serde_json::json;
 use tera::Context;
 
-use crate::db::DbPool;
 use crate::domain::client::UpdateClient;
 use crate::domain::client_event::{ClientEventType, NewClientEvent};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
-use crate::models::auth::AuthenticatedUser;
-use crate::models::config::ServerConfig;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::client_event::DieselClientEventRepository;
 use crate::repository::manager::DieselManagerRepository;
@@ -18,7 +19,7 @@ use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
     ManagerWriter,
 };
-use crate::routes::{alert_level_to_str, check_role, ensure_role, redirect, render_template};
+use crate::routes::render_template;
 
 #[get("/client/{client_id}")]
 pub async fn show_client(
@@ -26,7 +27,7 @@ pub async fn show_client(
     user: AuthenticatedUser,
     pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
-    server_config: web::Data<ServerConfig>,
+    server_config: web::Data<CommonServerConfig>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;

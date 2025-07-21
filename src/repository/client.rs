@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
+use pushkind_common::db::DbPool;
 
 use crate::{
-    db::DbPool,
     domain::client::{Client, NewClient, UpdateClient},
     domain::manager::Manager,
     models::client::{

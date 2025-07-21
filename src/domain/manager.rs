@@ -1,3 +1,4 @@
+use pushkind_common::models::auth::AuthenticatedUser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -30,4 +31,14 @@ pub struct ClientManager {
 pub struct NewClientManager {
     pub client_id: i32,
     pub manager_id: i32,
+}
+
+impl<'a> From<&'a AuthenticatedUser> for NewManager<'a> {
+    fn from(value: &'a AuthenticatedUser) -> Self {
+        NewManager {
+            name: &value.name,
+            email: &value.email,
+            hub_id: value.hub_id,
+        }
+    }
 }
