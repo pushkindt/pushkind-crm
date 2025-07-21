@@ -1,4 +1,3 @@
-use actix_identity::Identity;
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
@@ -116,12 +115,6 @@ pub async fn add_client(
             FlashMessage::error(format!("Ошибка при добавлении клиента: {err}")).send();
         }
     }
-    redirect("/")
-}
-
-#[post("/logout")]
-pub async fn logout(user: Identity) -> impl Responder {
-    user.logout();
     redirect("/")
 }
 
