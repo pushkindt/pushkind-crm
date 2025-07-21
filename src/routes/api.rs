@@ -1,12 +1,12 @@
 use actix_web::{HttpResponse, Responder, get, web};
 use log::error;
+use pushkind_common::db::DbPool;
+use pushkind_common::models::auth::AuthenticatedUser;
+use pushkind_common::routes::ensure_role;
 use serde::Deserialize;
 
-use crate::db::DbPool;
-use crate::models::auth::AuthenticatedUser;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::{ClientReader, ClientSearchQuery};
-use crate::routes::ensure_role;
 
 #[derive(Deserialize)]
 struct ApiV1ClientsQueryParams {

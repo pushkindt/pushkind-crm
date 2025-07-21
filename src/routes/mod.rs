@@ -1,18 +1,12 @@
 use actix_web::HttpResponse;
-use actix_web::http::header;
-use actix_web_flash_messages::{FlashMessage, Level};
 use lazy_static::lazy_static;
-use log::error;
+use log;
 use tera::{Context, Tera};
-
-use crate::models::auth::AuthenticatedUser;
 
 pub mod api;
 pub mod client;
 pub mod main;
 pub mod managers;
-
-const DEFAULT_ITEMS_PER_PAGE: usize = 20;
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -26,74 +20,9 @@ lazy_static! {
     };
 }
 
-fn alert_level_to_str(level: &Level) -> &'static str {
-    match level {
-        Level::Error => "danger",
-        Level::Warning => "warning",
-        Level::Success => "success",
-        _ => "info",
-    }
-}
-
-fn redirect(location: &str) -> HttpResponse {
-    HttpResponse::SeeOther()
-        .insert_header((header::LOCATION, location))
-        .finish()
-}
-
-fn check_role<I, S>(role: &str, roles: I) -> bool
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
-{
-    roles.into_iter().any(|r| r.as_ref() == role)
-}
-
-fn ensure_role(
-    user: &AuthenticatedUser,
-    role: &str,
-    redirect_url: Option<&str>,
-) -> Result<(), HttpResponse> {
-    if check_role(role, &user.roles) {
-        Ok(())
-    } else {
-        FlashMessage::error("Недостаточно прав.").send();
-        Err(redirect(redirect_url.unwrap_or("/")))
-    }
-}
-
 fn render_template(template: &str, context: &Context) -> HttpResponse {
     HttpResponse::Ok().body(TEMPLATES.render(template, context).unwrap_or_else(|e| {
-        error!("Failed to render template '{template}': {e}");
+        log::error!("Failed to render template '{template}': {e}");
         String::new()
     }))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::http::StatusCode;
-    use actix_web_flash_messages::Level;
-
-    #[test]
-    fn check_role_detects_role() {
-        assert!(check_role("admin", &["user", "admin"]));
-        assert!(!check_role("admin", &["user", "manager"]));
-    }
-
-    #[test]
-    fn redirect_sets_location_header() {
-        let resp = redirect("/target");
-        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-        assert_eq!(resp.headers().get(header::LOCATION).unwrap(), "/target");
-    }
-
-    #[test]
-    fn test_alert_level_to_str_mappings() {
-        assert_eq!(alert_level_to_str(&Level::Error), "danger");
-        assert_eq!(alert_level_to_str(&Level::Warning), "warning");
-        assert_eq!(alert_level_to_str(&Level::Success), "success");
-        assert_eq!(alert_level_to_str(&Level::Info), "info");
-        assert_eq!(alert_level_to_str(&Level::Debug), "info");
-    }
 }

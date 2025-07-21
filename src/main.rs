@@ -7,11 +7,11 @@ use actix_web::cookie::Key;
 use actix_web::{App, HttpServer, middleware, web};
 use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
 use dotenvy::dotenv;
-use log::error;
 
-use pushkind_crm::db::establish_connection_pool;
-use pushkind_crm::middleware::RedirectUnauthorized;
-use pushkind_crm::models::config::ServerConfig;
+use pushkind_common::db::establish_connection_pool;
+use pushkind_common::middleware::RedirectUnauthorized;
+use pushkind_common::models::config::CommonServerConfig;
+
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
 use pushkind_crm::routes::main::{add_client, clients_upload, index, logout, not_assigned};
@@ -37,12 +37,12 @@ async fn main() -> std::io::Result<()> {
     let auth_service_url = match auth_service_url {
         Ok(auth_service_url) => auth_service_url,
         Err(_) => {
-            error!("AUTH_SERVICE_URL environment variable not set");
+            log::error!("AUTH_SERVICE_URL environment variable not set");
             std::process::exit(1);
         }
     };
 
-    let server_config = ServerConfig {
+    let server_config = CommonServerConfig {
         secret: secret.unwrap_or_default(),
         auth_service_url,
     };
@@ -52,7 +52,7 @@ async fn main() -> std::io::Result<()> {
     let pool = match establish_connection_pool(&database_url) {
         Ok(pool) => pool,
         Err(e) => {
-            error!("Failed to establish database connection: {e}");
+            log::error!("Failed to establish database connection: {e}");
             std::process::exit(1);
         }
     };

@@ -1,7 +1,7 @@
 use diesel::prelude::*;
+use pushkind_common::db::DbPool;
 
 use crate::{
-    db::DbPool,
     domain::{
         client::Client,
         manager::{Manager, NewManager},

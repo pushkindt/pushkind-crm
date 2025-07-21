@@ -860,9 +860,9 @@ checksum = "abd57806937c9cc163efc8ea3910e00a62e2aeb0b8119f1793a978088f8f6b04"
 
 [[package]]
 name = "diesel"
-version = "2.2.11"
+version = "2.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a917a9209950404d5be011c81d081a2692a822f73c3d6af586f0cab5ff50f614"
+checksum = "229850a212cd9b84d4f0290ad9d294afc0ae70fccaa8949dbe8b43ffafa1e20c"
 dependencies = [
  "chrono",
  "diesel_derives",
@@ -1910,6 +1910,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pushkind-common"
+version = "0.1.0"
+source = "git+https://github.com/pushkindt/pushkind-common.git?branch=main#85fdf8deed8313f07f29852564fd3ee03be5530b"
+dependencies = [
+ "actix-identity",
+ "actix-web",
+ "actix-web-flash-messages",
+ "bcrypt",
+ "chrono",
+ "diesel",
+ "futures-util",
+ "jsonwebtoken",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "pushkind-crm"
 version = "0.1.0"
 dependencies = [
@@ -1930,6 +1947,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "log",
+ "pushkind-common",
  "serde",
  "serde_html_form",
  "serde_json",
@@ -2185,9 +2203,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.140"
+version = "1.0.141"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
+checksum = "30b9eff21ebe718216c6ec64e1d9ac57087aad11efc64e32002bce4a0d4c03d3"
 dependencies = [
  "itoa",
  "memchr",

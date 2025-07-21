@@ -1,6 +1,6 @@
 use diesel::prelude::*;
+use pushkind_common::db::DbPool;
 
-use crate::db::DbPool;
 use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::manager::Manager;
 use crate::models::client_event::{
