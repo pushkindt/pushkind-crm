@@ -6,6 +6,7 @@ use log::error;
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
+use pushkind_common::pagination::Paginated;
 use pushkind_common::routes::{
     DEFAULT_ITEMS_PER_PAGE, alert_level_to_str, check_role, ensure_role, redirect,
 };
@@ -14,7 +15,6 @@ use tera::Context;
 
 use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
-use crate::pagination::Paginated;
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{

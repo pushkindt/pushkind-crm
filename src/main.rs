@@ -7,7 +7,6 @@ use actix_web::cookie::Key;
 use actix_web::{App, HttpServer, middleware, web};
 use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
 use dotenvy::dotenv;
-use log;
 
 use pushkind_common::db::establish_connection_pool;
 use pushkind_common::middleware::RedirectUnauthorized;
