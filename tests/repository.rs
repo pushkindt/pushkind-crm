@@ -1,16 +1,14 @@
 use chrono::Utc;
-use serde_json::json;
-use pushkind_crm::domain::client::{Client, NewClient, UpdateClient};
-use pushkind_crm::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
-use pushkind_crm::domain::manager::{
-    ClientManager, Manager, NewClientManager, NewManager, UpdateManager,
-};
+use pushkind_crm::domain::client::{NewClient, UpdateClient};
+use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
+use pushkind_crm::domain::manager::NewManager;
 use pushkind_crm::repository::client::DieselClientRepository;
 use pushkind_crm::repository::client_event::DieselClientEventRepository;
 use pushkind_crm::repository::manager::DieselManagerRepository;
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter};
 use pushkind_crm::repository::{ManagerReader, ManagerWriter};
+use serde_json::json;
 
 mod common;
 
@@ -35,9 +33,7 @@ fn test_client_repository_crud() {
 
     assert_eq!(client_repo.create(&[c1.clone(), c2.clone()]).unwrap(), 2);
 
-    let (total, mut items) = client_repo
-        .list(ClientListQuery::new(1))
-        .unwrap();
+    let (total, mut items) = client_repo.list(ClientListQuery::new(1)).unwrap();
     assert_eq!(total, 2);
     assert_eq!(items.len(), 2);
     items.sort_by(|a, b| a.name.cmp(&b.name));
@@ -62,9 +58,7 @@ fn test_client_repository_crud() {
     client_repo.delete(alice.id).unwrap();
     assert!(client_repo.get_by_id(alice.id).unwrap().is_none());
 
-    let (total_after, items_after) = client_repo
-        .list(ClientListQuery::new(1))
-        .unwrap();
+    let (total_after, items_after) = client_repo.list(ClientListQuery::new(1)).unwrap();
     assert_eq!(total_after, 1);
     assert_eq!(items_after[0].name, "Bobby");
 }
@@ -83,12 +77,16 @@ fn test_client_event_repository_crud() {
             address: "Addr1".into(),
         };
         client_repo.create(&[new_client]).unwrap();
-        client_repo.list(ClientListQuery::new(1)).unwrap().1.remove(0)
+        client_repo
+            .list(ClientListQuery::new(1))
+            .unwrap()
+            .1
+            .remove(0)
     };
     let manager = manager_repo
         .create_or_update(&NewManager {
             hub_id: 1,
-            name: "Manager", 
+            name: "Manager",
             email: "m@example.com",
         })
         .unwrap();
@@ -160,7 +158,7 @@ fn test_manager_repository_crud() {
     let manager = manager_repo
         .create_or_update(&NewManager {
             hub_id: 1,
-            name: "Manager", 
+            name: "Manager",
             email: "m@example.com",
         })
         .unwrap();
@@ -169,7 +167,7 @@ fn test_manager_repository_crud() {
     let updated = manager_repo
         .create_or_update(&NewManager {
             hub_id: 1,
-            name: "Updated", 
+            name: "Updated",
             email: "m@example.com",
         })
         .unwrap();
@@ -186,7 +184,9 @@ fn test_manager_repository_crud() {
     assert_eq!(by_email.id, manager.id);
 
     // assign clients to manager
-    manager_repo.assign_clients(manager.id, &client_ids).unwrap();
+    manager_repo
+        .assign_clients(manager.id, &client_ids)
+        .unwrap();
 
     let managers_with_clients = manager_repo.list(1).unwrap();
     assert_eq!(managers_with_clients.len(), 1);
@@ -197,7 +197,9 @@ fn test_manager_repository_crud() {
     let managers = client_repo.list_managers(client_id).unwrap();
     assert_eq!(managers.len(), 1);
     assert_eq!(managers[0].id, manager.id);
-    assert!(client_repo
-        .check_manager_assigned(client_id, "m@example.com")
-        .unwrap());
+    assert!(
+        client_repo
+            .check_manager_assigned(client_id, "m@example.com")
+            .unwrap()
+    );
 }
