@@ -4,13 +4,16 @@ use actix_multipart::form::{MultipartForm, tempfile::TempFile};
 use csv;
 use serde::Deserialize;
 use thiserror::Error;
+use validator::Validate;
 
 use crate::domain::client::NewClient;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct AddClientForm {
     pub hub_id: i32,
+    #[validate(length(min = 1))]
     pub name: String,
+    #[validate(email)]
     pub email: String,
     pub phone: String,
     pub address: String,

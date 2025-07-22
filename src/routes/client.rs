@@ -8,6 +8,7 @@ use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{alert_level_to_str, check_role, ensure_role, redirect};
 use serde_json::json;
 use tera::Context;
+use validator::Validate;
 
 use crate::domain::client::UpdateClient;
 use crate::domain::client_event::{ClientEventType, NewClientEvent};
@@ -114,6 +115,11 @@ pub async fn save_client(
         return response;
     }
 
+    if let Err(e) = form.validate() {
+        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        return redirect(&format!("/client/{}", form.id));
+    }
+
     let client_repo = DieselClientRepository::new(&pool);
     let updates: UpdateClient = (&form).into();
 
@@ -147,6 +153,11 @@ pub async fn comment_client(
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
+    }
+
+    if let Err(e) = form.validate() {
+        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        return redirect(&format!("/client/{}", form.id));
     }
 
     let manager_repo = DieselManagerRepository::new(&pool);
@@ -203,6 +214,11 @@ pub async fn attachment_client(
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
+    }
+
+    if let Err(e) = form.validate() {
+        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        return redirect(&format!("/client/{}", form.id));
     }
 
     let manager_repo = DieselManagerRepository::new(&pool);
