@@ -6,6 +6,7 @@ use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{alert_level_to_str, ensure_role, redirect};
 use tera::Context;
+use validator::Validate;
 
 use crate::domain::manager::NewManager;
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
@@ -58,6 +59,11 @@ pub async fn add_manager(
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
     };
+
+    if let Err(e) = form.validate() {
+        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        return redirect("/managers");
+    }
 
     let new_manager = NewManager {
         hub_id: user.hub_id,

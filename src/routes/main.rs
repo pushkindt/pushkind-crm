@@ -11,6 +11,7 @@ use pushkind_common::routes::{
 };
 use serde::Deserialize;
 use tera::Context;
+use validator::Validate;
 
 use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
@@ -102,6 +103,11 @@ pub async fn add_client(
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
     };
+
+    if let Err(e) = form.validate() {
+        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        return redirect("/");
+    }
 
     let new_client: NewClient = form.into();
 

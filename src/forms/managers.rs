@@ -1,9 +1,12 @@
 use serde::Deserialize;
+use validator::Validate;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct AddManagerForm {
     pub id: i32,
+    #[validate(length(min = 1))]
     pub name: String,
+    #[validate(email)]
     pub email: String,
 }
 
