@@ -116,7 +116,8 @@ pub async fn save_client(
     }
 
     if let Err(e) = form.validate() {
-        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        error!("Failed to validate form: {e}");
+        FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
 
@@ -138,7 +139,7 @@ pub async fn save_client(
         }
         Err(err) => {
             error!("Failed to update client: {err}");
-            FlashMessage::error(format!("Ошибка при обновлении клиента: {err}")).send();
+            FlashMessage::error("Ошибка при обновлении клиента").send();
         }
     }
 
@@ -156,7 +157,8 @@ pub async fn comment_client(
     }
 
     if let Err(e) = form.validate() {
-        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        error!("Failed to validate form: {e}");
+        FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
 
@@ -199,7 +201,7 @@ pub async fn comment_client(
         }
         Err(err) => {
             error!("Failed to update client: {err}");
-            FlashMessage::error(format!("Ошибка при добавлении события: {err}")).send();
+            FlashMessage::error("Ошибка при добавлении события").send();
         }
     }
 
@@ -217,7 +219,8 @@ pub async fn attachment_client(
     }
 
     if let Err(e) = form.validate() {
-        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        error!("Failed to validate form: {e}");
+        FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
 
@@ -261,7 +264,7 @@ pub async fn attachment_client(
         }
         Err(err) => {
             error!("Failed to update client: {err}");
-            FlashMessage::error(format!("Ошибка при добавлении события: {err}")).send();
+            FlashMessage::error("Ошибка при добавлении события").send();
         }
     }
 
