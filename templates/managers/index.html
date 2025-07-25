@@ -73,7 +73,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="managerModalLabel">Редактировать получателя</h1>
+                    <h1 class="modal-title fs-5" id="managerModalLabel">Назначение клиентов</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="managerModalBody">
@@ -116,7 +116,7 @@
                 load: function(query, callback) {
                     if (!query.length) return callback();
                     $.ajax({
-                        url: '{{home_url|safe}}/api/v1/users?role=crm_manager&query=' + encodeURIComponent(query),
+                        url: '{{home_url|safe}}/api/v1/users?page=1&role=crm_manager&query=' + encodeURIComponent(query),
                         type: 'GET',
                         error: function() {
                             callback();
@@ -171,7 +171,7 @@
                 load: function(query, callback) {
                     if (!query.length) return callback();
                     $.ajax({
-                        url: '/api/v1/clients?query=' + encodeURIComponent(query),
+                        url: '/api/v1/clients?page=1&query=' + encodeURIComponent(query),
                         type: 'GET',
                         error: function() {
                             callback();
