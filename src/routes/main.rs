@@ -1,7 +1,6 @@
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
-use log::error;
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
@@ -59,7 +58,7 @@ pub async fn index(
                     .paginate(page, DEFAULT_ITEMS_PER_PAGE),
             ),
             Err(e) => {
-                error!("Failed to update manager: {e}");
+                log::error!("Failed to update manager: {e}");
                 return HttpResponse::InternalServerError().finish();
             }
         }
@@ -72,7 +71,7 @@ pub async fn index(
             Paginated::new(clients, page, total.div_ceil(DEFAULT_ITEMS_PER_PAGE))
         }
         Err(e) => {
-            error!("Failed to list clients: {e}");
+            log::error!("Failed to list clients: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -105,7 +104,7 @@ pub async fn add_client(
     };
 
     if let Err(e) = form.validate() {
-        error!("Failed to validate form: {e}");
+        log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
         return redirect("/");
     }
@@ -118,7 +117,7 @@ pub async fn add_client(
             FlashMessage::success("Клиент добавлен.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to add a client: {err}");
+            log::error!("Failed to add a client: {err}");
             FlashMessage::error("Ошибка при добавлении клиента").send();
         }
     }
@@ -159,7 +158,7 @@ pub async fn clients_upload(
     let clients = match form.parse(user.hub_id) {
         Ok(clients) => clients,
         Err(err) => {
-            error!("Failed to parse clients: {err}");
+            log::error!("Failed to parse clients: {err}");
             FlashMessage::error("Ошибка при парсинге клиентов").send();
             return redirect("/");
         }
@@ -170,7 +169,7 @@ pub async fn clients_upload(
             FlashMessage::success("Клиенты добавлены.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to add clients: {err}");
+            log::error!("Failed to add clients: {err}");
             FlashMessage::error("Ошибка при добавлении клиентов").send();
         }
     }
