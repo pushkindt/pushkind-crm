@@ -61,7 +61,8 @@ pub async fn add_manager(
     };
 
     if let Err(e) = form.validate() {
-        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        error!("Failed to validate form: {e}");
+        FlashMessage::error("Ошибка валидации формы").send();
         return redirect("/managers");
     }
 
@@ -78,7 +79,7 @@ pub async fn add_manager(
         }
         Err(err) => {
             error!("Failed to save the manager: {err}");
-            FlashMessage::error(format!("Ошибка при добавлении менеджера: {err}")).send();
+            FlashMessage::error("Ошибка при добавлении менеджера").send();
         }
     }
     redirect("/managers")
@@ -135,7 +136,8 @@ pub async fn assign_manager(
     let form: AssignManagerForm = match serde_html_form::from_bytes(&form) {
         Ok(form) => form,
         Err(err) => {
-            FlashMessage::error(format!("Ошибка при обработке формы: {err}")).send();
+            error!("Failed to process form: {err}");
+            FlashMessage::error("Ошибка при обработке формы").send();
             return redirect("/managers");
         }
     };
@@ -147,7 +149,7 @@ pub async fn assign_manager(
         }
         Err(err) => {
             error!("Failed to assign clients to the manager: {err}");
-            FlashMessage::error(format!("Ошибка при назначении клиентов менеджера: {err}")).send();
+            FlashMessage::error("Ошибка при назначении клиентов менеджера").send();
         }
     }
     redirect("/managers")

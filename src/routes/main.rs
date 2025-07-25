@@ -105,7 +105,8 @@ pub async fn add_client(
     };
 
     if let Err(e) = form.validate() {
-        FlashMessage::error(format!("Ошибка валидации формы: {e}")).send();
+        error!("Failed to validate form: {e}");
+        FlashMessage::error("Ошибка валидации формы").send();
         return redirect("/");
     }
 
@@ -118,7 +119,7 @@ pub async fn add_client(
         }
         Err(err) => {
             error!("Failed to add a client: {err}");
-            FlashMessage::error(format!("Ошибка при добавлении клиента: {err}")).send();
+            FlashMessage::error("Ошибка при добавлении клиента").send();
         }
     }
     redirect("/")
@@ -158,7 +159,8 @@ pub async fn clients_upload(
     let clients = match form.parse(user.hub_id) {
         Ok(clients) => clients,
         Err(err) => {
-            FlashMessage::error(format!("Ошибка при парсинге клиентов: {err}")).send();
+            error!("Failed to parse clients: {err}");
+            FlashMessage::error("Ошибка при парсинге клиентов").send();
             return redirect("/");
         }
     };
@@ -169,7 +171,7 @@ pub async fn clients_upload(
         }
         Err(err) => {
             error!("Failed to add clients: {err}");
-            FlashMessage::error(format!("Ошибка при добавлении клиентов: {err}")).send();
+            FlashMessage::error("Ошибка при добавлении клиентов").send();
         }
     }
 
