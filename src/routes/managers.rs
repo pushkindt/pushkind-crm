@@ -1,6 +1,5 @@
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
-use log::error;
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
@@ -31,7 +30,7 @@ pub async fn managers(
     let managers = match repo.list(user.hub_id) {
         Ok(managers) => managers,
         Err(err) => {
-            error!("Failed to list managers: {err}");
+            log::error!("Failed to list managers: {err}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -61,7 +60,7 @@ pub async fn add_manager(
     };
 
     if let Err(e) = form.validate() {
-        error!("Failed to validate form: {e}");
+        log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
         return redirect("/managers");
     }
@@ -78,7 +77,7 @@ pub async fn add_manager(
             FlashMessage::success("Менеджер добавлен.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to save the manager: {err}");
+            log::error!("Failed to save the manager: {err}");
             FlashMessage::error("Ошибка при добавлении менеджера").send();
         }
     }
@@ -113,7 +112,7 @@ pub async fn managers_modal(
         match client_repo.list(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
             Ok((_total, clients)) => clients,
             Err(err) => {
-                error!("Failed to list clients: {err}");
+                log::error!("Failed to list clients: {err}");
                 return HttpResponse::InternalServerError().finish();
             }
         };
@@ -136,7 +135,7 @@ pub async fn assign_manager(
     let form: AssignManagerForm = match serde_html_form::from_bytes(&form) {
         Ok(form) => form,
         Err(err) => {
-            error!("Failed to process form: {err}");
+            log::error!("Failed to process form: {err}");
             FlashMessage::error("Ошибка при обработке формы").send();
             return redirect("/managers");
         }
@@ -148,7 +147,7 @@ pub async fn assign_manager(
             FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to assign clients to the manager: {err}");
+            log::error!("Failed to assign clients to the manager: {err}");
             FlashMessage::error("Ошибка при назначении клиентов менеджера").send();
         }
     }

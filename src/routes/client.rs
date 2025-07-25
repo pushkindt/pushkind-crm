@@ -1,7 +1,6 @@
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use chrono::Utc;
-use log::error;
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
@@ -50,7 +49,7 @@ pub async fn show_client(
     let client = match client_repo.get_by_id(client_id) {
         Ok(Some(client)) if client.hub_id == user.hub_id => client,
         Err(e) => {
-            error!("Failed to get client: {e}");
+            log::error!("Failed to get client: {e}");
             return HttpResponse::InternalServerError().finish();
         }
         _ => {
@@ -62,7 +61,7 @@ pub async fn show_client(
     let managers = match client_repo.list_managers(client_id) {
         Ok(managers) => managers,
         Err(e) => {
-            error!("Failed to get managers: {e}");
+            log::error!("Failed to get managers: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -71,7 +70,7 @@ pub async fn show_client(
     let events_with_managers = match event_repo.list(ClientEventListQuery::new(client_id)) {
         Ok((_total_events, events_with_managers)) => events_with_managers,
         Err(e) => {
-            error!("Failed to get events: {e}");
+            log::error!("Failed to get events: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -83,7 +82,7 @@ pub async fn show_client(
             .map(|(documents, _manager)| documents)
             .collect::<Vec<_>>(),
         Err(e) => {
-            error!("Failed to get events: {e}");
+            log::error!("Failed to get events: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
@@ -116,7 +115,7 @@ pub async fn save_client(
     }
 
     if let Err(e) = form.validate() {
-        error!("Failed to validate form: {e}");
+        log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
@@ -138,7 +137,7 @@ pub async fn save_client(
             FlashMessage::success("Клиент обновлен.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to update client: {err}");
+            log::error!("Failed to update client: {err}");
             FlashMessage::error("Ошибка при обновлении клиента").send();
         }
     }
@@ -157,7 +156,7 @@ pub async fn comment_client(
     }
 
     if let Err(e) = form.validate() {
-        error!("Failed to validate form: {e}");
+        log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
@@ -167,7 +166,7 @@ pub async fn comment_client(
     let manager = match manager_repo.create_or_update(&(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
-            error!("Failed to create or update manager: {err}");
+            log::error!("Failed to create or update manager: {err}");
             FlashMessage::error("Ошибка при добавлении комментария.").send();
             return redirect(&format!("/client/{}", form.id));
         }
@@ -200,7 +199,7 @@ pub async fn comment_client(
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to update client: {err}");
+            log::error!("Failed to update client: {err}");
             FlashMessage::error("Ошибка при добавлении события").send();
         }
     }
@@ -219,7 +218,7 @@ pub async fn attachment_client(
     }
 
     if let Err(e) = form.validate() {
-        error!("Failed to validate form: {e}");
+        log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
         return redirect(&format!("/client/{}", form.id));
     }
@@ -229,7 +228,7 @@ pub async fn attachment_client(
     let manager = match manager_repo.create_or_update(&(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
-            error!("Failed to create or update manager: {err}");
+            log::error!("Failed to create or update manager: {err}");
             FlashMessage::error("Ошибка при добавлении вложения.").send();
             return redirect(&format!("/client/{}", form.id));
         }
@@ -263,7 +262,7 @@ pub async fn attachment_client(
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }
         Err(err) => {
-            error!("Failed to update client: {err}");
+            log::error!("Failed to update client: {err}");
             FlashMessage::error("Ошибка при добавлении события").send();
         }
     }
