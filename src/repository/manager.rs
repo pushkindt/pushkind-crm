@@ -33,7 +33,10 @@ impl ManagerWriter for DieselManagerRepository<'_> {
 
         let mut conn = self.pool.get()?;
 
-        let db_new_manager: DbNewManager = new_manager.into();
+        let email = new_manager.email.to_lowercase();
+
+        let mut db_new_manager: DbNewManager = new_manager.into();
+        db_new_manager.email = email.as_str();
 
         let db_update_manager: DbUpdateManager = new_manager.into();
 

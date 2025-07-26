@@ -6,7 +6,7 @@ use pushkind_crm::repository::client::DieselClientRepository;
 use pushkind_crm::repository::client_event::DieselClientEventRepository;
 use pushkind_crm::repository::manager::DieselManagerRepository;
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
-use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter};
+use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
 use pushkind_crm::repository::{ManagerReader, ManagerWriter};
 use serde_json::json;
 
@@ -41,7 +41,7 @@ fn test_client_repository_crud() {
     let bob = items[1].clone();
 
     let (search_total, search_items) = client_repo
-        .search(ClientSearchQuery::new(1, "Bob"))
+        .search(ClientListQuery::new(1).search("Bob"))
         .unwrap();
     assert_eq!(search_total, 1);
     assert_eq!(search_items[0].name, "Bob");

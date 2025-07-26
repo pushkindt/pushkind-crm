@@ -10,7 +10,7 @@ use crate::{
     },
     models::manager::Manager as DbManager,
     repository::{
-        ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter, errors::RepositoryResult,
+        ClientListQuery, ClientReader, ClientWriter, errors::RepositoryResult,
     },
 };
 
@@ -90,12 +90,20 @@ impl ClientReader for DieselClientRepository<'_> {
         Ok((total, items))
     }
 
-    fn search(&self, query: ClientSearchQuery) -> RepositoryResult<(usize, Vec<Client>)> {
+    fn search(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
         use crate::models::client::ClientCount;
 
         let mut conn = self.pool.get()?;
 
-        let match_query = format!("{}*", query.search.to_lowercase());
+        let match_query = match &query.search {
+            None => return Ok((0, vec![])),
+            Some(query) if query.is_empty() => {
+                return Ok((0, vec![]));
+            }
+            Some(query) => {
+                format!("{query}*")
+            }
+        };
 
         // Build base SQL
         let mut sql = String::from(
@@ -207,7 +215,22 @@ impl ClientWriter for DieselClientRepository<'_> {
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
-        let insertables: Vec<DbNewClient> = new_clients.iter().map(Into::into).collect();
+        let lower_emails: Vec<String> = new_clients
+            .iter()
+            .map(|c| c.email.to_lowercase())
+            .collect();
+
+        let insertables: Vec<DbNewClient> = new_clients
+            .iter()
+            .zip(lower_emails.iter())
+            .map(|(client, email)| DbNewClient {
+                hub_id: client.hub_id,
+                name: client.name.as_str(),
+                email: email.as_str(),
+                phone: client.phone.as_str(),
+                address: client.address.as_str(),
+            })
+            .collect();
         let affected = diesel::insert_into(clients::table)
             .values(&insertables)
             .execute(&mut conn)?;
@@ -218,7 +241,13 @@ impl ClientWriter for DieselClientRepository<'_> {
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
-        let db_updates: DbUpdateClient = updates.into();
+        let email = updates.email.to_lowercase();
+        let db_updates = DbUpdateClient {
+            name: updates.name,
+            email: email.as_str(),
+            phone: updates.phone,
+            address: updates.address,
+        };
 
         let updated = diesel::update(clients::table.find(client_id))
             .set(&db_updates)

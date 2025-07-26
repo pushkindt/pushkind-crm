@@ -6,8 +6,9 @@ use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::pagination::Paginated;
 use pushkind_common::routes::{
-    DEFAULT_ITEMS_PER_PAGE, alert_level_to_str, check_role, ensure_role, redirect,
+    alert_level_to_str, check_role, ensure_role, redirect,
 };
+use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use serde::Deserialize;
 use tera::Context;
 use validator::Validate;
@@ -17,7 +18,7 @@ use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{
-    ClientListQuery, ClientReader, ClientSearchQuery, ClientWriter, ManagerWriter,
+    ClientListQuery, ClientReader, ClientWriter, ManagerWriter,
 };
 use crate::routes::render_template;
 
@@ -46,7 +47,7 @@ pub async fn index(
     let clients_result = if !q.is_empty() {
         context.insert("search_query", q);
         client_repo
-            .search(ClientSearchQuery::new(user.hub_id, q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
+            .search(ClientListQuery::new(user.hub_id).search(q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_admin", &user.roles) {
         client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
