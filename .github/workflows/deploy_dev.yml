@@ -22,7 +22,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pushkind-crm
-          path: ./target/release/
+          path: ./target/release/pushkind-crm
   deploy:
     needs: build
     runs-on: ubuntu-latest
