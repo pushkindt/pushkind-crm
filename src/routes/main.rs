@@ -4,11 +4,9 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::pagination::Paginated;
-use pushkind_common::routes::{
-    alert_level_to_str, check_role, ensure_role, redirect,
-};
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
+use pushkind_common::pagination::Paginated;
+use pushkind_common::routes::{alert_level_to_str, check_role, ensure_role, redirect};
 use serde::Deserialize;
 use tera::Context;
 use validator::Validate;
@@ -17,9 +15,7 @@ use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
-use crate::repository::{
-    ClientListQuery, ClientReader, ClientWriter, ManagerWriter,
-};
+use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::routes::render_template;
 
 #[derive(Deserialize)]
@@ -46,8 +42,11 @@ pub async fn index(
 
     let clients_result = if !q.is_empty() {
         context.insert("search_query", q);
-        client_repo
-            .search(ClientListQuery::new(user.hub_id).search(q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
+        client_repo.search(
+            ClientListQuery::new(user.hub_id)
+                .search(q)
+                .paginate(page, DEFAULT_ITEMS_PER_PAGE),
+        )
     } else if check_role("crm_admin", &user.roles) {
         client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
@@ -107,6 +106,16 @@ pub async fn add_client(
     if let Err(e) = form.validate() {
         log::error!("Failed to validate form: {e}");
         FlashMessage::error("Ошибка валидации формы").send();
+        return redirect("/");
+    }
+
+    if form.hub_id != user.hub_id {
+        log::warn!(
+            "Attempt to add client to a different hub: form_hub_id={}, user_hub_id={}",
+            form.hub_id,
+            user.hub_id
+        );
+        FlashMessage::error("Ошибка при добавлении клиента".to_string()).send();
         return redirect("/");
     }
 
