@@ -123,6 +123,14 @@ pub async fn save_client(
     let client_repo = DieselClientRepository::new(&pool);
     let updates: UpdateClient = (&form).into();
 
+    if !client_repo
+        .get_by_id(form.id)
+        .is_ok_and(|c| c.map_or(false, |c| c.hub_id == user.hub_id))
+    {
+        FlashMessage::error("Клиент не найден.").send();
+        return redirect("/");
+    }
+
     if check_role("crm_manager", &user.roles)
         && !client_repo
             .check_manager_assigned(form.id, &user.email)
@@ -183,6 +191,14 @@ pub async fn comment_client(
         }),
     };
 
+    if !client_repo
+        .get_by_id(form.id)
+        .is_ok_and(|c| c.map_or(false, |c| c.hub_id == user.hub_id))
+    {
+        FlashMessage::error("Клиент не найден.").send();
+        return redirect("/");
+    }
+
     if check_role("crm_manager", &user.roles)
         && !client_repo
             .check_manager_assigned(form.id, &user.email)
@@ -235,6 +251,13 @@ pub async fn attachment_client(
     };
 
     let client_repo = DieselClientRepository::new(&pool);
+    if !client_repo
+        .get_by_id(form.id)
+        .is_ok_and(|c| c.map_or(false, |c| c.hub_id == user.hub_id))
+    {
+        FlashMessage::error("Клиент не найден.").send();
+        return redirect("/");
+    }
     let updates = NewClientEvent {
         client_id: form.id,
         event_type: ClientEventType::DocumentLink,

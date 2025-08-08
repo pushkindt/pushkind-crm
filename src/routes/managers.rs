@@ -101,8 +101,8 @@ pub async fn managers_modal(
     let manager_id = manager_id.into_inner();
 
     let manager = match manager_repo.get_by_id(manager_id) {
-        Ok(Some(manager)) => manager,
-        _ => return HttpResponse::InternalServerError().finish(),
+        Ok(Some(manager)) if manager.hub_id == user.hub_id => manager,
+        _ => return HttpResponse::Unauthorized().finish(),
     };
 
     context.insert("manager", &manager);
@@ -142,6 +142,26 @@ pub async fn assign_manager(
     };
 
     let repo = DieselManagerRepository::new(&pool);
+    let client_repo = DieselClientRepository::new(&pool);
+
+    if !repo
+        .get_by_id(form.manager_id)
+        .is_ok_and(|m| m.map_or(false, |m| m.hub_id == user.hub_id))
+    {
+        FlashMessage::error("Менеджер не найден.").send();
+        return redirect("/managers");
+    }
+
+    for client_id in &form.client_ids {
+        if !client_repo
+            .get_by_id(*client_id)
+            .is_ok_and(|c| c.map_or(false, |c| c.hub_id == user.hub_id))
+        {
+            FlashMessage::error("Клиент не найден.").send();
+            return redirect("/managers");
+        }
+    }
+
     match repo.assign_clients(form.manager_id, &form.client_ids) {
         Ok(_) => {
             FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
