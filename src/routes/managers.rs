@@ -3,8 +3,9 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::{alert_level_to_str, ensure_role, redirect};
-use tera::Context;
+use pushkind_common::routes::{base_context, render_template};
+use pushkind_common::routes::{ensure_role, redirect};
+use tera::{Context, Tera};
 use validator::Validate;
 
 use crate::domain::manager::NewManager;
@@ -12,7 +13,6 @@ use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
-use crate::routes::render_template;
 
 #[get("/managers")]
 pub async fn managers(
@@ -20,6 +20,7 @@ pub async fn managers(
     pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
+    tera: web::Data<Tera>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
@@ -35,18 +36,15 @@ pub async fn managers(
         }
     };
 
-    let alerts = flash_messages
-        .iter()
-        .map(|f| (f.content(), alert_level_to_str(&f.level())))
-        .collect::<Vec<_>>();
-    let mut context = Context::new();
-    context.insert("alerts", &alerts);
-    context.insert("current_user", &user);
-    context.insert("current_page", "settings");
-    context.insert("home_url", &server_config.auth_service_url);
+    let mut context = base_context(
+        &flash_messages,
+        &user,
+        "settings",
+        &server_config.auth_service_url,
+    );
     context.insert("managers", &managers);
 
-    render_template("managers/index.html", &context)
+    render_template(&tera, "managers/index.html", &context)
 }
 
 #[post("/managers/add")]
@@ -89,6 +87,7 @@ pub async fn managers_modal(
     manager_id: web::Path<i32>,
     user: AuthenticatedUser,
     pool: web::Data<DbPool>,
+    tera: web::Data<Tera>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
@@ -119,7 +118,7 @@ pub async fn managers_modal(
 
     context.insert("clients", &clients);
 
-    render_template("managers/modal_body.html", &context)
+    render_template(&tera, "managers/modal_body.html", &context)
 }
 
 #[post("/managers/assign")]
