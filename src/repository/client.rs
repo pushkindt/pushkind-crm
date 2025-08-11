@@ -9,9 +9,7 @@ use crate::{
         Client as DbClient, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
     },
     models::manager::Manager as DbManager,
-    repository::{
-        ClientListQuery, ClientReader, ClientWriter, errors::RepositoryResult,
-    },
+    repository::{ClientListQuery, ClientReader, ClientWriter, errors::RepositoryResult},
 };
 
 /// Diesel implementation of [`ClientRepository`].
@@ -215,10 +213,8 @@ impl ClientWriter for DieselClientRepository<'_> {
         use crate::schema::clients;
 
         let mut conn = self.pool.get()?;
-        let lower_emails: Vec<String> = new_clients
-            .iter()
-            .map(|c| c.email.to_lowercase())
-            .collect();
+        let lower_emails: Vec<String> =
+            new_clients.iter().map(|c| c.email.to_lowercase()).collect();
 
         let insertables: Vec<DbNewClient> = new_clients
             .iter()

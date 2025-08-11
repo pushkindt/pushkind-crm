@@ -4,9 +4,10 @@ use chrono::Utc;
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::{alert_level_to_str, check_role, ensure_role, redirect};
+use pushkind_common::routes::{base_context, render_template};
+use pushkind_common::routes::{check_role, ensure_role, redirect};
 use serde_json::json;
-use tera::Context;
+use tera::Tera;
 use validator::Validate;
 
 use crate::domain::client::UpdateClient;
@@ -19,7 +20,6 @@ use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
     ManagerWriter,
 };
-use crate::routes::render_template;
 
 #[get("/client/{client_id}")]
 pub async fn show_client(
@@ -28,6 +28,7 @@ pub async fn show_client(
     pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
+    tera: web::Data<Tera>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
@@ -87,21 +88,18 @@ pub async fn show_client(
         }
     };
 
-    let alerts = flash_messages
-        .iter()
-        .map(|f| (f.content(), alert_level_to_str(&f.level())))
-        .collect::<Vec<_>>();
-    let mut context = Context::new();
-    context.insert("alerts", &alerts);
-    context.insert("current_user", &user);
-    context.insert("current_page", "client");
-    context.insert("home_url", &server_config.auth_service_url);
+    let mut context = base_context(
+        &flash_messages,
+        &user,
+        "index",
+        &server_config.auth_service_url,
+    );
     context.insert("client", &client);
     context.insert("managers", &managers);
     context.insert("events", &events_with_managers);
     context.insert("documents", &documents);
 
-    render_template("client/index.html", &context)
+    render_template(&tera, "client/index.html", &context)
 }
 
 #[post("/client/save")]

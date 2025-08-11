@@ -10,11 +10,12 @@ use dotenvy::dotenv;
 use pushkind_common::db::establish_connection_pool;
 use pushkind_common::middleware::RedirectUnauthorized;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::logout;
+use pushkind_common::routes::{logout, not_assigned};
+use tera::Tera;
 
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
-use pushkind_crm::routes::main::{add_client, clients_upload, index, not_assigned};
+use pushkind_crm::routes::main::{add_client, clients_upload, index};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 #[actix_web::main]
@@ -60,6 +61,14 @@ async fn main() -> std::io::Result<()> {
     let message_store = CookieMessageStore::builder(secret_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
+    let tera = match Tera::new("templates/**/*") {
+        Ok(t) => t,
+        Err(e) => {
+            log::error!("Parsing error(s): {e}");
+            std::process::exit(1);
+        }
+    };
+
     HttpServer::new(move || {
         App::new()
             .wrap(message_framework.clone())
@@ -91,6 +100,7 @@ async fn main() -> std::io::Result<()> {
                     .service(assign_manager)
                     .service(logout),
             )
+            .app_data(web::Data::new(tera.clone()))
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(server_config.clone()))
     })

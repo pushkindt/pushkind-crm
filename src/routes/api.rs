@@ -40,7 +40,7 @@ pub async fn api_v1_clients(
             search_params = search_params.search(query);
             repo.search(search_params)
         }
-        _ => repo.list(search_params)
+        _ => repo.list(search_params),
     };
 
     match results {

@@ -4,23 +4,19 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::pagination::Paginated;
-use pushkind_common::routes::{
-    alert_level_to_str, check_role, ensure_role, redirect,
-};
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
+use pushkind_common::pagination::Paginated;
+use pushkind_common::routes::{base_context, render_template};
+use pushkind_common::routes::{check_role, ensure_role, redirect};
 use serde::Deserialize;
-use tera::Context;
+use tera::Tera;
 use validator::Validate;
 
 use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::client::DieselClientRepository;
 use crate::repository::manager::DieselManagerRepository;
-use crate::repository::{
-    ClientListQuery, ClientReader, ClientWriter, ManagerWriter,
-};
-use crate::routes::render_template;
+use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
@@ -34,6 +30,7 @@ pub async fn index(
     pool: web::Data<DbPool>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
+    tera: web::Data<Tera>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
@@ -42,12 +39,21 @@ pub async fn index(
     let page = params.page.unwrap_or(1);
     let q = params.q.as_deref().unwrap_or("").trim();
     let client_repo = DieselClientRepository::new(&pool);
-    let mut context = Context::new();
+
+    let mut context = base_context(
+        &flash_messages,
+        &user,
+        "index",
+        &server_config.auth_service_url,
+    );
 
     let clients_result = if !q.is_empty() {
         context.insert("search_query", q);
-        client_repo
-            .search(ClientListQuery::new(user.hub_id).search(q).paginate(page, DEFAULT_ITEMS_PER_PAGE))
+        client_repo.search(
+            ClientListQuery::new(user.hub_id)
+                .search(q)
+                .paginate(page, DEFAULT_ITEMS_PER_PAGE),
+        )
     } else if check_role("crm_admin", &user.roles) {
         client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
@@ -77,21 +83,12 @@ pub async fn index(
         }
     };
 
-    let alerts = flash_messages
-        .iter()
-        .map(|f| (f.content(), alert_level_to_str(&f.level())))
-        .collect::<Vec<_>>();
-
-    context.insert("alerts", &alerts);
-    context.insert("current_user", &user);
-    context.insert("current_page", "index");
-    context.insert("home_url", &server_config.auth_service_url);
     context.insert("clients", &clients);
     if !q.is_empty() {
         context.insert("search_query", q); // optional: show search term in UI
     }
 
-    render_template("main/index.html", &context)
+    render_template(&tera, "main/index.html", &context)
 }
 
 #[post("/client/add")]
@@ -123,25 +120,6 @@ pub async fn add_client(
         }
     }
     redirect("/")
-}
-
-#[get("/na")]
-pub async fn not_assigned(
-    user: AuthenticatedUser,
-    flash_messages: IncomingFlashMessages,
-    server_config: web::Data<CommonServerConfig>,
-) -> impl Responder {
-    let alerts = flash_messages
-        .iter()
-        .map(|f| (f.content(), alert_level_to_str(&f.level())))
-        .collect::<Vec<_>>();
-    let mut context = Context::new();
-    context.insert("alerts", &alerts);
-    context.insert("current_user", &user);
-    context.insert("current_page", "index");
-    context.insert("home_url", &server_config.auth_service_url);
-
-    render_template("main/not_assigned.html", &context)
 }
 
 #[post("/clients/upload")]
