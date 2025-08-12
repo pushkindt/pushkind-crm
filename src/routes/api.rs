@@ -7,12 +7,18 @@ use serde::Deserialize;
 use crate::repository::{ClientListQuery, ClientReader, DieselRepository};
 
 #[derive(Deserialize)]
+/// Query parameters accepted by the `/api/v1/clients` endpoint.
 struct ApiV1ClientsQueryParams {
+    /// Optional search query to filter clients.
     query: Option<String>,
+    /// Optional page number for pagination.
     page: Option<usize>,
 }
 
 #[get("/v1/clients")]
+/// Return a JSON list of clients with optional search and pagination.
+///
+/// Users without the `crm` role receive a `401 Unauthorized` response.
 pub async fn api_v1_clients(
     params: web::Query<ApiV1ClientsQueryParams>,
     user: AuthenticatedUser,
