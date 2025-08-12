@@ -1,18 +1,15 @@
 use pushkind_common::db::{DbConnection, DbPool};
 use pushkind_common::pagination::Pagination;
+use pushkind_common::repository::errors::RepositoryResult;
 
-use crate::{
-    domain::{
-        client::{Client, NewClient, UpdateClient},
-        client_event::{ClientEvent, ClientEventType, NewClientEvent},
-        manager::{Manager, NewManager},
-    },
-    repository::errors::RepositoryResult,
+use crate::domain::{
+    client::{Client, NewClient, UpdateClient},
+    client_event::{ClientEvent, ClientEventType, NewClientEvent},
+    manager::{Manager, NewManager},
 };
 
 pub mod client;
 pub mod client_event;
-pub mod errors;
 pub mod manager;
 
 #[derive(Clone)]

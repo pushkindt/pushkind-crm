@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
+use pushkind_common::repository::errors::RepositoryResult;
 
 use crate::{
     domain::client::{Client, NewClient, UpdateClient},
@@ -8,9 +9,7 @@ use crate::{
         Client as DbClient, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
     },
     models::manager::Manager as DbManager,
-    repository::{
-        ClientListQuery, ClientReader, ClientWriter, DieselRepository, errors::RepositoryResult,
-    },
+    repository::{ClientListQuery, ClientReader, ClientWriter, DieselRepository},
 };
 
 impl ClientReader for DieselRepository {
