@@ -28,8 +28,8 @@ impl TestDb {
             pool,
         }
     }
-    pub fn pool(&self) -> &DbPool {
-        &self.pool
+    pub fn pool(&self) -> DbPool {
+        self.pool.clone()
     }
 }
 
