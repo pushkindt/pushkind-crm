@@ -13,6 +13,7 @@ use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{logout, not_assigned};
 use tera::Tera;
 
+use pushkind_crm::repository::DieselRepository;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
 use pushkind_crm::routes::main::{add_client, clients_upload, index};
@@ -57,6 +58,7 @@ async fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
+    let repo = DieselRepository::new(pool);
 
     let message_store = CookieMessageStore::builder(secret_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
@@ -101,7 +103,7 @@ async fn main() -> std::io::Result<()> {
                     .service(logout),
             )
             .app_data(web::Data::new(tera.clone()))
-            .app_data(web::Data::new(pool.clone()))
+            .app_data(web::Data::new(repo.clone()))
             .app_data(web::Data::new(server_config.clone()))
     })
     .bind((address, port))?

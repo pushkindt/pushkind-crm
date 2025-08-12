@@ -2,12 +2,9 @@ use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
-use pushkind_crm::repository::client::DieselClientRepository;
-use pushkind_crm::repository::client_event::DieselClientEventRepository;
-use pushkind_crm::repository::manager::DieselManagerRepository;
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
-use pushkind_crm::repository::{ManagerReader, ManagerWriter};
+use pushkind_crm::repository::{DieselRepository, ManagerReader, ManagerWriter};
 use serde_json::json;
 
 mod common;
@@ -15,7 +12,7 @@ mod common;
 #[test]
 fn test_client_repository_crud() {
     let test_db = common::TestDb::new("test_client_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
     let c1 = NewClient {
         hub_id: 1,
         name: "Alice".into(),
@@ -31,9 +28,14 @@ fn test_client_repository_crud() {
         address: "Addr2".into(),
     };
 
-    assert_eq!(client_repo.create(&[c1.clone(), c2.clone()]).unwrap(), 2);
+    assert_eq!(
+        client_repo
+            .create_clients(&[c1.clone(), c2.clone()])
+            .unwrap(),
+        2
+    );
 
-    let (total, mut items) = client_repo.list(ClientListQuery::new(1)).unwrap();
+    let (total, mut items) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
     assert_eq!(total, 2);
     assert_eq!(items.len(), 2);
     items.sort_by(|a, b| a.name.cmp(&b.name));
@@ -41,7 +43,7 @@ fn test_client_repository_crud() {
     let bob = items[1].clone();
 
     let (search_total, search_items) = client_repo
-        .search(ClientListQuery::new(1).search("Bob"))
+        .search_clients(ClientListQuery::new(1).search("Bob"))
         .unwrap();
     assert_eq!(search_total, 1);
     assert_eq!(search_items[0].name, "Bob");
@@ -52,13 +54,13 @@ fn test_client_repository_crud() {
         phone: &bob.phone,
         address: &bob.address,
     };
-    let updated = client_repo.update(bob.id, &updates).unwrap();
+    let updated = client_repo.update_client(bob.id, &updates).unwrap();
     assert_eq!(updated.name, "Bobby");
 
-    client_repo.delete(alice.id).unwrap();
-    assert!(client_repo.get_by_id(alice.id).unwrap().is_none());
+    client_repo.delete_client(alice.id).unwrap();
+    assert!(client_repo.get_client_by_id(alice.id).unwrap().is_none());
 
-    let (total_after, items_after) = client_repo.list(ClientListQuery::new(1)).unwrap();
+    let (total_after, items_after) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
     assert_eq!(total_after, 1);
     assert_eq!(items_after[0].name, "Bobby");
 }
@@ -66,8 +68,8 @@ fn test_client_repository_crud() {
 #[test]
 fn test_client_event_repository_crud() {
     let test_db = common::TestDb::new("test_client_event_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
-    let manager_repo = DieselManagerRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
+    let manager_repo = DieselRepository::new(test_db.pool());
     let client = {
         let new_client = NewClient {
             hub_id: 1,
@@ -76,22 +78,22 @@ fn test_client_event_repository_crud() {
             phone: "111".into(),
             address: "Addr1".into(),
         };
-        client_repo.create(&[new_client]).unwrap();
+        client_repo.create_clients(&[new_client]).unwrap();
         client_repo
-            .list(ClientListQuery::new(1))
+            .list_clients(ClientListQuery::new(1))
             .unwrap()
             .1
             .remove(0)
     };
     let manager = manager_repo
-        .create_or_update(&NewManager {
+        .create_or_update_manager(&NewManager {
             hub_id: 1,
             name: "Manager",
             email: "m@example.com",
         })
         .unwrap();
 
-    let client_event_repo = DieselClientEventRepository::new(test_db.pool());
+    let client_event_repo = DieselRepository::new(test_db.pool());
 
     let new_event = NewClientEvent {
         client_id: client.id,
@@ -100,11 +102,11 @@ fn test_client_event_repository_crud() {
         event_data: json!({"text": "hello"}),
         created_at: Utc::now().naive_utc(),
     };
-    let created = client_event_repo.create(&new_event).unwrap();
+    let created = client_event_repo.create_client_event(&new_event).unwrap();
     assert_eq!(created.event_type, ClientEventType::Comment);
 
     let _ = client_event_repo
-        .create(&NewClientEvent {
+        .create_client_event(&NewClientEvent {
             client_id: client.id,
             manager_id: manager.id,
             event_type: ClientEventType::Call,
@@ -114,14 +116,16 @@ fn test_client_event_repository_crud() {
         .unwrap();
 
     let (total, events) = client_event_repo
-        .list(ClientEventListQuery::new(client.id))
+        .list_client_events(ClientEventListQuery::new(client.id))
         .unwrap();
     assert_eq!(total, 2);
     assert_eq!(events.len(), 2);
     assert_eq!(events[0].1.id, manager.id);
 
     let (total_comment, comments) = client_event_repo
-        .list(ClientEventListQuery::new(client.id).event_type(ClientEventType::Comment))
+        .list_client_events(
+            ClientEventListQuery::new(client.id).event_type(ClientEventType::Comment),
+        )
         .unwrap();
     assert_eq!(total_comment, 1);
     assert_eq!(comments[0].0.event_type, ClientEventType::Comment);
@@ -130,8 +134,8 @@ fn test_client_event_repository_crud() {
 #[test]
 fn test_manager_repository_crud() {
     let test_db = common::TestDb::new("test_manager_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
-    let manager_repo = DieselManagerRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
+    let manager_repo = DieselRepository::new(test_db.pool());
 
     // create clients
     let clients = vec![
@@ -150,13 +154,13 @@ fn test_manager_repository_crud() {
             address: "Addr2".into(),
         },
     ];
-    client_repo.create(&clients).unwrap();
-    let (_, stored_clients) = client_repo.list(ClientListQuery::new(1)).unwrap();
+    client_repo.create_clients(&clients).unwrap();
+    let (_, stored_clients) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
     let client_ids: Vec<i32> = stored_clients.iter().map(|c| c.id).collect();
 
     // create or update manager
     let manager = manager_repo
-        .create_or_update(&NewManager {
+        .create_or_update_manager(&NewManager {
             hub_id: 1,
             name: "Manager",
             email: "m@example.com",
@@ -165,7 +169,7 @@ fn test_manager_repository_crud() {
     assert!(manager.id > 0);
 
     let updated = manager_repo
-        .create_or_update(&NewManager {
+        .create_or_update_manager(&NewManager {
             hub_id: 1,
             name: "Updated",
             email: "m@example.com",
@@ -174,21 +178,21 @@ fn test_manager_repository_crud() {
     assert_eq!(updated.id, manager.id);
     assert_eq!(updated.name, "Updated");
 
-    let by_id = manager_repo.get_by_id(manager.id).unwrap().unwrap();
+    let by_id = manager_repo.get_manager_by_id(manager.id).unwrap().unwrap();
     assert_eq!(by_id.name, "Updated");
 
     let by_email = manager_repo
-        .get_by_email("m@example.com", 1)
+        .get_manager_by_email("m@example.com", 1)
         .unwrap()
         .unwrap();
     assert_eq!(by_email.id, manager.id);
 
     // assign clients to manager
     manager_repo
-        .assign_clients(manager.id, &client_ids)
+        .assign_clients_to_manager(manager.id, &client_ids)
         .unwrap();
 
-    let managers_with_clients = manager_repo.list(1).unwrap();
+    let managers_with_clients = manager_repo.list_managers_with_clients(1).unwrap();
     assert_eq!(managers_with_clients.len(), 1);
     assert_eq!(managers_with_clients[0].0.id, manager.id);
     assert_eq!(managers_with_clients[0].1.len(), client_ids.len());
@@ -199,7 +203,7 @@ fn test_manager_repository_crud() {
     assert_eq!(managers[0].id, manager.id);
     assert!(
         client_repo
-            .check_manager_assigned(client_id, "m@example.com")
+            .check_client_assigned_to_manager(client_id, "m@example.com")
             .unwrap()
     );
 }

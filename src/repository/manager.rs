@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use pushkind_common::db::DbPool;
 
 use crate::{
     domain::{
@@ -13,25 +12,14 @@ use crate::{
             NewManager as DbNewManager, UpdateManager as DbUpdateManager,
         },
     },
-    repository::{ManagerReader, ManagerWriter, errors::RepositoryResult},
+    repository::{DieselRepository, ManagerReader, ManagerWriter, errors::RepositoryResult},
 };
 
-/// Diesel implementation of [`ManagerRepository`].
-pub struct DieselManagerRepository<'a> {
-    pool: &'a DbPool,
-}
-
-impl<'a> DieselManagerRepository<'a> {
-    pub fn new(pool: &'a DbPool) -> Self {
-        Self { pool }
-    }
-}
-
-impl ManagerWriter for DieselManagerRepository<'_> {
-    fn create_or_update(&self, new_manager: &NewManager) -> RepositoryResult<Manager> {
+impl ManagerWriter for DieselRepository {
+    fn create_or_update_manager(&self, new_manager: &NewManager) -> RepositoryResult<Manager> {
         use crate::schema::managers;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
 
         let email = new_manager.email.to_lowercase();
 
@@ -50,10 +38,14 @@ impl ManagerWriter for DieselManagerRepository<'_> {
         Ok(db_manager.into())
     }
 
-    fn assign_clients(&self, manager_id: i32, client_ids: &[i32]) -> RepositoryResult<usize> {
+    fn assign_clients_to_manager(
+        &self,
+        manager_id: i32,
+        client_ids: &[i32],
+    ) -> RepositoryResult<usize> {
         use crate::schema::client_manager;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
 
         let db_client_manager = client_ids
             .iter()
@@ -74,11 +66,11 @@ impl ManagerWriter for DieselManagerRepository<'_> {
     }
 }
 
-impl ManagerReader for DieselManagerRepository<'_> {
-    fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>> {
+impl ManagerReader for DieselRepository {
+    fn get_manager_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>> {
         use crate::schema::managers;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let db_manager = managers::table
             .filter(managers::id.eq(id))
             .first::<DbManager>(&mut conn)
@@ -87,10 +79,10 @@ impl ManagerReader for DieselManagerRepository<'_> {
         Ok(db_manager.map(|db_manager| db_manager.into()))
     }
 
-    fn get_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>> {
+    fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>> {
         use crate::schema::managers;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let db_manager = managers::table
             .filter(managers::email.eq(email))
             .filter(managers::hub_id.eq(hub_id))
@@ -100,12 +92,15 @@ impl ManagerReader for DieselManagerRepository<'_> {
         Ok(db_manager.map(|db_manager| db_manager.into()))
     }
 
-    fn list(&self, hub_id: i32) -> RepositoryResult<Vec<(Manager, Vec<Client>)>> {
+    fn list_managers_with_clients(
+        &self,
+        hub_id: i32,
+    ) -> RepositoryResult<Vec<(Manager, Vec<Client>)>> {
         use crate::schema::client_manager;
         use crate::schema::clients;
         use crate::schema::managers;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let managers = managers::table
             .filter(managers::hub_id.eq(hub_id))
             .load::<DbManager>(&mut conn)?;

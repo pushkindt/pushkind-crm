@@ -1,7 +1,6 @@
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
-use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
@@ -14,9 +13,9 @@ use validator::Validate;
 
 use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
-use crate::repository::client::DieselClientRepository;
-use crate::repository::manager::DieselManagerRepository;
-use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
+use crate::repository::{
+    ClientListQuery, ClientReader, ClientWriter, DieselRepository, ManagerWriter,
+};
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
@@ -27,7 +26,7 @@ struct IndexQueryParams {
 pub async fn index(
     params: web::Query<IndexQueryParams>,
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
@@ -38,7 +37,6 @@ pub async fn index(
 
     let page = params.page.unwrap_or(1);
     let q = params.q.as_deref().unwrap_or("").trim();
-    let client_repo = DieselClientRepository::new(&pool);
 
     let mut context = base_context(
         &flash_messages,
@@ -49,17 +47,16 @@ pub async fn index(
 
     let clients_result = if !q.is_empty() {
         context.insert("search_query", q);
-        client_repo.search(
+        repo.search_clients(
             ClientListQuery::new(user.hub_id)
                 .search(q)
                 .paginate(page, DEFAULT_ITEMS_PER_PAGE),
         )
     } else if check_role("crm_admin", &user.roles) {
-        client_repo.list(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
+        repo.list_clients(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
     } else if check_role("crm_manager", &user.roles) {
-        let manager_repo = DieselManagerRepository::new(&pool);
-        match manager_repo.create_or_update(&(&user).into()) {
-            Ok(manager) => client_repo.list(
+        match repo.create_or_update_manager(&(&user).into()) {
+            Ok(manager) => repo.list_clients(
                 ClientListQuery::new(user.hub_id)
                     .manager_email(&manager.email)
                     .paginate(page, DEFAULT_ITEMS_PER_PAGE),
@@ -94,7 +91,7 @@ pub async fn index(
 #[post("/client/add")]
 pub async fn add_client(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddClientForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
@@ -109,8 +106,7 @@ pub async fn add_client(
 
     let new_client: NewClient = form.into();
 
-    let repo = DieselClientRepository::new(&pool);
-    match repo.create(&[new_client]) {
+    match repo.create_clients(&[new_client]) {
         Ok(_) => {
             FlashMessage::success("Клиент добавлен.".to_string()).send();
         }
@@ -125,14 +121,12 @@ pub async fn add_client(
 #[post("/clients/upload")]
 pub async fn clients_upload(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
     };
-
-    let client_repo = DieselClientRepository::new(&pool);
 
     let clients = match form.parse(user.hub_id) {
         Ok(clients) => clients,
@@ -143,7 +137,7 @@ pub async fn clients_upload(
         }
     };
 
-    match client_repo.create(&clients) {
+    match repo.create_clients(&clients) {
         Ok(_) => {
             FlashMessage::success("Клиенты добавлены.".to_string()).send();
         }
