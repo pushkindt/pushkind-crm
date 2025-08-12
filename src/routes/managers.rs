@@ -25,7 +25,7 @@ pub async fn managers(
         return response;
     };
 
-    let managers = match repo.list_managers(user.hub_id) {
+    let managers = match repo.list_managers_with_clients(user.hub_id) {
         Ok(managers) => managers,
         Err(err) => {
             log::error!("Failed to list managers: {err}");
