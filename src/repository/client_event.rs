@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use pushkind_common::db::DbPool;
 
 use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::manager::Manager;
@@ -8,29 +7,19 @@ use crate::models::client_event::{
 };
 use crate::models::manager::Manager as DbManager;
 use crate::repository::{
-    ClientEventListQuery, ClientEventReader, ClientEventWriter, errors::RepositoryResult,
+    ClientEventListQuery, ClientEventReader, ClientEventWriter, DieselRepository,
+    errors::RepositoryResult,
 };
 
-/// Diesel implementation of [`ClientEventRepository`].
-pub struct DieselClientEventRepository<'a> {
-    pool: &'a DbPool,
-}
-
-impl<'a> DieselClientEventRepository<'a> {
-    pub fn new(pool: &'a DbPool) -> Self {
-        Self { pool }
-    }
-}
-
-impl<'a> ClientEventReader for DieselClientEventRepository<'a> {
-    fn list(
+impl ClientEventReader for DieselRepository {
+    fn list_client_events(
         &self,
         query: ClientEventListQuery,
     ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)> {
         use crate::schema::{client_events, managers};
         use std::collections::{HashMap, HashSet};
 
-        let mut conn = self.pool.get().unwrap();
+        let mut conn = self.conn()?;
 
         let query_builder = || {
             // Start with boxed query on clients
@@ -89,11 +78,11 @@ impl<'a> ClientEventReader for DieselClientEventRepository<'a> {
     }
 }
 
-impl<'a> ClientEventWriter for DieselClientEventRepository<'a> {
-    fn create(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent> {
+impl ClientEventWriter for DieselRepository {
+    fn create_client_event(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent> {
         use crate::schema::client_events;
 
-        let mut conn = self.pool.get().unwrap();
+        let mut conn = self.conn()?;
 
         let new_client_event: DbNewClientEvent = client_event.into();
 

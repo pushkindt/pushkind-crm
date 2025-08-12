@@ -1,3 +1,4 @@
+use pushkind_common::db::{DbConnection, DbPool};
 use pushkind_common::pagination::Pagination;
 
 use crate::{
@@ -13,6 +14,21 @@ pub mod client;
 pub mod client_event;
 pub mod errors;
 pub mod manager;
+
+#[derive(Clone)]
+pub struct DieselRepository {
+    pool: DbPool, // r2d2::Pool is cheap to clone
+}
+
+impl DieselRepository {
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    fn conn(&self) -> RepositoryResult<DbConnection> {
+        Ok(self.pool.get()?)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ClientListQuery {
@@ -76,37 +92,47 @@ impl ClientEventListQuery {
 }
 
 pub trait ClientReader {
-    fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
-    fn list(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
-    fn search(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
+    fn get_client_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
+    fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
+    fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>>;
-    fn check_manager_assigned(&self, client_id: i32, manager_email: &str)
-    -> RepositoryResult<bool>;
+    fn check_client_assigned_to_manager(
+        &self,
+        client_id: i32,
+        manager_email: &str,
+    ) -> RepositoryResult<bool>;
 }
 
 pub trait ClientWriter {
-    fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
-    fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client>;
-    fn delete(&self, client_id: i32) -> RepositoryResult<()>;
+    fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
+    fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client>;
+    fn delete_client(&self, client_id: i32) -> RepositoryResult<()>;
 }
 pub trait ManagerReader {
-    fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>>;
-    fn get_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>>;
-    fn list(&self, hub_id: i32) -> RepositoryResult<Vec<(Manager, Vec<Client>)>>;
+    fn get_manager_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>>;
+    fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>>;
+    fn list_managers_with_clients(
+        &self,
+        hub_id: i32,
+    ) -> RepositoryResult<Vec<(Manager, Vec<Client>)>>;
 }
 
 pub trait ManagerWriter {
-    fn create_or_update(&self, new_manager: &NewManager) -> RepositoryResult<Manager>;
-    fn assign_clients(&self, manager_id: i32, client_ids: &[i32]) -> RepositoryResult<usize>;
+    fn create_or_update_manager(&self, new_manager: &NewManager) -> RepositoryResult<Manager>;
+    fn assign_clients_to_manager(
+        &self,
+        manager_id: i32,
+        client_ids: &[i32],
+    ) -> RepositoryResult<usize>;
 }
 
 pub trait ClientEventReader {
-    fn list(
+    fn list_client_events(
         &self,
         query: ClientEventListQuery,
     ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)>;
 }
 
 pub trait ClientEventWriter {
-    fn create(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
+    fn create_client_event(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
 }

@@ -1,6 +1,5 @@
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
-use pushkind_common::db::DbPool;
 
 use crate::{
     domain::client::{Client, NewClient, UpdateClient},
@@ -9,25 +8,16 @@ use crate::{
         Client as DbClient, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
     },
     models::manager::Manager as DbManager,
-    repository::{ClientListQuery, ClientReader, ClientWriter, errors::RepositoryResult},
+    repository::{
+        ClientListQuery, ClientReader, ClientWriter, DieselRepository, errors::RepositoryResult,
+    },
 };
 
-/// Diesel implementation of [`ClientRepository`].
-pub struct DieselClientRepository<'a> {
-    pool: &'a DbPool,
-}
-
-impl<'a> DieselClientRepository<'a> {
-    pub fn new(pool: &'a DbPool) -> Self {
-        Self { pool }
-    }
-}
-
-impl ClientReader for DieselClientRepository<'_> {
-    fn get_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
+impl ClientReader for DieselRepository {
+    fn get_client_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
         use crate::schema::clients;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let client = clients::table
             .find(id)
             .first::<DbClient>(&mut conn)
@@ -36,10 +26,10 @@ impl ClientReader for DieselClientRepository<'_> {
         Ok(client.map(Into::into))
     }
 
-    fn list(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
+    fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
         use crate::schema::{client_manager, clients, managers};
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
 
         let query_builder = || {
             // Start with boxed query on clients
@@ -88,10 +78,10 @@ impl ClientReader for DieselClientRepository<'_> {
         Ok((total, items))
     }
 
-    fn search(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
+    fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
         use crate::models::client::ClientCount;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
 
         let match_query = match &query.search {
             None => return Ok((0, vec![])),
@@ -174,7 +164,7 @@ impl ClientReader for DieselClientRepository<'_> {
 
     fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>> {
         use crate::schema::{client_manager, managers};
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let managers = client_manager::table
             .filter(client_manager::client_id.eq(id))
             .inner_join(managers::table)
@@ -186,13 +176,13 @@ impl ClientReader for DieselClientRepository<'_> {
         Ok(managers)
     }
 
-    fn check_manager_assigned(
+    fn check_client_assigned_to_manager(
         &self,
         client_id: i32,
         manager_email: &str,
     ) -> RepositoryResult<bool> {
         use crate::schema::{client_manager, clients, managers};
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
 
         let assigned = client_manager::table
             .filter(client_manager::client_id.eq(client_id))
@@ -208,11 +198,11 @@ impl ClientReader for DieselClientRepository<'_> {
     }
 }
 
-impl ClientWriter for DieselClientRepository<'_> {
-    fn create(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
+impl ClientWriter for DieselRepository {
+    fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
         use crate::schema::clients;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let lower_emails: Vec<String> =
             new_clients.iter().map(|c| c.email.to_lowercase()).collect();
 
@@ -233,10 +223,10 @@ impl ClientWriter for DieselClientRepository<'_> {
         Ok(affected)
     }
 
-    fn update(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
+    fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
         use crate::schema::clients;
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         let email = updates.email.to_lowercase();
         let db_updates = DbUpdateClient {
             name: updates.name,
@@ -251,10 +241,10 @@ impl ClientWriter for DieselClientRepository<'_> {
         Ok(updated.into())
     }
 
-    fn delete(&self, client_id: i32) -> RepositoryResult<()> {
+    fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {
         use crate::schema::{client_manager, clients};
 
-        let mut conn = self.pool.get()?;
+        let mut conn = self.conn()?;
         diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
             .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;

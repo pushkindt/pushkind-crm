@@ -1,6 +1,5 @@
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
-use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{base_context, render_template};
@@ -10,14 +9,14 @@ use validator::Validate;
 
 use crate::domain::manager::NewManager;
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
-use crate::repository::client::DieselClientRepository;
-use crate::repository::manager::DieselManagerRepository;
-use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
+use crate::repository::{
+    ClientListQuery, ClientReader, DieselRepository, ManagerReader, ManagerWriter,
+};
 
 #[get("/managers")]
 pub async fn managers(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
@@ -26,9 +25,7 @@ pub async fn managers(
         return response;
     };
 
-    let repo = DieselManagerRepository::new(&pool);
-
-    let managers = match repo.list(user.hub_id) {
+    let managers = match repo.list_managers(user.hub_id) {
         Ok(managers) => managers,
         Err(err) => {
             log::error!("Failed to list managers: {err}");
@@ -50,7 +47,7 @@ pub async fn managers(
 #[post("/managers/add")]
 pub async fn add_manager(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddManagerForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
@@ -69,8 +66,7 @@ pub async fn add_manager(
         email: &form.email,
     };
 
-    let repo = DieselManagerRepository::new(&pool);
-    match repo.create_or_update(&new_manager) {
+    match repo.create_or_update_manager(&new_manager) {
         Ok(_) => {
             FlashMessage::success("Менеджер добавлен.".to_string()).send();
         }
@@ -86,29 +82,26 @@ pub async fn add_manager(
 pub async fn managers_modal(
     manager_id: web::Path<i32>,
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
         return response;
     };
 
-    let manager_repo = DieselManagerRepository::new(&pool);
-
     let mut context = Context::new();
 
     let manager_id = manager_id.into_inner();
 
-    let manager = match manager_repo.get_by_id(manager_id) {
+    let manager = match repo.get_manager_by_id(manager_id) {
         Ok(Some(manager)) => manager,
         _ => return HttpResponse::InternalServerError().finish(),
     };
 
     context.insert("manager", &manager);
-    let client_repo = DieselClientRepository::new(&pool);
 
     let clients =
-        match client_repo.list(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
+        match repo.list_clients(ClientListQuery::new(user.hub_id).manager_email(&manager.email)) {
             Ok((_total, clients)) => clients,
             Err(err) => {
                 log::error!("Failed to list clients: {err}");
@@ -124,7 +117,7 @@ pub async fn managers_modal(
 #[post("/managers/assign")]
 pub async fn assign_manager(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     form: web::Bytes,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
@@ -140,8 +133,7 @@ pub async fn assign_manager(
         }
     };
 
-    let repo = DieselManagerRepository::new(&pool);
-    match repo.assign_clients(form.manager_id, &form.client_ids) {
+    match repo.assign_clients_to_manager(form.manager_id, &form.client_ids) {
         Ok(_) => {
             FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
         }

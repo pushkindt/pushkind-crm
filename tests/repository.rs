@@ -2,9 +2,9 @@ use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
-use pushkind_crm::repository::client::DieselClientRepository;
-use pushkind_crm::repository::client_event::DieselClientEventRepository;
-use pushkind_crm::repository::manager::DieselManagerRepository;
+use pushkind_crm::repository::client::DieselRepository;
+use pushkind_crm::repository::client_event::DieselRepository;
+use pushkind_crm::repository::manager::DieselRepository;
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
 use pushkind_crm::repository::{ManagerReader, ManagerWriter};
@@ -15,7 +15,7 @@ mod common;
 #[test]
 fn test_client_repository_crud() {
     let test_db = common::TestDb::new("test_client_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
     let c1 = NewClient {
         hub_id: 1,
         name: "Alice".into(),
@@ -66,8 +66,8 @@ fn test_client_repository_crud() {
 #[test]
 fn test_client_event_repository_crud() {
     let test_db = common::TestDb::new("test_client_event_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
-    let manager_repo = DieselManagerRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
+    let manager_repo = DieselRepository::new(test_db.pool());
     let client = {
         let new_client = NewClient {
             hub_id: 1,
@@ -91,7 +91,7 @@ fn test_client_event_repository_crud() {
         })
         .unwrap();
 
-    let client_event_repo = DieselClientEventRepository::new(test_db.pool());
+    let client_event_repo = DieselRepository::new(test_db.pool());
 
     let new_event = NewClientEvent {
         client_id: client.id,
@@ -130,8 +130,8 @@ fn test_client_event_repository_crud() {
 #[test]
 fn test_manager_repository_crud() {
     let test_db = common::TestDb::new("test_manager_repository_crud.db");
-    let client_repo = DieselClientRepository::new(test_db.pool());
-    let manager_repo = DieselManagerRepository::new(test_db.pool());
+    let client_repo = DieselRepository::new(test_db.pool());
+    let manager_repo = DieselRepository::new(test_db.pool());
 
     // create clients
     let clients = vec![

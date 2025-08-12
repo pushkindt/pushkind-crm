@@ -1,7 +1,6 @@
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use chrono::Utc;
-use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{base_context, render_template};
@@ -13,19 +12,16 @@ use validator::Validate;
 use crate::domain::client::UpdateClient;
 use crate::domain::client_event::{ClientEventType, NewClientEvent};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
-use crate::repository::client::DieselClientRepository;
-use crate::repository::client_event::DieselClientEventRepository;
-use crate::repository::manager::DieselManagerRepository;
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
-    ManagerWriter,
+    DieselRepository, ManagerWriter,
 };
 
 #[get("/client/{client_id}")]
 pub async fn show_client(
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
@@ -34,20 +30,18 @@ pub async fn show_client(
         return response;
     };
 
-    let client_repo = DieselClientRepository::new(&pool);
-
     let client_id = client_id.into_inner();
 
     if check_role("crm_manager", &user.roles)
-        && !client_repo
-            .check_manager_assigned(client_id, &user.email)
+        && !repo
+            .check_client_assigned_to_manager(client_id, &user.email)
             .is_ok_and(|result| result)
     {
         FlashMessage::error("Этот клиент для вас не доступен").send();
         return redirect("/");
     }
 
-    let client = match client_repo.get_by_id(client_id) {
+    let client = match repo.get_client_by_id(client_id) {
         Ok(Some(client)) if client.hub_id == user.hub_id => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
@@ -59,7 +53,7 @@ pub async fn show_client(
         }
     };
 
-    let managers = match client_repo.list_managers(client_id) {
+    let managers = match repo.list_managers(client_id) {
         Ok(managers) => managers,
         Err(e) => {
             log::error!("Failed to get managers: {e}");
@@ -67,17 +61,16 @@ pub async fn show_client(
         }
     };
 
-    let event_repo = DieselClientEventRepository::new(&pool);
-    let events_with_managers = match event_repo.list(ClientEventListQuery::new(client_id)) {
+    let events_with_managers = match repo.list_client_events(ClientEventListQuery::new(client_id)) {
         Ok((_total_events, events_with_managers)) => events_with_managers,
         Err(e) => {
             log::error!("Failed to get events: {e}");
             return HttpResponse::InternalServerError().finish();
         }
     };
-    let documents = match event_repo
-        .list(ClientEventListQuery::new(client_id).event_type(ClientEventType::DocumentLink))
-    {
+    let documents = match repo.list_client_events(
+        ClientEventListQuery::new(client_id).event_type(ClientEventType::DocumentLink),
+    ) {
         Ok((_total_events, events_with_managers)) => events_with_managers
             .into_iter()
             .map(|(documents, _manager)| documents)
@@ -105,7 +98,7 @@ pub async fn show_client(
 #[post("/client/save")]
 pub async fn save_client(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<SaveClientForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
@@ -118,19 +111,18 @@ pub async fn save_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let client_repo = DieselClientRepository::new(&pool);
     let updates: UpdateClient = (&form).into();
 
     if check_role("crm_manager", &user.roles)
-        && !client_repo
-            .check_manager_assigned(form.id, &user.email)
+        && !repo
+            .check_client_assigned_to_manager(form.id, &user.email)
             .is_ok_and(|result| result)
     {
         FlashMessage::error("Этот клиент для вас не доступен").send();
         return redirect("/");
     }
 
-    match client_repo.update(form.id, &updates) {
+    match repo.update_client(form.id, &updates) {
         Ok(_) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
         }
@@ -146,7 +138,7 @@ pub async fn save_client(
 #[post("/client/comment")]
 pub async fn comment_client(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddCommentForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
@@ -159,9 +151,7 @@ pub async fn comment_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let manager_repo = DieselManagerRepository::new(&pool);
-
-    let manager = match manager_repo.create_or_update(&(&user).into()) {
+    let manager = match repo.create_or_update_manager(&(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
             log::error!("Failed to create or update manager: {err}");
@@ -170,7 +160,6 @@ pub async fn comment_client(
         }
     };
 
-    let client_repo = DieselClientRepository::new(&pool);
     let updates = NewClientEvent {
         client_id: form.id,
         event_type: ClientEventType::from(form.event_type.as_str()),
@@ -182,17 +171,15 @@ pub async fn comment_client(
     };
 
     if check_role("crm_manager", &user.roles)
-        && !client_repo
-            .check_manager_assigned(form.id, &user.email)
+        && !repo
+            .check_client_assigned_to_manager(form.id, &user.email)
             .is_ok_and(|result| result)
     {
         FlashMessage::error("Этот клиент для вас не доступен").send();
         return redirect("/");
     }
 
-    let client_event_repo = DieselClientEventRepository::new(&pool);
-
-    match client_event_repo.create(&updates) {
+    match repo.create_client_event(&updates) {
         Ok(_) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }
@@ -208,7 +195,7 @@ pub async fn comment_client(
 #[post("/client/attachment")]
 pub async fn attachment_client(
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddAttachmentForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
@@ -221,9 +208,7 @@ pub async fn attachment_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let manager_repo = DieselManagerRepository::new(&pool);
-
-    let manager = match manager_repo.create_or_update(&(&user).into()) {
+    let manager = match repo.create_or_update_manager(&(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
             log::error!("Failed to create or update manager: {err}");
@@ -232,7 +217,6 @@ pub async fn attachment_client(
         }
     };
 
-    let client_repo = DieselClientRepository::new(&pool);
     let updates = NewClientEvent {
         client_id: form.id,
         event_type: ClientEventType::DocumentLink,
@@ -245,17 +229,15 @@ pub async fn attachment_client(
     };
 
     if check_role("crm_manager", &user.roles)
-        && !client_repo
-            .check_manager_assigned(form.id, &user.email)
+        && !repo
+            .check_client_assigned_to_manager(form.id, &user.email)
             .is_ok_and(|result| result)
     {
         FlashMessage::error("Этот клиент для вас не доступен").send();
         return redirect("/");
     }
 
-    let client_event_repo = DieselClientEventRepository::new(&pool);
-
-    match client_event_repo.create(&updates) {
+    match repo.create_client_event(&updates) {
         Ok(_) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }

@@ -1,12 +1,10 @@
 use actix_web::{HttpResponse, Responder, get, web};
-use pushkind_common::db::DbPool;
 use pushkind_common::models::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::{check_role, ensure_role};
 use serde::Deserialize;
 
-use crate::repository::client::DieselClientRepository;
-use crate::repository::{ClientListQuery, ClientReader};
+use crate::repository::{ClientListQuery, ClientReader, DieselRepository};
 
 #[derive(Deserialize)]
 struct ApiV1ClientsQueryParams {
@@ -18,12 +16,11 @@ struct ApiV1ClientsQueryParams {
 pub async fn api_v1_clients(
     params: web::Query<ApiV1ClientsQueryParams>,
     user: AuthenticatedUser,
-    pool: web::Data<DbPool>,
+    repo: web::Data<DieselRepository>,
 ) -> impl Responder {
     if ensure_role(&user, "crm", Some("/na")).is_err() {
         return HttpResponse::Unauthorized().finish();
     }
-    let repo = DieselClientRepository::new(&pool);
 
     let mut search_params = ClientListQuery::new(user.hub_id);
 
@@ -38,9 +35,9 @@ pub async fn api_v1_clients(
     let results = match &params.query {
         Some(query) if !query.is_empty() => {
             search_params = search_params.search(query);
-            repo.search(search_params)
+            repo.search_clients(search_params)
         }
-        _ => repo.list(search_params),
+        _ => repo.list_clients(search_params),
     };
 
     match results {
