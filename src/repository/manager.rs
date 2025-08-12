@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use pushkind_common::repository::errors::RepositoryResult;
 
 use crate::{
     domain::{
@@ -12,7 +13,7 @@ use crate::{
             NewManager as DbNewManager, UpdateManager as DbUpdateManager,
         },
     },
-    repository::{DieselRepository, ManagerReader, ManagerWriter, errors::RepositoryResult},
+    repository::{DieselRepository, ManagerReader, ManagerWriter},
 };
 
 impl ManagerWriter for DieselRepository {

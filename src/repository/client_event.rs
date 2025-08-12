@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use pushkind_common::repository::errors::RepositoryResult;
 
 use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::manager::Manager;
@@ -8,7 +9,6 @@ use crate::models::client_event::{
 use crate::models::manager::Manager as DbManager;
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, DieselRepository,
-    errors::RepositoryResult,
 };
 
 impl ClientEventReader for DieselRepository {
