@@ -15,49 +15,65 @@
         </div>
     </div>
     <div class="row">
-        <div class="col">
-            <span class="fw-bold">Электронный адрес:</span>
-            <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
+        <div class="col-sm-5 my-1">
+            <div class="row">
+                <div class="col">
+                    <span class="fw-bold">Электронный адрес:</span>
+                    <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <span class="fw-bold">Телефон:</span>
+                    <a href="#clientModal" data-bs-toggle="modal">{{client.phone}}</a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <span class="fw-bold">Адрес:</span>
+                    <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
+                </div>
+            </div>
+            {% if managers %}
+                <div class="row">
+                    <div class="col">
+                        <span class="fw-bold">Менеджеры:</span>
+                        {% for manager in managers %}
+                            {% include 'components/user_popover.html' %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            {% if documents %}
+                <div class="row">
+                    <div class="col">
+                        <span class="fw-bold">Документы:</span>
+                        <ul>
+                            {% for document in documents %}
+                                <li>
+                                    <a class="text-warning" href="{{ document.event_data["url"] }}">
+                                        {{ document.event_data["text"] }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
         </div>
-    </div>
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Телефон:</span>
-            <a href="#clientModal" data-bs-toggle="modal">{{client.phone}}</a>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Адрес:</span>
-            <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
-        </div>
-    </div>
-    {% if managers %}
-        <div class="row">
-            <div class="col">
-                <span class="fw-bold">Менеджеры:</span>
-                {% for manager in managers %}
-                    {% include 'components/user_popover.html' %}
+        <div class="col-sm my-1">
+            <div id="events">
+                {% for event_manager in events %}
+                    {% set event = event_manager.0 %}
+                    {% set manager = event_manager.1 %}
+                    {% include 'components/client_event.html' %}
                 {% endfor %}
             </div>
         </div>
-    {% endif %}
-    {% if documents %}
-        <div class="row">
-            <div class="col">
-                <span class="fw-bold">Документы:</span>
-                <ul>
-                    {% for document in documents %}
-                        <li>
-                            <a class="text-warning" href="{{ document.event_data["url"] }}">
-                                {{ document.event_data["text"] }}
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-    {% endif %}
+
+    </div>
+
 
 {% include 'client/save_client_modal.html' %}
 {% include 'client/comment_modal.html' %}
@@ -66,27 +82,4 @@
 </div>
 
 
-<div class="container">
-    <div class="row my-2">
-        <div class="col">
-            <input class="form-control" id="event-filter" type="text" placeholder="Фильтр..">
-        </div>
-    </div>
-    <div id="events">
-        {% for event_manager in events %}
-            {% set event = event_manager.0 %}
-            {% set manager = event_manager.1 %}
-            {% include 'components/client_event.html' %}
-        {% endfor %}
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            createFilter("event-filter", "events", ".event");
-        });
-    </script>
 {% endblock %}
