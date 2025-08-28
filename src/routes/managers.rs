@@ -93,7 +93,7 @@ pub async fn managers_modal(
 
     let manager_id = manager_id.into_inner();
 
-    let manager = match repo.get_manager_by_id(manager_id) {
+    let manager = match repo.get_manager_by_id(manager_id, user.hub_id) {
         Ok(Some(manager)) => manager,
         _ => return HttpResponse::InternalServerError().finish(),
     };
@@ -133,7 +133,19 @@ pub async fn assign_manager(
         }
     };
 
-    match repo.assign_clients_to_manager(form.manager_id, &form.client_ids) {
+    let manager = match repo.get_manager_by_id(form.manager_id, user.hub_id) {
+        Ok(Some(manager)) => manager,
+        Err(e) => {
+            log::error!("Failed to get manager: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+        _ => {
+            FlashMessage::error("Менеджер не найден.").send();
+            return redirect("/");
+        }
+    };
+
+    match repo.assign_clients_to_manager(manager.id, &form.client_ids) {
         Ok(_) => {
             FlashMessage::success("Менеджер назначен клиентам.".to_string()).send();
         }

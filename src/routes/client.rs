@@ -41,8 +41,8 @@ pub async fn show_client(
         return redirect("/");
     }
 
-    let client = match repo.get_client_by_id(client_id) {
-        Ok(Some(client)) if client.hub_id == user.hub_id => client,
+    let client = match repo.get_client_by_id(client_id, user.hub_id) {
+        Ok(Some(client)) => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
             return HttpResponse::InternalServerError().finish();
@@ -122,7 +122,19 @@ pub async fn save_client(
         return redirect("/");
     }
 
-    match repo.update_client(form.id, &updates) {
+    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+        Ok(Some(client)) => client,
+        Err(e) => {
+            log::error!("Failed to get client: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+        _ => {
+            FlashMessage::error("Клиент не найден.").send();
+            return redirect("/");
+        }
+    };
+
+    match repo.update_client(client.id, &updates) {
         Ok(_) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
         }
@@ -160,8 +172,20 @@ pub async fn comment_client(
         }
     };
 
+    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+        Ok(Some(client)) => client,
+        Err(e) => {
+            log::error!("Failed to get client: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+        _ => {
+            FlashMessage::error("Клиент не найден.").send();
+            return redirect("/");
+        }
+    };
+
     let updates = NewClientEvent {
-        client_id: form.id,
+        client_id: client.id,
         event_type: ClientEventType::from(form.event_type.as_str()),
         manager_id: manager.id,
         created_at: Utc::now().naive_utc(),
@@ -217,8 +241,20 @@ pub async fn attachment_client(
         }
     };
 
+    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+        Ok(Some(client)) => client,
+        Err(e) => {
+            log::error!("Failed to get client: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+        _ => {
+            FlashMessage::error("Клиент не найден.").send();
+            return redirect("/");
+        }
+    };
+
     let updates = NewClientEvent {
-        client_id: form.id,
+        client_id: client.id,
         event_type: ClientEventType::DocumentLink,
         manager_id: manager.id,
         created_at: Utc::now().naive_utc(),

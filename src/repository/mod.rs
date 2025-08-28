@@ -89,7 +89,8 @@ impl ClientEventListQuery {
 }
 
 pub trait ClientReader {
-    fn get_client_by_id(&self, id: i32) -> RepositoryResult<Option<Client>>;
+    fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>>;
+    fn get_client_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Client>>;
     fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>>;
@@ -106,7 +107,7 @@ pub trait ClientWriter {
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()>;
 }
 pub trait ManagerReader {
-    fn get_manager_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>>;
+    fn get_manager_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Manager>>;
     fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>>;
     fn list_managers_with_clients(
         &self,

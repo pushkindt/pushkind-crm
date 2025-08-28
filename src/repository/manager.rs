@@ -68,12 +68,13 @@ impl ManagerWriter for DieselRepository {
 }
 
 impl ManagerReader for DieselRepository {
-    fn get_manager_by_id(&self, id: i32) -> RepositoryResult<Option<Manager>> {
+    fn get_manager_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Manager>> {
         use crate::schema::managers;
 
         let mut conn = self.conn()?;
         let db_manager = managers::table
             .filter(managers::id.eq(id))
+            .filter(managers::hub_id.eq(hub_id))
             .first::<DbManager>(&mut conn)
             .optional()?;
 

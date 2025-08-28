@@ -19,6 +19,7 @@ pub enum ClientEventType {
     Comment,
     DocumentLink,
     Call,
+    Email,
     Other(String),
 }
 
@@ -37,6 +38,7 @@ impl Display for ClientEventType {
             ClientEventType::Comment => write!(f, "Comment"),
             ClientEventType::DocumentLink => write!(f, "DocumentLink"),
             ClientEventType::Call => write!(f, "Call"),
+            ClientEventType::Email => write!(f, "Email"),
             ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
@@ -48,6 +50,7 @@ impl From<&str> for ClientEventType {
             "Comment" => ClientEventType::Comment,
             "DocumentLink" => ClientEventType::DocumentLink,
             "Call" => ClientEventType::Call,
+            "Email" => ClientEventType::Email,
             _ => ClientEventType::Other(s.to_string()),
         }
     }
@@ -55,11 +58,6 @@ impl From<&str> for ClientEventType {
 
 impl From<String> for ClientEventType {
     fn from(s: String) -> Self {
-        match s.as_str() {
-            "Comment" => ClientEventType::Comment,
-            "DocumentLink" => ClientEventType::DocumentLink,
-            "Call" => ClientEventType::Call,
-            _ => ClientEventType::Other(s),
-        }
+        s.as_str().into()
     }
 }
