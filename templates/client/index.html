@@ -22,7 +22,6 @@
                     <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
                 </div>
             </div>
-
             <div class="row">
                 <div class="col">
                     <span class="fw-bold">Телефон:</span>
@@ -63,6 +62,29 @@
             {% endif %}
         </div>
         <div class="col-sm my-1">
+            <form action="/client/comment" method="POST">
+                <input type="hidden" name="id" value="{{client.id}}" required readonly>
+                <div class="row">
+                    <div class="col">
+                        <textarea rows="2" name="text" class="form-control my-1" value="" placeholder="Комментарий" required></textarea>
+                    </div>
+                    <div class="col-auto">
+                        <div class="row">
+                            <div class="col">
+                                <select name="event_type" class="form-select form-select-sm" aria-label="Select event type" required>
+                                    <option value="Comment">Комментарий</option>
+                                    <option value="Call">Звонок</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                 <button class="btn btn-primary btn-sm my-1 w-100" type="submit">Сохранить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
             <div id="events">
                 {% for event_manager in events %}
                     {% set event = event_manager.0 %}
@@ -76,7 +98,6 @@
 
 
 {% include 'client/save_client_modal.html' %}
-{% include 'client/comment_modal.html' %}
 {% include 'client/attachment_modal.html' %}
 
 </div>
