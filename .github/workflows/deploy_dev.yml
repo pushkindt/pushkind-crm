@@ -22,7 +22,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pushkind-crm
-          path: ./target/release/pushkind-crm
+          path: |
+            ./target/release/pushkind-crm
+            ./target/release/check_events
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -43,6 +45,7 @@ jobs:
         run: |
           ssh cicd@crm.pushkind.com "supervisorctl stop crm"
           scp ./target/release/pushkind-crm cicd@crm.pushkind.com:/var/www8/html/
+          scp ./target/release/check_events cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./assets/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./templates/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./migrations/ cicd@crm.pushkind.com:/var/www8/html/

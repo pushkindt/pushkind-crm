@@ -58,7 +58,7 @@ fn test_client_repository_crud() {
     assert_eq!(updated.name, "Bobby");
 
     client_repo.delete_client(alice.id).unwrap();
-    assert!(client_repo.get_client_by_id(alice.id).unwrap().is_none());
+    assert!(client_repo.get_client_by_id(alice.id, 1).unwrap().is_none());
 
     let (total_after, items_after) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
     assert_eq!(total_after, 1);
@@ -178,7 +178,10 @@ fn test_manager_repository_crud() {
     assert_eq!(updated.id, manager.id);
     assert_eq!(updated.name, "Updated");
 
-    let by_id = manager_repo.get_manager_by_id(manager.id).unwrap().unwrap();
+    let by_id = manager_repo
+        .get_manager_by_id(manager.id, 1)
+        .unwrap()
+        .unwrap();
     assert_eq!(by_id.name, "Updated");
 
     let by_email = manager_repo

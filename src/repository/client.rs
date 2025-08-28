@@ -13,12 +13,26 @@ use crate::{
 };
 
 impl ClientReader for DieselRepository {
-    fn get_client_by_id(&self, id: i32) -> RepositoryResult<Option<Client>> {
+    fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>> {
         use crate::schema::clients;
 
         let mut conn = self.conn()?;
         let client = clients::table
             .find(id)
+            .filter(clients::hub_id.eq(hub_id))
+            .first::<DbClient>(&mut conn)
+            .optional()?;
+
+        Ok(client.map(Into::into))
+    }
+
+    fn get_client_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Client>> {
+        use crate::schema::clients;
+
+        let mut conn = self.conn()?;
+        let client = clients::table
+            .filter(clients::email.eq(email))
+            .filter(clients::hub_id.eq(hub_id))
             .first::<DbClient>(&mut conn)
             .optional()?;
 
