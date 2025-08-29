@@ -97,14 +97,32 @@ impl ClientReader for DieselRepository {
         }
 
         // Final load
-        let items = items
-            .order(clients::id.asc())
-            .load::<DbClient>(&mut conn)?
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<Client>>();
+        let db_clients = items.order(clients::id.asc()).load::<DbClient>(&mut conn)?;
+        // .into_iter()
+        // .map(Into::into)
+        // .collect::<Vec<Client>>();
+        if db_clients.is_empty() {
+            return Ok((total, Vec::new()));
+        }
 
-        Ok((total, items))
+        // Load recipient fields, grouped by recipient
+        let db_fields = ClientField::belonging_to(&db_clients)
+            .select(ClientField::as_select())
+            .load::<ClientField>(&mut conn)?
+            .grouped_by(&db_clients);
+
+        let clients = db_clients
+            .into_iter()
+            .zip(db_fields)
+            .map(|(c, f)| {
+                let mut client: Client = c.into();
+                let fields = f.into_iter().map(|f| (f.field, f.value)).collect();
+                client.fields = Some(fields);
+                client
+            })
+            .collect();
+
+        Ok((total, clients))
     }
 
     fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
