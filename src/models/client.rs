@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use serde::Serialize;
 
 use crate::domain::client::{
     Client as DomainClient, NewClient as DomainNewClient, UpdateClient as DomainUpdateClient,
@@ -47,6 +48,16 @@ pub struct UpdateClient<'a> {
     pub address: &'a str,
 }
 
+#[derive(Identifiable, Queryable, Selectable, Associations, Insertable, Serialize)]
+#[diesel(table_name = crate::schema::client_fields)]
+#[diesel(belongs_to(Client, foreign_key = client_id))]
+#[diesel(primary_key(client_id, field))]
+pub struct ClientField {
+    pub client_id: i32,
+    pub field: String,
+    pub value: String,
+}
+
 impl From<Client> for DomainClient {
     fn from(client: Client) -> Self {
         Self {
@@ -58,6 +69,7 @@ impl From<Client> for DomainClient {
             address: client.address,
             created_at: client.created_at,
             updated_at: client.updated_at,
+            fields: None,
         }
     }
 }
@@ -93,6 +105,8 @@ impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use chrono::Utc;
 
@@ -124,6 +138,7 @@ mod tests {
             email: "jane@example.com",
             phone: "321",
             address: "addr2",
+            fields: HashMap::new(),
         };
         let update: UpdateClient = (&domain).into();
         assert_eq!(update.name, domain.name);

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +13,8 @@ pub struct Client {
     pub address: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    /// Optional set of custom fields.
+    pub fields: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -28,4 +32,6 @@ pub struct UpdateClient<'a> {
     pub email: &'a str,
     pub phone: &'a str,
     pub address: &'a str,
+    /// Updated map of custom fields.
+    pub fields: HashMap<&'a str, &'a str>,
 }

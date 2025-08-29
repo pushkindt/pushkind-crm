@@ -99,11 +99,20 @@ pub async fn show_client(
 pub async fn save_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    web::Form(form): web::Form<SaveClientForm>,
+    form: web::Bytes,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
     }
+
+    let form: SaveClientForm = match serde_html_form::from_bytes(&form) {
+        Ok(form) => form,
+        Err(err) => {
+            log::error!("Error parsing form: {err}");
+            FlashMessage::error("Ошибка при обработке формы.").send();
+            return redirect("/clients");
+        }
+    };
 
     if let Err(e) = form.validate() {
         log::error!("Failed to validate form: {e}");

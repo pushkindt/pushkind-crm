@@ -12,6 +12,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    client_fields (client_id, field) {
+        client_id -> Integer,
+        field -> Text,
+        value -> Text,
+    }
+}
+
+diesel::table! {
     client_fts (rowid) {
         rowid -> Integer,
         name -> Nullable<Binary>,
@@ -84,11 +92,13 @@ diesel::table! {
 
 diesel::joinable!(client_events -> clients (client_id));
 diesel::joinable!(client_events -> managers (manager_id));
+diesel::joinable!(client_fields -> clients (client_id));
 diesel::joinable!(client_manager -> clients (client_id));
 diesel::joinable!(client_manager -> managers (manager_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     client_events,
+    client_fields,
     client_fts,
     client_fts_config,
     client_fts_data,
