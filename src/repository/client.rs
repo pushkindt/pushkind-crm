@@ -300,10 +300,12 @@ impl ClientWriter for DieselRepository {
     }
 
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {
-        use crate::schema::{client_manager, clients};
+        use crate::schema::{client_fields, client_manager, clients};
 
         let mut conn = self.conn()?;
         diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
+            .execute(&mut conn)?;
+        diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
             .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
         Ok(())

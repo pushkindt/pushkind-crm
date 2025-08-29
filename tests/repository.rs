@@ -41,8 +41,8 @@ fn test_client_repository_crud() {
     assert_eq!(total, 2);
     assert_eq!(items.len(), 2);
     items.sort_by(|a, b| a.name.cmp(&b.name));
-    let alice = items[0].clone();
-    let bob = items[1].clone();
+    let mut alice = items[0].clone();
+    let mut bob = items[1].clone();
 
     let (search_total, search_items) = client_repo
         .search_clients(ClientListQuery::new(1).search("Bob"))
@@ -50,15 +50,36 @@ fn test_client_repository_crud() {
     assert_eq!(search_total, 1);
     assert_eq!(search_items[0].name, "Bob");
 
-    let updates = UpdateClient {
-        name: "Bobby",
-        email: &bob.email,
-        phone: &bob.phone,
-        address: &bob.address,
-        fields: HashMap::new(),
-    };
-    let updated = client_repo.update_client(bob.id, &updates).unwrap();
-    assert_eq!(updated.name, "Bobby");
+    alice = client_repo
+        .update_client(
+            alice.id,
+            &UpdateClient {
+                name: &alice.name,
+                email: &alice.email,
+                phone: &alice.phone,
+                address: &alice.address,
+                fields: HashMap::from([("vip", "true")]),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        alice.fields,
+        Some(HashMap::from([("vip".to_string(), "true".to_string())]))
+    );
+
+    bob = client_repo
+        .update_client(
+            bob.id,
+            &UpdateClient {
+                name: "Bobby",
+                email: &bob.email,
+                phone: &bob.phone,
+                address: &bob.address,
+                fields: HashMap::new(),
+            },
+        )
+        .unwrap();
+    assert_eq!(bob.name, "Bobby");
 
     client_repo.delete_client(alice.id).unwrap();
     assert!(client_repo.get_client_by_id(alice.id, 1).unwrap().is_none());
