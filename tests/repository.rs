@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
@@ -53,6 +55,7 @@ fn test_client_repository_crud() {
         email: &bob.email,
         phone: &bob.phone,
         address: &bob.address,
+        fields: HashMap::new(),
     };
     let updated = client_repo.update_client(bob.id, &updates).unwrap();
     assert_eq!(updated.name, "Bobby");

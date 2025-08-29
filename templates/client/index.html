@@ -16,91 +16,70 @@
     </div>
     <div class="row">
         <div class="col-sm-5 my-1">
-            <div class="row">
-                <div class="col">
-                    <span class="fw-bold">Электронный адрес:</span>
-                    <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <span class="fw-bold">Телефон:</span>
-                    <a href="#clientModal" data-bs-toggle="modal">{{client.phone}}</a>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <span class="fw-bold">Адрес:</span>
-                    <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
-                </div>
-            </div>
-            {% if managers %}
-                <div class="row">
-                    <div class="col">
-                        <span class="fw-bold">Менеджеры:</span>
-                        {% for manager in managers %}
-                            {% include 'components/user_popover.html' %}
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-            {% if documents %}
-                <div class="row">
-                    <div class="col">
-                        <span class="fw-bold">Документы:</span>
-                        <ul>
-                            {% for document in documents %}
-                                <li>
-                                    <a class="text-warning" href="{{ document.event_data["url"] }}">
-                                        {{ document.event_data["text"] }}
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-            {% endif %}
+            {% include 'client/client_card.html' %}
         </div>
         <div class="col-sm my-1">
-            <form action="/client/comment" method="POST">
-                <input type="hidden" name="id" value="{{client.id}}" required readonly>
-                <div class="row">
-                    <div class="col">
-                        <textarea rows="2" name="text" class="form-control my-1" value="" placeholder="Комментарий" required></textarea>
-                    </div>
-                    <div class="col-auto">
-                        <div class="row">
-                            <div class="col">
-                                <select name="event_type" class="form-select form-select-sm" aria-label="Select event type" required>
-                                    <option value="Comment">Комментарий</option>
-                                    <option value="Call">Звонок</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col">
-                                 <button class="btn btn-primary btn-sm my-1 w-100" type="submit">Сохранить</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </form>
-            <div id="events">
-                {% for event_manager in events %}
-                    {% set event = event_manager.0 %}
-                    {% set manager = event_manager.1 %}
-                    {% include 'components/client_event.html' %}
-                {% endfor %}
-            </div>
+            {% include 'client/client_events.html' %}
         </div>
-
     </div>
-
-
+</div>
 {% include 'client/save_client_modal.html' %}
 {% include 'client/attachment_modal.html' %}
 
-</div>
+{% endblock %}
 
+{% block scripts %}
+    <script>
+        function removeCustomField(button) {
+            const row = button.closest("div.row");
+            row.remove();
+        }
+        function addCustomField(button) {
+            const container = document.getElementById("custom-fields");
 
+            const row = document.createElement("div");
+            row.classList.add("row");
+            row.classList.add("mb-3");
+            container.appendChild(row);
+
+            let col = document.createElement("div");
+            col.classList.add("col");
+            row.appendChild(col);
+            let input = document.createElement("input");
+            input.classList.add("form-control");
+            input.name = "field";
+            input.type = "text";
+            input.placeholder = "Поле";
+            input.required = true;
+            col.appendChild(input);
+
+            col = document.createElement("div");
+            col.classList.add("col");
+            row.appendChild(col);
+            input = document.createElement("input");
+            input.classList.add("form-control");
+            input.name = "value";
+            input.type = "text";
+            input.placeholder = "Значение";
+            input.required = true;
+            col.appendChild(input);
+
+            col = document.createElement("div");
+            col.classList.add("col-auto");
+            row.appendChild(col);
+            const btn = document.createElement("a");
+            btn.classList.add("btn");
+            btn.classList.add("btn-danger");
+            btn.classList.add("btn-sm");
+            btn.href = "#";
+            btn.onclick = function () {
+                removeCustomField(btn);
+            };
+            col.appendChild(btn);
+            const icon = document.createElement("i");
+            icon.classList.add("bi");
+            icon.classList.add("bi-slash-circle");
+            btn.appendChild(icon);
+        }
+    </script>
 {% endblock %}

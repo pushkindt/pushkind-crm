@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
 use pushkind_common::repository::errors::RepositoryResult;
 
+use crate::models::client::ClientField;
 use crate::{
     domain::client::{Client, NewClient, UpdateClient},
     domain::manager::Manager,
@@ -22,8 +25,21 @@ impl ClientReader for DieselRepository {
             .filter(clients::hub_id.eq(hub_id))
             .first::<DbClient>(&mut conn)
             .optional()?;
+        let client = match client {
+            Some(client) => client,
+            None => return Ok(None),
+        };
 
-        Ok(client.map(Into::into))
+        let fields = ClientField::belonging_to(&client)
+            .select(ClientField::as_select())
+            .load::<ClientField>(&mut conn)?;
+
+        let field_map = fields.into_iter().map(|f| (f.field, f.value)).collect();
+
+        let mut result: Client = client.into();
+        result.fields = Some(field_map);
+
+        Ok(Some(result))
     }
 
     fn get_client_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Client>> {
@@ -237,7 +253,7 @@ impl ClientWriter for DieselRepository {
     }
 
     fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
-        use crate::schema::clients;
+        use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
         let email = updates.email.to_lowercase();
@@ -248,10 +264,39 @@ impl ClientWriter for DieselRepository {
             address: updates.address,
         };
 
-        let updated = diesel::update(clients::table.find(client_id))
+        let mut updated: Client = diesel::update(clients::table.find(client_id))
             .set(&db_updates)
-            .get_result::<DbClient>(&mut conn)?;
-        Ok(updated.into())
+            .get_result::<DbClient>(&mut conn)?
+            .into();
+
+        // Update fields (delete all → insert new)
+        diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
+            .execute(&mut conn)?;
+        for (field, value) in &updates.fields {
+            let new_field = ClientField {
+                client_id,
+                field: field.to_string(),
+                value: value.to_string(),
+            };
+            diesel::insert_into(client_fields::table)
+                .values(&new_field)
+                .execute(&mut conn)?;
+        }
+
+        // Reload fields
+        let fields_vec = client_fields::table
+            .filter(client_fields::client_id.eq(client_id))
+            .select(ClientField::as_select())
+            .load::<ClientField>(&mut conn)?;
+
+        let fields_map = fields_vec
+            .into_iter()
+            .map(|f| (f.field, f.value))
+            .collect::<HashMap<_, _>>();
+
+        updated.fields = Some(fields_map);
+
+        Ok(updated)
     }
 
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {

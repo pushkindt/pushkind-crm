@@ -32,9 +32,34 @@
                             <input name="address" type="text" class="form-control" id="clientModalAddress" value="{{client.address}}" placeholder="Адрес" required>
                         </div>
                     </div>
+
+                    <div id="custom-fields">
+                        {% if client.fields %}
+                            {% for field, value in client.fields %}
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <input type="text" class="form-control" value="{{field}}" name="field" required placeholder="Поле">
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control" value="{{value}}" name="value" required" placeholder="Значение">
+                                    </div>
+                                    <div class="col-auto">
+                                        <a href="#" class="btn btn-danger btn-sm" onclick="removeCustomField(this)">
+                                            <i class="bi bi-slash-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
                     <div class="row mb-3">
                         <div class="col">
                             <button class="btn btn-primary" type="submit">Сохранить</button>
+                        </div>
+                        <div class="col-auto">
+                            <a href="#" class="btn btn-primary btn-sm" onclick="addCustomField(this)">
+                                <i class="bi bi-plus"></i>
+                            </a>
                         </div>
                     </div>
                 </form>

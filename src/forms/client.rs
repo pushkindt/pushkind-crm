@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 use validator::Validate;
 
@@ -18,6 +20,10 @@ pub struct SaveClientForm {
     pub phone: String,
     /// Updated mailing address.
     pub address: String,
+    #[serde(default)]
+    pub field: Vec<String>,
+    #[serde(default)]
+    pub value: Vec<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -48,11 +54,19 @@ pub struct AddAttachmentForm {
 impl<'a> From<&'a SaveClientForm> for UpdateClient<'a> {
     /// Convert the [`SaveClientForm`] into an [`UpdateClient`] value for persistence.
     fn from(form: &'a SaveClientForm) -> Self {
+        let fields: HashMap<&str, &str> = form
+            .field
+            .iter()
+            .zip(form.value.iter())
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
         Self {
             name: &form.name,
             email: &form.email,
             phone: &form.phone,
             address: &form.address,
+            fields,
         }
     }
 }
