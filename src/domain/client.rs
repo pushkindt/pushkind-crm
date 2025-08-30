@@ -24,6 +24,8 @@ pub struct NewClient {
     pub email: String,
     pub phone: String,
     pub address: String,
+    /// Optional set of custom fields.
+    pub fields: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

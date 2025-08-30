@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
-use pushkind_common::repository::errors::RepositoryResult;
+use diesel::upsert::excluded;
+use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::models::client::ClientField;
 use crate::{
@@ -246,28 +247,81 @@ impl ClientReader for DieselRepository {
 }
 
 impl ClientWriter for DieselRepository {
+    // fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
+    //     use crate::schema::clients;
+
+    //     let mut conn = self.conn()?;
+    //     let lower_emails: Vec<String> =
+    //         new_clients.iter().map(|c| c.email.to_lowercase()).collect();
+
+    //     let insertables: Vec<DbNewClient> = new_clients
+    //         .iter()
+    //         .zip(lower_emails.iter())
+    //         .map(|(client, email)| DbNewClient {
+    //             hub_id: client.hub_id,
+    //             name: client.name.as_str(),
+    //             email: email.as_str(),
+    //             phone: client.phone.as_str(),
+    //             address: client.address.as_str(),
+    //         })
+    //         .collect();
+    //     let affected = diesel::insert_into(clients::table)
+    //         .values(&insertables)
+    //         .execute(&mut conn)?;
+    //     Ok(affected)
+    // }
+
     fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
-        use crate::schema::clients;
+        use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
-        let lower_emails: Vec<String> =
-            new_clients.iter().map(|c| c.email.to_lowercase()).collect();
 
-        let insertables: Vec<DbNewClient> = new_clients
-            .iter()
-            .zip(lower_emails.iter())
-            .map(|(client, email)| DbNewClient {
-                hub_id: client.hub_id,
-                name: client.name.as_str(),
-                email: email.as_str(),
-                phone: client.phone.as_str(),
-                address: client.address.as_str(),
-            })
-            .collect();
-        let affected = diesel::insert_into(clients::table)
-            .values(&insertables)
-            .execute(&mut conn)?;
-        Ok(affected)
+        conn.transaction::<usize, RepositoryError, _>(|conn| {
+            let mut count_inserted: usize = 0;
+
+            for new in new_clients {
+                let email = new.email.to_lowercase();
+                let mut db_new: DbNewClient = new.into();
+                db_new.email = email.as_str();
+
+                let inserted = diesel::insert_into(clients::table)
+                    .values(&db_new)
+                    .on_conflict((clients::email, clients::hub_id))
+                    .do_update()
+                    .set((
+                        clients::name.eq(&new.name),
+                        clients::phone.eq(&new.phone),
+                        clients::address.eq(&new.address),
+                    ))
+                    .get_result::<DbClient>(conn)?;
+
+                // Insert optional fields
+                if let Some(fields) = &new.fields {
+                    let new_fields: Vec<ClientField> = fields
+                        .iter()
+                        .map(|(f, v)| ClientField {
+                            client_id: inserted.id,
+                            field: f.clone(),
+                            value: v.clone(),
+                        })
+                        .collect();
+                    if !new_fields.is_empty() {
+                        for field in new_fields {
+                            diesel::insert_into(client_fields::table)
+                                .values(&field)
+                                .on_conflict((client_fields::client_id, client_fields::field))
+                                .do_update()
+                                .set(client_fields::value.eq(excluded(client_fields::value)))
+                                .execute(conn)?;
+                        }
+                    }
+                }
+
+                count_inserted += 1;
+            }
+
+            Ok(count_inserted)
+        })
     }
 
     fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {

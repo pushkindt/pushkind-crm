@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::{collections::HashMap, io::Read};
 
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};
 use serde::Deserialize;
@@ -32,6 +32,7 @@ impl From<AddClientForm> for NewClient {
             email: form.email,
             phone: form.phone,
             address: form.address,
+            fields: None,
         }
     }
 }
@@ -65,15 +66,6 @@ impl From<csv::Error> for UploadClientsFormError {
     }
 }
 
-#[derive(Debug, Deserialize)]
-/// Representation of a client row in the uploaded CSV file.
-struct CsvClientRow {
-    name: String,
-    email: String,
-    phone: String,
-    address: String,
-}
-
 impl UploadClientsForm {
     /// Parse the uploaded CSV file into a list of [`NewClient`] records.
     pub fn parse(&mut self, hub_id: i32) -> Result<Vec<NewClient>, UploadClientsFormError> {
@@ -84,15 +76,45 @@ impl UploadClientsForm {
 
         let mut clients = Vec::new();
 
-        for result in rdr.deserialize::<CsvClientRow>() {
-            let row = result?;
+        let headers = rdr.headers()?.clone();
+
+        for result in rdr.records() {
+            let record = result?;
+            let mut optional_fields = HashMap::new();
+
+            let mut name = String::new();
+            let mut email = String::new();
+            let mut phone = String::new();
+            let mut address = String::new();
+
+            for (i, field) in record.iter().enumerate() {
+                match headers.get(i) {
+                    Some("name") => name = field.trim().to_string(),
+                    Some("email") => email = field.trim().to_lowercase(),
+                    Some("phone") => phone = field.trim().to_string(),
+                    Some("address") => address = field.trim().to_string(),
+                    Some(header) => {
+                        if field.is_empty() {
+                            continue;
+                        }
+                        optional_fields.insert(header.to_string(), field.to_string());
+                    }
+                    None => continue,
+                }
+            }
+
+            if name.is_empty() || email.is_empty() || phone.is_empty() || address.is_empty() {
+                // Skip records missing required fields.
+                continue;
+            }
 
             clients.push(NewClient {
                 hub_id,
-                name: row.name,
-                email: row.email,
-                phone: row.phone,
-                address: row.address,
+                name,
+                email,
+                phone,
+                address,
+                fields: Some(optional_fields),
             });
         }
 

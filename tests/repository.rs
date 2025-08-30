@@ -21,6 +21,7 @@ fn test_client_repository_crud() {
         email: "alice@example.com".into(),
         phone: "111".into(),
         address: "Addr1".into(),
+        fields: None,
     };
     let c2 = NewClient {
         hub_id: 1,
@@ -28,6 +29,7 @@ fn test_client_repository_crud() {
         email: "bob@example.com".into(),
         phone: "222".into(),
         address: "Addr2".into(),
+        fields: None,
     };
 
     assert_eq!(
@@ -101,6 +103,7 @@ fn test_client_event_repository_crud() {
             email: "alice@example.com".into(),
             phone: "111".into(),
             address: "Addr1".into(),
+            fields: None,
         };
         client_repo.create_clients(&[new_client]).unwrap();
         client_repo
@@ -169,6 +172,7 @@ fn test_manager_repository_crud() {
             email: "alice@example.com".into(),
             phone: "111".into(),
             address: "Addr1".into(),
+            fields: None,
         },
         NewClient {
             hub_id: 1,
@@ -176,6 +180,7 @@ fn test_manager_repository_crud() {
             email: "bob@example.com".into(),
             phone: "222".into(),
             address: "Addr2".into(),
+            fields: None,
         },
     ];
     client_repo.create_clients(&clients).unwrap();
