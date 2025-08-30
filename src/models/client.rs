@@ -117,6 +117,7 @@ mod tests {
             email: "john@example.com".to_string(),
             phone: "123".to_string(),
             address: "addr".to_string(),
+            fields: None,
         }
     }
 
