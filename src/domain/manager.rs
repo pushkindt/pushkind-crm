@@ -27,8 +27,8 @@ impl NewManager {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct UpdateManager<'a> {
-    pub name: &'a str,
+pub struct UpdateManager {
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

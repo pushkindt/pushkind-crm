@@ -51,9 +51,9 @@ pub struct AddAttachmentForm {
     pub url: String,
 }
 
-impl From<&SaveClientForm> for UpdateClient {
+impl From<SaveClientForm> for UpdateClient {
     /// Convert the [`SaveClientForm`] into an [`UpdateClient`] value for persistence.
-    fn from(form: &SaveClientForm) -> Self {
+    fn from(form: SaveClientForm) -> Self {
         let fields: HashMap<String, String> = form
             .field
             .iter()
@@ -61,12 +61,6 @@ impl From<&SaveClientForm> for UpdateClient {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        UpdateClient::new(
-            form.name.clone(),
-            form.email.clone(),
-            form.phone.clone(),
-            form.address.clone(),
-            fields,
-        )
+        UpdateClient::new(form.name, form.email, form.phone, form.address, fields)
     }
 }

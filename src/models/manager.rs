@@ -73,9 +73,11 @@ impl<'a> From<&'a DomainNewManager> for NewManager<'a> {
     }
 }
 
-impl<'a> From<&'a DomainUpdateManager<'a>> for UpdateManager<'a> {
-    fn from(manager: &'a DomainUpdateManager<'a>) -> Self {
-        Self { name: manager.name }
+impl<'a> From<&'a DomainUpdateManager> for UpdateManager<'a> {
+    fn from(manager: &'a DomainUpdateManager) -> Self {
+        Self {
+            name: manager.name.as_str(),
+        }
     }
 }
 
