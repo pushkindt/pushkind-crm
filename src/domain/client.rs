@@ -28,12 +28,50 @@ pub struct NewClient {
     pub fields: Option<HashMap<String, String>>,
 }
 
+impl NewClient {
+    pub fn new(
+        hub_id: i32,
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        fields: Option<HashMap<String, String>>,
+    ) -> Self {
+        Self {
+            hub_id,
+            name,
+            email: email.to_lowercase(),
+            phone,
+            address,
+            fields,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
-pub struct UpdateClient<'a> {
-    pub name: &'a str,
-    pub email: &'a str,
-    pub phone: &'a str,
-    pub address: &'a str,
+pub struct UpdateClient {
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub address: String,
     /// Updated map of custom fields.
-    pub fields: HashMap<&'a str, &'a str>,
+    pub fields: HashMap<String, String>,
+}
+
+impl UpdateClient {
+    pub fn new(
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        fields: HashMap<String, String>,
+    ) -> Self {
+        Self {
+            name,
+            email: email.to_lowercase(),
+            phone,
+            address,
+            fields,
+        }
+    }
 }

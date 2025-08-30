@@ -247,30 +247,6 @@ impl ClientReader for DieselRepository {
 }
 
 impl ClientWriter for DieselRepository {
-    // fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
-    //     use crate::schema::clients;
-
-    //     let mut conn = self.conn()?;
-    //     let lower_emails: Vec<String> =
-    //         new_clients.iter().map(|c| c.email.to_lowercase()).collect();
-
-    //     let insertables: Vec<DbNewClient> = new_clients
-    //         .iter()
-    //         .zip(lower_emails.iter())
-    //         .map(|(client, email)| DbNewClient {
-    //             hub_id: client.hub_id,
-    //             name: client.name.as_str(),
-    //             email: email.as_str(),
-    //             phone: client.phone.as_str(),
-    //             address: client.address.as_str(),
-    //         })
-    //         .collect();
-    //     let affected = diesel::insert_into(clients::table)
-    //         .values(&insertables)
-    //         .execute(&mut conn)?;
-    //     Ok(affected)
-    // }
-
     fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
         use crate::schema::{client_fields, clients};
 
@@ -280,9 +256,7 @@ impl ClientWriter for DieselRepository {
             let mut count_inserted: usize = 0;
 
             for new in new_clients {
-                let email = new.email.to_lowercase();
-                let mut db_new: DbNewClient = new.into();
-                db_new.email = email.as_str();
+                let db_new: DbNewClient = new.into();
 
                 let inserted = diesel::insert_into(clients::table)
                     .values(&db_new)
@@ -328,13 +302,7 @@ impl ClientWriter for DieselRepository {
         use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
-        let email = updates.email.to_lowercase();
-        let db_updates = DbUpdateClient {
-            name: updates.name,
-            email: email.as_str(),
-            phone: updates.phone,
-            address: updates.address,
-        };
+        let db_updates: DbUpdateClient = updates.into();
 
         let mut updated: Client = diesel::update(clients::table.find(client_id))
             .set(&db_updates)

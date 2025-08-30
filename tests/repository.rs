@@ -15,22 +15,22 @@ mod common;
 fn test_client_repository_crud() {
     let test_db = common::TestDb::new("test_client_repository_crud.db");
     let client_repo = DieselRepository::new(test_db.pool());
-    let c1 = NewClient {
-        hub_id: 1,
-        name: "Alice".into(),
-        email: "alice@example.com".into(),
-        phone: "111".into(),
-        address: "Addr1".into(),
-        fields: None,
-    };
-    let c2 = NewClient {
-        hub_id: 1,
-        name: "Bob".into(),
-        email: "bob@example.com".into(),
-        phone: "222".into(),
-        address: "Addr2".into(),
-        fields: None,
-    };
+    let c1 = NewClient::new(
+        1,
+        "Alice".into(),
+        "alice@example.com".into(),
+        "111".into(),
+        "Addr1".into(),
+        None,
+    );
+    let c2 = NewClient::new(
+        1,
+        "Bob".into(),
+        "bob@example.com".into(),
+        "222".into(),
+        "Addr2".into(),
+        None,
+    );
 
     assert_eq!(
         client_repo
@@ -55,13 +55,13 @@ fn test_client_repository_crud() {
     alice = client_repo
         .update_client(
             alice.id,
-            &UpdateClient {
-                name: &alice.name,
-                email: &alice.email,
-                phone: &alice.phone,
-                address: &alice.address,
-                fields: HashMap::from([("vip", "true")]),
-            },
+            &UpdateClient::new(
+                alice.name.clone(),
+                alice.email.clone(),
+                alice.phone.clone(),
+                alice.address.clone(),
+                HashMap::from([("vip".to_string(), "true".to_string())]),
+            ),
         )
         .unwrap();
     assert_eq!(
@@ -72,13 +72,13 @@ fn test_client_repository_crud() {
     bob = client_repo
         .update_client(
             bob.id,
-            &UpdateClient {
-                name: "Bobby",
-                email: &bob.email,
-                phone: &bob.phone,
-                address: &bob.address,
-                fields: HashMap::new(),
-            },
+            &UpdateClient::new(
+                "Bobby".to_string(),
+                bob.email.clone(),
+                bob.phone.clone(),
+                bob.address.clone(),
+                HashMap::new(),
+            ),
         )
         .unwrap();
     assert_eq!(bob.name, "Bobby");
@@ -97,14 +97,14 @@ fn test_client_event_repository_crud() {
     let client_repo = DieselRepository::new(test_db.pool());
     let manager_repo = DieselRepository::new(test_db.pool());
     let client = {
-        let new_client = NewClient {
-            hub_id: 1,
-            name: "Alice".into(),
-            email: "alice@example.com".into(),
-            phone: "111".into(),
-            address: "Addr1".into(),
-            fields: None,
-        };
+        let new_client = NewClient::new(
+            1,
+            "Alice".into(),
+            "alice@example.com".into(),
+            "111".into(),
+            "Addr1".into(),
+            None,
+        );
         client_repo.create_clients(&[new_client]).unwrap();
         client_repo
             .list_clients(ClientListQuery::new(1))
@@ -113,11 +113,11 @@ fn test_client_event_repository_crud() {
             .remove(0)
     };
     let manager = manager_repo
-        .create_or_update_manager(&NewManager {
-            hub_id: 1,
-            name: "Manager",
-            email: "m@example.com",
-        })
+        .create_or_update_manager(&NewManager::new(
+            1,
+            "Manager".to_string(),
+            "m@example.com".to_string(),
+        ))
         .unwrap();
 
     let client_event_repo = DieselRepository::new(test_db.pool());
@@ -166,22 +166,22 @@ fn test_manager_repository_crud() {
 
     // create clients
     let clients = vec![
-        NewClient {
-            hub_id: 1,
-            name: "Alice".into(),
-            email: "alice@example.com".into(),
-            phone: "111".into(),
-            address: "Addr1".into(),
-            fields: None,
-        },
-        NewClient {
-            hub_id: 1,
-            name: "Bob".into(),
-            email: "bob@example.com".into(),
-            phone: "222".into(),
-            address: "Addr2".into(),
-            fields: None,
-        },
+        NewClient::new(
+            1,
+            "Alice".into(),
+            "alice@example.com".into(),
+            "111".into(),
+            "Addr1".into(),
+            None,
+        ),
+        NewClient::new(
+            1,
+            "Bob".into(),
+            "bob@example.com".into(),
+            "222".into(),
+            "Addr2".into(),
+            None,
+        ),
     ];
     client_repo.create_clients(&clients).unwrap();
     let (_, stored_clients) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
@@ -189,20 +189,20 @@ fn test_manager_repository_crud() {
 
     // create or update manager
     let manager = manager_repo
-        .create_or_update_manager(&NewManager {
-            hub_id: 1,
-            name: "Manager",
-            email: "m@example.com",
-        })
+        .create_or_update_manager(&NewManager::new(
+            1,
+            "Manager".to_string(),
+            "m@example.com".to_string(),
+        ))
         .unwrap();
     assert!(manager.id > 0);
 
     let updated = manager_repo
-        .create_or_update_manager(&NewManager {
-            hub_id: 1,
-            name: "Updated",
-            email: "m@example.com",
-        })
+        .create_or_update_manager(&NewManager::new(
+            1,
+            "Updated".to_string(),
+            "m@example.com".to_string(),
+        ))
         .unwrap();
     assert_eq!(updated.id, manager.id);
     assert_eq!(updated.name, "Updated");

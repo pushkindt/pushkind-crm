@@ -10,10 +10,20 @@ pub struct Manager {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct NewManager<'a> {
+pub struct NewManager {
     pub hub_id: i32,
-    pub name: &'a str,
-    pub email: &'a str,
+    pub name: String,
+    pub email: String,
+}
+
+impl NewManager {
+    pub fn new(hub_id: i32, name: String, email: String) -> Self {
+        Self {
+            hub_id,
+            name,
+            email: email.to_lowercase(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -33,12 +43,8 @@ pub struct NewClientManager {
     pub manager_id: i32,
 }
 
-impl<'a> From<&'a AuthenticatedUser> for NewManager<'a> {
-    fn from(value: &'a AuthenticatedUser) -> Self {
-        NewManager {
-            name: &value.name,
-            email: &value.email,
-            hub_id: value.hub_id,
-        }
+impl From<&AuthenticatedUser> for NewManager {
+    fn from(value: &AuthenticatedUser) -> Self {
+        NewManager::new(value.hub_id, value.name.clone(), value.email.clone())
     }
 }
