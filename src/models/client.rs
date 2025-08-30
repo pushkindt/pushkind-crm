@@ -86,20 +86,14 @@ impl<'a> From<&'a DomainNewClient> for NewClient<'a> {
     }
 }
 
-impl<'a> From<&DomainUpdateClient<'a>> for UpdateClient<'a> {
-    fn from(client: &DomainUpdateClient<'a>) -> Self {
+impl<'a> From<&'a DomainUpdateClient> for UpdateClient<'a> {
+    fn from(client: &'a DomainUpdateClient) -> Self {
         Self {
-            name: client.name,
-            email: client.email,
-            phone: client.phone,
-            address: client.address,
+            name: client.name.as_str(),
+            email: client.email.as_str(),
+            phone: client.phone.as_str(),
+            address: client.address.as_str(),
         }
-    }
-}
-
-impl<'a> From<DomainUpdateClient<'a>> for UpdateClient<'a> {
-    fn from(client: DomainUpdateClient<'a>) -> Self {
-        Self::from(&client)
     }
 }
 
@@ -111,14 +105,14 @@ mod tests {
     use chrono::Utc;
 
     fn sample_domain_new() -> DomainNewClient {
-        DomainNewClient {
-            hub_id: 1,
-            name: "John".to_string(),
-            email: "john@example.com".to_string(),
-            phone: "123".to_string(),
-            address: "addr".to_string(),
-            fields: None,
-        }
+        DomainNewClient::new(
+            1,
+            "John".to_string(),
+            "john@example.com".to_string(),
+            "123".to_string(),
+            "addr".to_string(),
+            None,
+        )
     }
 
     #[test]
@@ -134,13 +128,13 @@ mod tests {
 
     #[test]
     fn from_domain_update_creates_updateclient() {
-        let domain = DomainUpdateClient {
-            name: "Jane",
-            email: "jane@example.com",
-            phone: "321",
-            address: "addr2",
-            fields: HashMap::new(),
-        };
+        let domain = DomainUpdateClient::new(
+            "Jane".to_string(),
+            "jane@example.com".to_string(),
+            "321".to_string(),
+            "addr2".to_string(),
+            HashMap::new(),
+        );
         let update: UpdateClient = (&domain).into();
         assert_eq!(update.name, domain.name);
         assert_eq!(update.email, domain.email);

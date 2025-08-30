@@ -63,54 +63,35 @@ impl From<Manager> for DomainManager {
     }
 }
 
-impl<'a> From<&DomainNewManager<'a>> for NewManager<'a> {
-    fn from(manager: &DomainNewManager<'a>) -> Self {
+impl<'a> From<&'a DomainNewManager> for NewManager<'a> {
+    fn from(manager: &'a DomainNewManager) -> Self {
         Self {
             hub_id: manager.hub_id,
-            name: manager.name,
-            email: manager.email,
+            name: manager.name.as_str(),
+            email: manager.email.as_str(),
         }
     }
 }
 
-impl<'a> From<DomainNewManager<'a>> for NewManager<'a> {
-    fn from(manager: DomainNewManager<'a>) -> Self {
-        Self::from(&manager)
+impl<'a> From<&'a DomainUpdateManager> for UpdateManager<'a> {
+    fn from(manager: &'a DomainUpdateManager) -> Self {
+        Self {
+            name: manager.name.as_str(),
+        }
     }
 }
 
-impl<'a> From<&DomainUpdateManager<'a>> for UpdateManager<'a> {
-    fn from(manager: &DomainUpdateManager<'a>) -> Self {
-        Self { name: manager.name }
-    }
-}
-
-impl<'a> From<DomainUpdateManager<'a>> for UpdateManager<'a> {
-    fn from(manager: DomainUpdateManager<'a>) -> Self {
-        Self::from(&manager)
+impl<'a> From<&'a DomainNewManager> for UpdateManager<'a> {
+    fn from(manager: &'a DomainNewManager) -> Self {
+        Self {
+            name: manager.name.as_str(),
+        }
     }
 }
 
 impl<'a> From<&NewManager<'a>> for UpdateManager<'a> {
     fn from(manager: &NewManager<'a>) -> Self {
         Self { name: manager.name }
-    }
-}
-
-impl<'a> From<NewManager<'a>> for UpdateManager<'a> {
-    fn from(manager: NewManager<'a>) -> Self {
-        Self::from(&manager)
-    }
-}
-
-impl<'a> From<&DomainNewManager<'a>> for UpdateManager<'a> {
-    fn from(manager: &DomainNewManager<'a>) -> Self {
-        Self { name: manager.name }
-    }
-}
-impl<'a> From<DomainNewManager<'a>> for UpdateManager<'a> {
-    fn from(manager: DomainNewManager<'a>) -> Self {
-        Self::from(&manager)
     }
 }
 
@@ -138,11 +119,7 @@ mod tests {
 
     #[test]
     fn from_domain_newmanager() {
-        let domain = DomainNewManager {
-            hub_id: 1,
-            name: "Alice",
-            email: "a@b.c",
-        };
+        let domain = DomainNewManager::new(1, "Alice".to_string(), "a@b.c".to_string());
         let new: NewManager = (&domain).into();
         assert_eq!(new.hub_id, domain.hub_id);
         assert_eq!(new.name, domain.name);
@@ -151,7 +128,7 @@ mod tests {
         let update: UpdateManager = (&domain).into();
         assert_eq!(update.name, domain.name);
 
-        let update_from_new: UpdateManager = new.into();
+        let update_from_new: UpdateManager = (&new).into();
         assert_eq!(update_from_new.name, domain.name);
     }
 

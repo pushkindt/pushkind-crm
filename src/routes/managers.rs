@@ -60,11 +60,7 @@ pub async fn add_manager(
         return redirect("/managers");
     }
 
-    let new_manager = NewManager {
-        hub_id: user.hub_id,
-        name: &form.name,
-        email: &form.email,
-    };
+    let new_manager = NewManager::new(user.hub_id, form.name.clone(), form.email.clone());
 
     match repo.create_or_update_manager(&new_manager) {
         Ok(_) => {

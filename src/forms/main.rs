@@ -26,14 +26,14 @@ pub struct AddClientForm {
 
 impl From<AddClientForm> for NewClient {
     fn from(form: AddClientForm) -> Self {
-        Self {
-            hub_id: form.hub_id,
-            name: form.name,
-            email: form.email,
-            phone: form.phone,
-            address: form.address,
-            fields: None,
-        }
+        NewClient::new(
+            form.hub_id,
+            form.name,
+            form.email,
+            form.phone,
+            form.address,
+            None,
+        )
     }
 }
 
@@ -90,7 +90,7 @@ impl UploadClientsForm {
             for (i, field) in record.iter().enumerate() {
                 match headers.get(i) {
                     Some("name") => name = field.trim().to_string(),
-                    Some("email") => email = field.trim().to_lowercase(),
+                    Some("email") => email = field.trim().to_string(),
                     Some("phone") => phone = field.trim().to_string(),
                     Some("address") => address = field.trim().to_string(),
                     Some(header) => {
@@ -108,14 +108,14 @@ impl UploadClientsForm {
                 continue;
             }
 
-            clients.push(NewClient {
+            clients.push(NewClient::new(
                 hub_id,
                 name,
                 email,
                 phone,
                 address,
-                fields: Some(optional_fields),
-            });
+                Some(optional_fields),
+            ));
         }
 
         Ok(clients)

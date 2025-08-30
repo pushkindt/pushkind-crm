@@ -120,17 +120,6 @@ pub async fn save_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let updates: UpdateClient = (&form).into();
-
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(form.id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
-    }
-
     let client = match repo.get_client_by_id(form.id, user.hub_id) {
         Ok(Some(client)) => client,
         Err(e) => {
@@ -143,6 +132,16 @@ pub async fn save_client(
         }
     };
 
+    if check_role("crm_manager", &user.roles)
+        && !repo
+            .check_client_assigned_to_manager(client.id, &user.email)
+            .is_ok_and(|result| result)
+    {
+        FlashMessage::error("Этот клиент для вас не доступен").send();
+        return redirect("/");
+    }
+    let updates: UpdateClient = form.into();
+
     match repo.update_client(client.id, &updates) {
         Ok(_) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
@@ -153,7 +152,7 @@ pub async fn save_client(
         }
     }
 
-    redirect(&format!("/client/{}", form.id))
+    redirect(&format!("/client/{}", client.id))
 }
 
 #[post("/client/comment")]
