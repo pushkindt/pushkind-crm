@@ -26,6 +26,7 @@ diesel::table! {
         email -> Nullable<Binary>,
         phone -> Nullable<Binary>,
         address -> Nullable<Binary>,
+        fields -> Nullable<Binary>,
         #[sql_name = "client_fts"]
         client_fts_col -> Nullable<Binary>,
         rank -> Nullable<Binary>,

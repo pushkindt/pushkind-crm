@@ -282,11 +282,6 @@ impl ClientWriter for DieselRepository {
             address: updates.address,
         };
 
-        let mut updated: Client = diesel::update(clients::table.find(client_id))
-            .set(&db_updates)
-            .get_result::<DbClient>(&mut conn)?
-            .into();
-
         // Update fields (delete all → insert new)
         diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
             .execute(&mut conn)?;
@@ -300,6 +295,12 @@ impl ClientWriter for DieselRepository {
                 .values(&new_field)
                 .execute(&mut conn)?;
         }
+
+        // Update main client row once fields are set so FTS picks up new values
+        let mut updated: Client = diesel::update(clients::table.find(client_id))
+            .set(&db_updates)
+            .get_result::<DbClient>(&mut conn)?
+            .into();
 
         // Reload fields
         let fields_vec = client_fields::table
