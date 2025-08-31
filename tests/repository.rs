@@ -18,17 +18,17 @@ fn test_client_repository_crud() {
     let c1 = NewClient::new(
         1,
         "Alice".into(),
-        "alice@example.com".into(),
-        "111".into(),
-        "Addr1".into(),
+        Some("alice@example.com".into()),
+        Some("111".into()),
+        Some("Addr1".into()),
         None,
     );
     let c2 = NewClient::new(
         1,
         "Bob".into(),
-        "bob@example.com".into(),
-        "222".into(),
-        "Addr2".into(),
+        Some("bob@example.com".into()),
+        Some("222".into()),
+        Some("Addr2".into()),
         None,
     );
 
@@ -60,7 +60,7 @@ fn test_client_repository_crud() {
                 alice.email.clone(),
                 alice.phone.clone(),
                 alice.address.clone(),
-                HashMap::from([("vip".to_string(), "true".to_string())]),
+                Some(HashMap::from([("vip".to_string(), "true".to_string())])),
             ),
         )
         .unwrap();
@@ -77,7 +77,7 @@ fn test_client_repository_crud() {
                 bob.email.clone(),
                 bob.phone.clone(),
                 bob.address.clone(),
-                HashMap::new(),
+                Some(HashMap::new()),
             ),
         )
         .unwrap();
@@ -100,9 +100,9 @@ fn test_client_event_repository_crud() {
         let new_client = NewClient::new(
             1,
             "Alice".into(),
-            "alice@example.com".into(),
-            "111".into(),
-            "Addr1".into(),
+            Some("alice@example.com".into()),
+            Some("111".into()),
+            Some("Addr1".into()),
             None,
         );
         client_repo.create_clients(&[new_client]).unwrap();
@@ -169,17 +169,17 @@ fn test_manager_repository_crud() {
         NewClient::new(
             1,
             "Alice".into(),
-            "alice@example.com".into(),
-            "111".into(),
-            "Addr1".into(),
+            Some("alice@example.com".into()),
+            Some("111".into()),
+            Some("Addr1".into()),
             None,
         ),
         NewClient::new(
             1,
             "Bob".into(),
-            "bob@example.com".into(),
-            "222".into(),
-            "Addr2".into(),
+            Some("bob@example.com".into()),
+            Some("222".into()),
+            Some("Addr2".into()),
             None,
         ),
     ];

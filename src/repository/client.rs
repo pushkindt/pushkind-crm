@@ -267,14 +267,19 @@ impl ClientWriter for DieselRepository {
                         clients::phone.eq(&new.phone),
                         clients::address.eq(&new.address),
                     ))
-                    .get_result::<DbClient>(conn)?;
+                    .get_result::<DbClient>(conn);
+
+                let client_id = match inserted {
+                    Ok(client) => client.id,
+                    Err(_) => continue,
+                };
 
                 // Insert optional fields
                 if let Some(fields) = &new.fields {
                     let new_fields: Vec<ClientField> = fields
                         .iter()
                         .map(|(f, v)| ClientField {
-                            client_id: inserted.id,
+                            client_id,
                             field: f.clone(),
                             value: v.clone(),
                         })
@@ -312,15 +317,17 @@ impl ClientWriter for DieselRepository {
         // Update fields (delete all → insert new)
         diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
             .execute(&mut conn)?;
-        for (field, value) in &updates.fields {
-            let new_field = ClientField {
-                client_id,
-                field: field.to_string(),
-                value: value.to_string(),
-            };
-            diesel::insert_into(client_fields::table)
-                .values(&new_field)
-                .execute(&mut conn)?;
+        if let Some(fields) = &updates.fields {
+            for (field, value) in fields {
+                let new_field = ClientField {
+                    client_id,
+                    field: field.to_string(),
+                    value: value.to_string(),
+                };
+                diesel::insert_into(client_fields::table)
+                    .values(&new_field)
+                    .execute(&mut conn)?;
+            }
         }
 
         // Reload fields

@@ -14,9 +14,9 @@ pub struct Client {
     pub id: i32,
     pub hub_id: i32,
     pub name: String,
-    pub email: String,
-    pub phone: String,
-    pub address: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub address: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -33,9 +33,9 @@ pub struct ClientCount {
 pub struct NewClient<'a> {
     pub hub_id: i32,
     pub name: &'a str,
-    pub email: &'a str,
-    pub phone: &'a str,
-    pub address: &'a str,
+    pub email: Option<&'a str>,
+    pub phone: Option<&'a str>,
+    pub address: Option<&'a str>,
 }
 
 #[derive(AsChangeset)]
@@ -43,9 +43,9 @@ pub struct NewClient<'a> {
 /// Data used when updating a [`Client`] record.
 pub struct UpdateClient<'a> {
     pub name: &'a str,
-    pub email: &'a str,
-    pub phone: &'a str,
-    pub address: &'a str,
+    pub email: Option<&'a str>,
+    pub phone: Option<&'a str>,
+    pub address: Option<&'a str>,
 }
 
 #[derive(Identifiable, Queryable, Selectable, Associations, Insertable, Serialize)]
@@ -79,9 +79,9 @@ impl<'a> From<&'a DomainNewClient> for NewClient<'a> {
         Self {
             hub_id: client.hub_id,
             name: client.name.as_str(),
-            email: client.email.as_str(),
-            phone: client.phone.as_str(),
-            address: client.address.as_str(),
+            email: client.email.as_deref(),
+            phone: client.phone.as_deref(),
+            address: client.address.as_deref(),
         }
     }
 }
@@ -90,9 +90,9 @@ impl<'a> From<&'a DomainUpdateClient> for UpdateClient<'a> {
     fn from(client: &'a DomainUpdateClient) -> Self {
         Self {
             name: client.name.as_str(),
-            email: client.email.as_str(),
-            phone: client.phone.as_str(),
-            address: client.address.as_str(),
+            email: client.email.as_deref(),
+            phone: client.phone.as_deref(),
+            address: client.address.as_deref(),
         }
     }
 }
@@ -108,9 +108,9 @@ mod tests {
         DomainNewClient::new(
             1,
             "John".to_string(),
-            "john@example.com".to_string(),
-            "123".to_string(),
-            "addr".to_string(),
+            Some("john@example.com".to_string()),
+            Some("123".to_string()),
+            Some("addr".to_string()),
             None,
         )
     }
@@ -121,25 +121,25 @@ mod tests {
         let new: NewClient = (&domain).into();
         assert_eq!(new.hub_id, domain.hub_id);
         assert_eq!(new.name, domain.name);
-        assert_eq!(new.email, domain.email);
-        assert_eq!(new.phone, domain.phone);
-        assert_eq!(new.address, domain.address);
+        assert_eq!(new.email, domain.email.as_deref());
+        assert_eq!(new.phone, domain.phone.as_deref());
+        assert_eq!(new.address, domain.address.as_deref());
     }
 
     #[test]
     fn from_domain_update_creates_updateclient() {
         let domain = DomainUpdateClient::new(
             "Jane".to_string(),
-            "jane@example.com".to_string(),
-            "321".to_string(),
-            "addr2".to_string(),
-            HashMap::new(),
+            Some("jane@example.com".to_string()),
+            Some("321".to_string()),
+            Some("addr2".to_string()),
+            Some(HashMap::new()),
         );
         let update: UpdateClient = (&domain).into();
         assert_eq!(update.name, domain.name);
-        assert_eq!(update.email, domain.email);
-        assert_eq!(update.phone, domain.phone);
-        assert_eq!(update.address, domain.address);
+        assert_eq!(update.email, domain.email.as_deref());
+        assert_eq!(update.phone, domain.phone.as_deref());
+        assert_eq!(update.address, domain.address.as_deref());
     }
 
     #[test]
@@ -148,10 +148,10 @@ mod tests {
         let db_client = Client {
             id: 1,
             hub_id: 2,
-            name: "n".into(),
-            email: "e".into(),
-            phone: "p".into(),
-            address: "a".into(),
+            name: "n".to_string(),
+            email: Some("e".to_string()),
+            phone: Some("p".to_string()),
+            address: Some("a".to_string()),
             created_at: now,
             updated_at: now,
         };
@@ -159,9 +159,9 @@ mod tests {
         assert_eq!(domain.id, 1);
         assert_eq!(domain.hub_id, 2);
         assert_eq!(domain.name, "n");
-        assert_eq!(domain.email, "e");
-        assert_eq!(domain.phone, "p");
-        assert_eq!(domain.address, "a");
+        assert_eq!(domain.email, Some("e".to_string()));
+        assert_eq!(domain.phone, Some("p".to_string()));
+        assert_eq!(domain.address, Some("a".to_string()));
         assert_eq!(domain.created_at, now);
         assert_eq!(domain.updated_at, now);
     }

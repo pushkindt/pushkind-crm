@@ -104,7 +104,7 @@ pub async fn add_client(
         return redirect("/");
     }
 
-    let new_client: NewClient = form.into();
+    let new_client: NewClient = form.to_new_client(user.hub_id);
 
     match repo.create_clients(&[new_client]) {
         Ok(_) => {

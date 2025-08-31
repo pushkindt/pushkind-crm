@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io::Read};
 
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};
+use pushkind_common::routes::empty_string_as_none;
 use serde::Deserialize;
 use thiserror::Error;
 use validator::Validate;
@@ -10,28 +11,29 @@ use crate::domain::client::NewClient;
 #[derive(Deserialize, Validate)]
 /// Form data used to add a new client.
 pub struct AddClientForm {
-    /// Identifier of the hub that owns the client.
-    pub hub_id: i32,
     /// Client's display name.
     #[validate(length(min = 1))]
     pub name: String,
     /// Client's email address.
     #[validate(email)]
-    pub email: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub email: Option<String>,
     /// Contact phone number.
-    pub phone: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub phone: Option<String>,
     /// Mailing address.
-    pub address: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub address: Option<String>,
 }
 
-impl From<AddClientForm> for NewClient {
-    fn from(form: AddClientForm) -> Self {
+impl AddClientForm {
+    pub fn to_new_client(self, hub_id: i32) -> NewClient {
         NewClient::new(
-            form.hub_id,
-            form.name,
-            form.email,
-            form.phone,
-            form.address,
+            hub_id,
+            self.name,
+            self.email,
+            self.phone,
+            self.address,
             None,
         )
     }
@@ -103,7 +105,7 @@ impl UploadClientsForm {
                 }
             }
 
-            if name.is_empty() || email.is_empty() || phone.is_empty() || address.is_empty() {
+            if name.is_empty() {
                 // Skip records missing required fields.
                 continue;
             }
@@ -111,9 +113,9 @@ impl UploadClientsForm {
             clients.push(NewClient::new(
                 hub_id,
                 name,
-                email,
-                phone,
-                address,
+                Some(email),
+                Some(phone),
+                Some(address),
                 Some(optional_fields),
             ));
         }
