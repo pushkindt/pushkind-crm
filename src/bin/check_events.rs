@@ -14,7 +14,8 @@ where
     R: ClientEventWriter + ManagerWriter + ClientReader,
 {
     match msg {
-        ZMQSendEmailMessage::NewEmail((user, new_email)) => {
+        ZMQSendEmailMessage::NewEmail(boxed) => {
+            let (user, new_email) = *boxed;
             log::info!("New email from user {user:?}, {:?}", new_email.subject);
             let manager = repo.create_or_update_manager(&(&user).into())?;
 

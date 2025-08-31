@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use pushkind_common::routes::empty_string_as_none;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -15,11 +16,14 @@ pub struct SaveClientForm {
     pub name: String,
     /// Updated email address.
     #[validate(email)]
-    pub email: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub email: Option<String>,
     /// Updated contact phone number.
-    pub phone: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub phone: Option<String>,
     /// Updated mailing address.
-    pub address: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub address: Option<String>,
     #[serde(default)]
     pub field: Vec<String>,
     #[serde(default)]
@@ -61,6 +65,12 @@ impl From<SaveClientForm> for UpdateClient {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        UpdateClient::new(form.name, form.email, form.phone, form.address, fields)
+        UpdateClient::new(
+            form.name,
+            form.email,
+            form.phone,
+            form.address,
+            Some(fields),
+        )
     }
 }
