@@ -279,7 +279,7 @@ impl ClientWriter for DieselRepository {
                     let new_fields: Vec<ClientField> = fields
                         .iter()
                         .map(|(f, v)| ClientField {
-                            client_id: client_id,
+                            client_id,
                             field: f.clone(),
                             value: v.clone(),
                         })
