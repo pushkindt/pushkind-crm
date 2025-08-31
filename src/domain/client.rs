@@ -29,6 +29,7 @@ pub struct NewClient {
 }
 
 impl NewClient {
+    #[must_use]
     pub fn new(
         hub_id: i32,
         name: String,
@@ -59,6 +60,7 @@ pub struct UpdateClient {
 }
 
 impl UpdateClient {
+    #[must_use]
     pub fn new(
         name: String,
         email: String,
