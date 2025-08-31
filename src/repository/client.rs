@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Integer, Text};
 use diesel::upsert::excluded;
+use diesel::result::DatabaseErrorKind;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::models::client::ClientField;
@@ -271,7 +272,41 @@ impl ClientWriter for DieselRepository {
 
                 let client_id = match inserted {
                     Ok(client) => client.id,
-                    Err(_) => continue,
+                    Err(err) => {
+                        if let diesel::result::Error::DatabaseError(
+                            DatabaseErrorKind::UniqueViolation,
+                            _,
+                        ) = err
+                        {
+                            // likely conflict on (hub_id, phone), try to find and update existing record
+                            let Some(phone) = &new.phone else { continue };
+
+                            let existing = match clients::table
+                                .filter(clients::hub_id.eq(new.hub_id))
+                                .filter(clients::phone.eq(phone))
+                                .first::<DbClient>(conn)
+                            {
+                                Ok(client) => client,
+                                Err(_) => continue,
+                            };
+
+                            if diesel::update(clients::table.find(existing.id))
+                                .set((
+                                    clients::name.eq(&new.name),
+                                    clients::address.eq(&new.address),
+                                    clients::email.eq(&new.email),
+                                ))
+                                .execute(conn)
+                                .is_err()
+                            {
+                                continue;
+                            }
+
+                            existing.id
+                        } else {
+                            continue;
+                        }
+                    }
                 };
 
                 // Insert optional fields
