@@ -17,6 +17,7 @@ pub struct NewManager {
 }
 
 impl NewManager {
+    #[must_use]
     pub fn new(hub_id: i32, name: String, email: String) -> Self {
         Self {
             hub_id,
