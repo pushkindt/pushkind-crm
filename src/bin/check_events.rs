@@ -2,7 +2,7 @@ use std::env;
 
 use chrono::Utc;
 use dotenvy::dotenv;
-use pushkind_common::models::zmq::emailer::ZMQSendEmailMessage;
+use pushkind_common::models::zmq::emailer::{ZMQReplyMessage, ZMQSendEmailMessage};
 use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
 
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
@@ -63,12 +63,30 @@ async fn main() {
 
     let zmq_address =
         env::var("ZMQ_EMAILER_SUB").unwrap_or_else(|_| "tcp://127.0.0.1:5558".to_string());
+    let replier_address =
+        env::var("ZMQ_REPLIER_SUB").unwrap_or_else(|_| "tcp://127.0.0.1:5560".to_string());
     let context = zmq::Context::new();
     let responder = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     responder
         .connect(&zmq_address)
         .expect("Cannot connect to zmq port");
     responder.set_subscribe(b"").expect("SUBSCRIBE failed");
+
+    let replier = context.socket(zmq::SUB).expect("Cannot create zmq socket");
+    replier
+        .connect(&replier_address)
+        .expect("Cannot connect to zmq port");
+    replier.set_subscribe(b"").expect("SUBSCRIBE failed");
+
+    std::thread::spawn(move || {
+        loop {
+            let msg = replier.recv_bytes(0).unwrap();
+            match serde_json::from_slice::<ZMQReplyMessage>(&msg) {
+                Ok(reply) => log::info!("Reply from {}: {}", reply.email, reply.message),
+                Err(e) => log::error!("Error receiving reply message: {e}"),
+            }
+        }
+    });
 
     let pool = match establish_connection_pool(&database_url) {
         Ok(pool) => pool,
