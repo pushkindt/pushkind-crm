@@ -20,6 +20,7 @@ pub enum ClientEventType {
     DocumentLink,
     Call,
     Email,
+    Reply,
     Other(String),
 }
 
@@ -39,6 +40,7 @@ impl Display for ClientEventType {
             ClientEventType::DocumentLink => write!(f, "DocumentLink"),
             ClientEventType::Call => write!(f, "Call"),
             ClientEventType::Email => write!(f, "Email"),
+            ClientEventType::Reply => write!(f, "Reply"),
             ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
@@ -51,6 +53,7 @@ impl From<&str> for ClientEventType {
             "DocumentLink" => ClientEventType::DocumentLink,
             "Call" => ClientEventType::Call,
             "Email" => ClientEventType::Email,
+            "Reply" => ClientEventType::Reply,
             _ => ClientEventType::Other(s.to_string()),
         }
     }

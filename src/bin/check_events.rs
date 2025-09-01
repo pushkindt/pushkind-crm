@@ -78,16 +78,6 @@ async fn main() {
         .expect("Cannot connect to zmq port");
     replier.set_subscribe(b"").expect("SUBSCRIBE failed");
 
-    std::thread::spawn(move || {
-        loop {
-            let msg = replier.recv_bytes(0).unwrap();
-            match serde_json::from_slice::<ZMQReplyMessage>(&msg) {
-                Ok(reply) => log::info!("Reply from {}: {}", reply.email, reply.message),
-                Err(e) => log::error!("Error receiving reply message: {e}"),
-            }
-        }
-    });
-
     let pool = match establish_connection_pool(&database_url) {
         Ok(pool) => pool,
         Err(e) => {
@@ -97,6 +87,53 @@ async fn main() {
     };
 
     let repo = DieselRepository::new(pool);
+
+    let reply_repo = repo.clone();
+    std::thread::spawn(move || {
+        loop {
+            let msg = replier.recv_bytes(0).unwrap();
+            match serde_json::from_slice::<ZMQReplyMessage>(&msg) {
+                Ok(reply) => {
+                    log::info!("Reply from {}: {}", reply.email, reply.message);
+                    match reply_repo.get_client_by_email(&reply.email, reply.hub_id) {
+                        Ok(Some(client)) => match reply_repo.list_managers(client.id) {
+                            Ok(managers) if !managers.is_empty() => {
+                                let event = NewClientEvent {
+                                    client_id: client.id,
+                                    manager_id: managers[0].id,
+                                    event_type: ClientEventType::Reply,
+                                    event_data: json!({
+                                        "text": reply.message,
+                                    }),
+                                    created_at: Utc::now().naive_utc(),
+                                };
+                                if let Err(e) = reply_repo.create_client_event(&event) {
+                                    log::error!("Error creating reply event: {e}");
+                                }
+                            }
+                            Ok(_) => {
+                                log::error!("No manager found for client {}", client.id);
+                            }
+                            Err(e) => {
+                                log::error!("Error fetching managers: {e}");
+                            }
+                        },
+                        Ok(None) => {
+                            log::error!(
+                                "Client not found for reply {} in hub {}",
+                                reply.email,
+                                reply.hub_id
+                            );
+                        }
+                        Err(e) => {
+                            log::error!("Error fetching client for reply: {e}");
+                        }
+                    }
+                }
+                Err(e) => log::error!("Error receiving reply message: {e}"),
+            }
+        }
+    });
 
     log::info!("Starting event worker");
 
