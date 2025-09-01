@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use diesel::prelude::*;
+use diesel::result::DatabaseErrorKind;
 use diesel::sql_types::{BigInt, Integer, Text};
 use diesel::upsert::excluded;
-use diesel::result::DatabaseErrorKind;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::models::client::ClientField;
