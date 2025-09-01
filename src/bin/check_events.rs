@@ -5,11 +5,14 @@ use dotenvy::dotenv;
 use pushkind_common::models::zmq::emailer::{ZMQReplyMessage, ZMQSendEmailMessage};
 use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
 
-use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
+use pushkind_crm::domain::{
+    client_event::{ClientEventType, NewClientEvent},
+    manager::NewManager,
+};
 use pushkind_crm::repository::{ClientEventWriter, ClientReader, DieselRepository, ManagerWriter};
 use serde_json::json;
 
-async fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
+fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
 where
     R: ClientEventWriter + ManagerWriter + ClientReader,
 {
@@ -54,6 +57,46 @@ where
     Ok(())
 }
 
+fn process_reply_message<R>(reply: ZMQReplyMessage, repo: R)
+where
+    R: ClientEventWriter + ManagerWriter + ClientReader,
+{
+    log::info!("Reply from {}: {}", reply.email, reply.message);
+    match repo.get_client_by_email(&reply.email, reply.hub_id) {
+        Ok(Some(client)) => {
+            let new_manager =
+                NewManager::new(client.hub_id, client.name.clone(), reply.email.clone());
+            match repo.create_or_update_manager(&new_manager) {
+                Ok(manager) => {
+                    let event = NewClientEvent {
+                        client_id: client.id,
+                        manager_id: manager.id,
+                        event_type: ClientEventType::Reply,
+                        event_data: json!({
+                            "text": reply.message,
+                        }),
+                        created_at: Utc::now().naive_utc(),
+                    };
+                    if let Err(e) = repo.create_client_event(&event) {
+                        log::error!("Error creating reply event: {e}");
+                    }
+                }
+                Err(e) => log::error!("Error creating manager: {e}"),
+            }
+        }
+        Ok(None) => {
+            log::error!(
+                "Client not found for reply {} in hub {}",
+                reply.email,
+                reply.hub_id
+            );
+        }
+        Err(e) => {
+            log::error!("Error fetching client for reply: {e}");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
@@ -94,41 +137,8 @@ async fn main() {
             let msg = replier.recv_bytes(0).unwrap();
             match serde_json::from_slice::<ZMQReplyMessage>(&msg) {
                 Ok(reply) => {
-                    log::info!("Reply from {}: {}", reply.email, reply.message);
-                    match reply_repo.get_client_by_email(&reply.email, reply.hub_id) {
-                        Ok(Some(client)) => match reply_repo.list_managers(client.id) {
-                            Ok(managers) if !managers.is_empty() => {
-                                let event = NewClientEvent {
-                                    client_id: client.id,
-                                    manager_id: managers[0].id,
-                                    event_type: ClientEventType::Reply,
-                                    event_data: json!({
-                                        "text": reply.message,
-                                    }),
-                                    created_at: Utc::now().naive_utc(),
-                                };
-                                if let Err(e) = reply_repo.create_client_event(&event) {
-                                    log::error!("Error creating reply event: {e}");
-                                }
-                            }
-                            Ok(_) => {
-                                log::error!("No manager found for client {}", client.id);
-                            }
-                            Err(e) => {
-                                log::error!("Error fetching managers: {e}");
-                            }
-                        },
-                        Ok(None) => {
-                            log::error!(
-                                "Client not found for reply {} in hub {}",
-                                reply.email,
-                                reply.hub_id
-                            );
-                        }
-                        Err(e) => {
-                            log::error!("Error fetching client for reply: {e}");
-                        }
-                    }
+                    let repo = reply_repo.clone();
+                    process_reply_message(reply, repo);
                 }
                 Err(e) => log::error!("Error receiving reply message: {e}"),
             }
@@ -144,7 +154,7 @@ async fn main() {
                 let repo = repo.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) = process_email_event(parsed, repo).await {
+                    if let Err(e) = process_email_event(parsed, repo) {
                         log::error!("Error processing email message: {e}");
                     }
                 });
