@@ -2,7 +2,7 @@ use std::env;
 
 use chrono::Utc;
 use dotenvy::dotenv;
-use pushkind_common::models::zmq::emailer::{ZMQReplyMessage, ZMQSendEmailMessage};
+use pushkind_common::models::emailer::zmq::{ZMQReplyMessage, ZMQSendEmailMessage};
 use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
 
 use pushkind_crm::domain::{

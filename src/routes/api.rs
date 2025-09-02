@@ -1,5 +1,5 @@
 use actix_web::{HttpResponse, Responder, get, web};
-use pushkind_common::models::auth::AuthenticatedUser;
+use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::{check_role, ensure_role};
 use serde::Deserialize;
