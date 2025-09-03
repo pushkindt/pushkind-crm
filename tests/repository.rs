@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
@@ -60,13 +60,13 @@ fn test_client_repository_crud() {
                 alice.email.clone(),
                 alice.phone.clone(),
                 alice.address.clone(),
-                Some(HashMap::from([("vip".to_string(), "true".to_string())])),
+                Some(BTreeMap::from([("vip".to_string(), "true".to_string())])),
             ),
         )
         .unwrap();
     assert_eq!(
         alice.fields,
-        Some(HashMap::from([("vip".to_string(), "true".to_string())]))
+        Some(BTreeMap::from([("vip".to_string(), "true".to_string())]))
     );
 
     bob = client_repo
@@ -77,7 +77,7 @@ fn test_client_repository_crud() {
                 bob.email.clone(),
                 bob.phone.clone(),
                 bob.address.clone(),
-                Some(HashMap::new()),
+                Some(BTreeMap::new()),
             ),
         )
         .unwrap();
