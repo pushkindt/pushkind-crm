@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Read};
+use std::{collections::BTreeMap, io::Read};
 
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};
 use pushkind_common::routes::empty_string_as_none;
@@ -82,7 +82,7 @@ impl UploadClientsForm {
 
         for result in rdr.records() {
             let record = result?;
-            let mut optional_fields = HashMap::new();
+            let mut optional_fields = BTreeMap::new();
 
             let mut name = String::new();
             let mut email = String::new();

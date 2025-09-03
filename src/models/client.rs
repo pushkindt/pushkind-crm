@@ -99,7 +99,7 @@ impl<'a> From<&'a DomainUpdateClient> for UpdateClient<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use super::*;
     use chrono::Utc;
@@ -133,7 +133,7 @@ mod tests {
             Some("jane@example.com".to_string()),
             Some("321".to_string()),
             Some("addr2".to_string()),
-            Some(HashMap::new()),
+            Some(BTreeMap::new()),
         );
         let update: UpdateClient = (&domain).into();
         assert_eq!(update.name, domain.name);

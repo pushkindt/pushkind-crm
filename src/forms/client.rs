@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use pushkind_common::routes::empty_string_as_none;
 use serde::Deserialize;
@@ -58,7 +58,7 @@ pub struct AddAttachmentForm {
 impl From<SaveClientForm> for UpdateClient {
     /// Convert the [`SaveClientForm`] into an [`UpdateClient`] value for persistence.
     fn from(form: SaveClientForm) -> Self {
-        let fields: HashMap<String, String> = form
+        let fields: BTreeMap<String, String> = form
             .field
             .iter()
             .zip(form.value.iter())

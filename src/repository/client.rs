@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use diesel::result::DatabaseErrorKind;
@@ -374,7 +374,7 @@ impl ClientWriter for DieselRepository {
         let fields_map = fields_vec
             .into_iter()
             .map(|f| (f.field, f.value))
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         updated.fields = Some(fields_map);
 
