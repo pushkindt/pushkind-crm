@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub struct Client {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     /// Optional set of custom fields.
-    pub fields: Option<HashMap<String, String>>,
+    pub fields: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -25,7 +25,7 @@ pub struct NewClient {
     pub phone: Option<String>,
     pub address: Option<String>,
     /// Optional set of custom fields.
-    pub fields: Option<HashMap<String, String>>,
+    pub fields: Option<BTreeMap<String, String>>,
 }
 
 impl NewClient {
@@ -36,7 +36,7 @@ impl NewClient {
         email: Option<String>,
         phone: Option<String>,
         address: Option<String>,
-        fields: Option<HashMap<String, String>>,
+        fields: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
             hub_id,
@@ -62,7 +62,7 @@ pub struct UpdateClient {
     pub phone: Option<String>,
     pub address: Option<String>,
     /// Updated map of custom fields.
-    pub fields: Option<HashMap<String, String>>,
+    pub fields: Option<BTreeMap<String, String>>,
 }
 
 impl UpdateClient {
@@ -72,7 +72,7 @@ impl UpdateClient {
         email: Option<String>,
         phone: Option<String>,
         address: Option<String>,
-        fields: Option<HashMap<String, String>>,
+        fields: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
             name,
