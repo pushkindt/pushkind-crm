@@ -10,7 +10,6 @@ pub struct Client {
     pub name: String,
     pub email: Option<String>,
     pub phone: Option<String>,
-    pub address: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     /// Optional set of custom fields.
@@ -23,7 +22,6 @@ pub struct NewClient {
     pub name: String,
     pub email: Option<String>,
     pub phone: Option<String>,
-    pub address: Option<String>,
     /// Optional set of custom fields.
     pub fields: Option<BTreeMap<String, String>>,
 }
@@ -35,7 +33,6 @@ impl NewClient {
         name: String,
         email: Option<String>,
         phone: Option<String>,
-        address: Option<String>,
         fields: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
@@ -45,9 +42,6 @@ impl NewClient {
                 .map(|s| s.to_lowercase().trim().to_string())
                 .filter(|s| !s.is_empty()),
             phone: phone
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-            address: address
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
             fields: fields.filter(|m| !m.is_empty()),
@@ -60,7 +54,6 @@ pub struct UpdateClient {
     pub name: String,
     pub email: Option<String>,
     pub phone: Option<String>,
-    pub address: Option<String>,
     /// Updated map of custom fields.
     pub fields: Option<BTreeMap<String, String>>,
 }
@@ -71,7 +64,6 @@ impl UpdateClient {
         name: String,
         email: Option<String>,
         phone: Option<String>,
-        address: Option<String>,
         fields: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
@@ -80,9 +72,6 @@ impl UpdateClient {
                 .map(|s| s.to_lowercase().trim().to_string())
                 .filter(|s| !s.is_empty()),
             phone: phone
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-            address: address
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
             fields: fields.filter(|m| !m.is_empty()),

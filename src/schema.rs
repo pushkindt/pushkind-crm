@@ -25,7 +25,6 @@ diesel::table! {
         name -> Nullable<Binary>,
         email -> Nullable<Binary>,
         phone -> Nullable<Binary>,
-        address -> Nullable<Binary>,
         #[sql_name = "client_fts"]
         client_fts_col -> Nullable<Binary>,
         rank -> Nullable<Binary>,
@@ -75,7 +74,6 @@ diesel::table! {
         name -> Text,
         email -> Nullable<Text>,
         phone -> Nullable<Text>,
-        address -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }

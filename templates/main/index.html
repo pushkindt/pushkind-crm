@@ -42,36 +42,29 @@
         {% endif %}
 
         <div class="row d-none d-sm-flex fw-bold">
-            <div class="col-2 overflow-hidden">
+            <div class="col overflow-hidden">
                 Название
             </div>
-            <div class="col-2 overflow-hidden">
+            <div class="col overflow-hidden">
                 Электронный адрес
             </div>
-            <div class="col-3 overflow-hidden">
-                Телефон
-            </div>
             <div class="col overflow-hidden">
-                Адрес
+                Телефон
             </div>
         </div>
         <div id="clientList">
             {% for client in clients.items %}
                 <div class="row my-1 py-1 border-top client selectable" data-id="{{client.id}}">
-                    <div class="col-sm-2">
+                    <div class="col-sm">
                         <strong>{{ client.name }}</strong>
                     </div>
-                    <div class="col-sm-2">
+                    <div class="col-sm">
                         <span class="d-sm-none fw-bold">Электронный адрес:</span>
                         {{ client.email }}
                     </div>
-                    <div class="col-sm-3">
+                    <div class="col-sm">
                         <span class="d-sm-none fw-bold">Телефон:</span>
                         {{ client.phone }}
-                    </div>
-                    <div class="col">
-                        <span class="d-sm-none fw-bold">Адрес:</span>
-                        {{ client.address }}
                     </div>
                 </div>
             {% else %}

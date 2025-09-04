@@ -263,11 +263,7 @@ impl ClientWriter for DieselRepository {
                     .values(&db_new)
                     .on_conflict((clients::email, clients::hub_id))
                     .do_update()
-                    .set((
-                        clients::name.eq(&new.name),
-                        clients::phone.eq(&new.phone),
-                        clients::address.eq(&new.address),
-                    ))
+                    .set((clients::name.eq(&new.name), clients::phone.eq(&new.phone)))
                     .get_result::<DbClient>(conn);
 
                 let client_id = match inserted {
@@ -291,11 +287,7 @@ impl ClientWriter for DieselRepository {
                             };
 
                             if diesel::update(clients::table.find(existing.id))
-                                .set((
-                                    clients::name.eq(&new.name),
-                                    clients::address.eq(&new.address),
-                                    clients::email.eq(&new.email),
-                                ))
+                                .set((clients::name.eq(&new.name), clients::email.eq(&new.email)))
                                 .execute(conn)
                                 .is_err()
                             {
