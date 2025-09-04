@@ -20,7 +20,6 @@ fn test_client_repository_crud() {
         "Alice".into(),
         Some("alice@example.com".into()),
         Some("111".into()),
-        Some("Addr1".into()),
         None,
     );
     let c2 = NewClient::new(
@@ -28,7 +27,6 @@ fn test_client_repository_crud() {
         "Bob".into(),
         Some("bob@example.com".into()),
         Some("222".into()),
-        Some("Addr2".into()),
         None,
     );
 
@@ -59,7 +57,6 @@ fn test_client_repository_crud() {
                 alice.name.clone(),
                 alice.email.clone(),
                 alice.phone.clone(),
-                alice.address.clone(),
                 Some(BTreeMap::from([("vip".to_string(), "true".to_string())])),
             ),
         )
@@ -76,7 +73,6 @@ fn test_client_repository_crud() {
                 "Bobby".to_string(),
                 bob.email.clone(),
                 bob.phone.clone(),
-                bob.address.clone(),
                 Some(BTreeMap::new()),
             ),
         )
@@ -102,7 +98,6 @@ fn test_client_event_repository_crud() {
             "Alice".into(),
             Some("alice@example.com".into()),
             Some("111".into()),
-            Some("Addr1".into()),
             None,
         );
         client_repo.create_clients(&[new_client]).unwrap();
@@ -171,7 +166,6 @@ fn test_manager_repository_crud() {
             "Alice".into(),
             Some("alice@example.com".into()),
             Some("111".into()),
-            Some("Addr1".into()),
             None,
         ),
         NewClient::new(
@@ -179,7 +173,6 @@ fn test_manager_repository_crud() {
             "Bob".into(),
             Some("bob@example.com".into()),
             Some("222".into()),
-            Some("Addr2".into()),
             None,
         ),
     ];

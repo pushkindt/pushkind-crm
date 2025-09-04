@@ -14,28 +14,18 @@ pub struct AddClientForm {
     /// Client's display name.
     #[validate(length(min = 1))]
     pub name: String,
-    /// Client's email address.
+    /// Client's email.
     #[validate(email)]
     #[serde(deserialize_with = "empty_string_as_none")]
     pub email: Option<String>,
     /// Contact phone number.
     #[serde(deserialize_with = "empty_string_as_none")]
     pub phone: Option<String>,
-    /// Mailing address.
-    #[serde(deserialize_with = "empty_string_as_none")]
-    pub address: Option<String>,
 }
 
 impl AddClientForm {
     pub fn to_new_client(self, hub_id: i32) -> NewClient {
-        NewClient::new(
-            hub_id,
-            self.name,
-            self.email,
-            self.phone,
-            self.address,
-            None,
-        )
+        NewClient::new(hub_id, self.name, self.email, self.phone, None)
     }
 }
 
@@ -87,14 +77,12 @@ impl UploadClientsForm {
             let mut name = String::new();
             let mut email = String::new();
             let mut phone = String::new();
-            let mut address = String::new();
 
             for (i, field) in record.iter().enumerate() {
                 match headers.get(i) {
                     Some("name") => name = field.trim().to_string(),
                     Some("email") => email = field.trim().to_string(),
                     Some("phone") => phone = field.trim().to_string(),
-                    Some("address") => address = field.trim().to_string(),
                     Some(header) => {
                         if field.is_empty() {
                             continue;
@@ -115,7 +103,6 @@ impl UploadClientsForm {
                 name,
                 Some(email),
                 Some(phone),
-                Some(address),
                 Some(optional_fields),
             ));
         }

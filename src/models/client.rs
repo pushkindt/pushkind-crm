@@ -16,7 +16,6 @@ pub struct Client {
     pub name: String,
     pub email: Option<String>,
     pub phone: Option<String>,
-    pub address: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -35,7 +34,6 @@ pub struct NewClient<'a> {
     pub name: &'a str,
     pub email: Option<&'a str>,
     pub phone: Option<&'a str>,
-    pub address: Option<&'a str>,
 }
 
 #[derive(AsChangeset)]
@@ -45,7 +43,6 @@ pub struct UpdateClient<'a> {
     pub name: &'a str,
     pub email: Option<&'a str>,
     pub phone: Option<&'a str>,
-    pub address: Option<&'a str>,
 }
 
 #[derive(Identifiable, Queryable, Selectable, Associations, Insertable, Serialize)]
@@ -66,7 +63,6 @@ impl From<Client> for DomainClient {
             name: client.name,
             email: client.email,
             phone: client.phone,
-            address: client.address,
             created_at: client.created_at,
             updated_at: client.updated_at,
             fields: None,
@@ -81,7 +77,6 @@ impl<'a> From<&'a DomainNewClient> for NewClient<'a> {
             name: client.name.as_str(),
             email: client.email.as_deref(),
             phone: client.phone.as_deref(),
-            address: client.address.as_deref(),
         }
     }
 }
@@ -92,7 +87,6 @@ impl<'a> From<&'a DomainUpdateClient> for UpdateClient<'a> {
             name: client.name.as_str(),
             email: client.email.as_deref(),
             phone: client.phone.as_deref(),
-            address: client.address.as_deref(),
         }
     }
 }
@@ -110,7 +104,6 @@ mod tests {
             "John".to_string(),
             Some("john@example.com".to_string()),
             Some("123".to_string()),
-            Some("addr".to_string()),
             None,
         )
     }
@@ -123,7 +116,6 @@ mod tests {
         assert_eq!(new.name, domain.name);
         assert_eq!(new.email, domain.email.as_deref());
         assert_eq!(new.phone, domain.phone.as_deref());
-        assert_eq!(new.address, domain.address.as_deref());
     }
 
     #[test]
@@ -132,14 +124,12 @@ mod tests {
             "Jane".to_string(),
             Some("jane@example.com".to_string()),
             Some("321".to_string()),
-            Some("addr2".to_string()),
             Some(BTreeMap::new()),
         );
         let update: UpdateClient = (&domain).into();
         assert_eq!(update.name, domain.name);
         assert_eq!(update.email, domain.email.as_deref());
         assert_eq!(update.phone, domain.phone.as_deref());
-        assert_eq!(update.address, domain.address.as_deref());
     }
 
     #[test]
@@ -151,7 +141,6 @@ mod tests {
             name: "n".to_string(),
             email: Some("e".to_string()),
             phone: Some("p".to_string()),
-            address: Some("a".to_string()),
             created_at: now,
             updated_at: now,
         };
@@ -161,7 +150,6 @@ mod tests {
         assert_eq!(domain.name, "n");
         assert_eq!(domain.email, Some("e".to_string()));
         assert_eq!(domain.phone, Some("p".to_string()));
-        assert_eq!(domain.address, Some("a".to_string()));
         assert_eq!(domain.created_at, now);
         assert_eq!(domain.updated_at, now);
     }

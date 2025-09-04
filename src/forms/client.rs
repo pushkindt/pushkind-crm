@@ -14,16 +14,13 @@ pub struct SaveClientForm {
     /// Updated display name.
     #[validate(length(min = 1))]
     pub name: String,
-    /// Updated email address.
+    /// Updated email.
     #[validate(email)]
     #[serde(deserialize_with = "empty_string_as_none")]
     pub email: Option<String>,
     /// Updated contact phone number.
     #[serde(deserialize_with = "empty_string_as_none")]
     pub phone: Option<String>,
-    /// Updated mailing address.
-    #[serde(deserialize_with = "empty_string_as_none")]
-    pub address: Option<String>,
     #[serde(default)]
     pub field: Vec<String>,
     #[serde(default)]
@@ -65,12 +62,6 @@ impl From<SaveClientForm> for UpdateClient {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        UpdateClient::new(
-            form.name,
-            form.email,
-            form.phone,
-            form.address,
-            Some(fields),
-        )
+        UpdateClient::new(form.name, form.email, form.phone, Some(fields))
     }
 }

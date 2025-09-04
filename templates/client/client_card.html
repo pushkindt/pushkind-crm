@@ -1,19 +1,13 @@
 <div class="row">
     <div class="col">
         <span class="fw-bold">Электронный адрес:</span>
-        <a href="#clientModal" data-bs-toggle="modal">{{client.email}}</a>
+        <a href="#clientModal" data-bs-toggle="modal">{{client.email | default(value="не указан")}}</a>
     </div>
 </div>
 <div class="row">
     <div class="col">
         <span class="fw-bold">Телефон:</span>
-        <a href="#clientModal" data-bs-toggle="modal">{{client.phone}}</a>
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        <span class="fw-bold">Адрес:</span>
-        <a href="#clientModal" data-bs-toggle="modal">{{client.address}}</a>
+        <a href="#clientModal" data-bs-toggle="modal">{{client.phone | default(value="не указан")}}</a>
     </div>
 </div>
 {% if client.fields %}
