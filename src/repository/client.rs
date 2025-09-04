@@ -301,6 +301,10 @@ impl ClientWriter for DieselRepository {
                     }
                 };
 
+                // Update fields (delete all → insert new)
+                diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
+                    .execute(conn)?;
+
                 // Insert optional fields
                 if let Some(fields) = &new.fields {
                     let new_fields: Vec<ClientField> = fields
