@@ -23,34 +23,34 @@ use crate::{
 // - Appends '*' to the last token for prefix search (if not already present)
 // - Returns None if no tokens remain
 fn build_fts_match_query(raw: &str) -> Option<String> {
-    // Fast path: reject empty early
-    if raw.trim().is_empty() {
-        return None;
-    }
+    // Normalize: map non-alphanumeric to spaces
+    let cleaned: String = raw
+        .chars()
+        .map(|ch| {
+            if ch.is_alphanumeric() || ch.is_whitespace() {
+                ch
+            } else {
+                ' '
+            }
+        })
+        .collect();
 
-    // Map non-alphanumeric to spaces and collapse whitespace
-    let mut cleaned = String::with_capacity(raw.len());
-    for ch in raw.chars() {
-        if ch.is_alphanumeric() || ch.is_whitespace() {
-            cleaned.push(ch);
-        } else {
-            cleaned.push(' ');
+    // Build output while knowing when we're at the last token
+    let mut parts = cleaned.split_whitespace().peekable();
+    let mut out = String::new();
+    let mut first = true;
+    while let Some(tok) = parts.next() {
+        if !first {
+            out.push(' ');
+        }
+        first = false;
+        out.push_str(tok);
+        if parts.peek().is_none() && !tok.ends_with('*') {
+            out.push('*');
         }
     }
 
-    let mut tokens: Vec<String> = cleaned.split_whitespace().map(|s| s.to_string()).collect();
-
-    if tokens.is_empty() {
-        return None;
-    }
-
-    // Apply '*' to the last token (if not already present)
-    if let Some(last) = tokens.last_mut()
-        && !last.ends_with('*') {
-            last.push('*');
-        }
-
-    Some(tokens.join(" "))
+    if out.is_empty() { None } else { Some(out) }
 }
 
 impl ClientReader for DieselRepository {
