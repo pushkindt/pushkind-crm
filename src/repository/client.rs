@@ -17,6 +17,42 @@ use crate::{
     repository::{ClientListQuery, ClientReader, ClientWriter, DieselRepository},
 };
 
+// Build a safe FTS5 MATCH query string from raw user input.
+// - Replaces non-alphanumeric characters with spaces
+// - Collapses whitespace into tokens
+// - Appends '*' to the last token for prefix search (if not already present)
+// - Returns None if no tokens remain
+fn build_fts_match_query(raw: &str) -> Option<String> {
+    // Normalize: map non-alphanumeric to spaces
+    let cleaned: String = raw
+        .chars()
+        .map(|ch| {
+            if ch.is_alphanumeric() || ch.is_whitespace() {
+                ch
+            } else {
+                ' '
+            }
+        })
+        .collect();
+
+    // Build output while knowing when we're at the last token
+    let mut parts = cleaned.split_whitespace().peekable();
+    let mut out = String::new();
+    let mut first = true;
+    while let Some(tok) = parts.next() {
+        if !first {
+            out.push(' ');
+        }
+        first = false;
+        out.push_str(tok);
+        if parts.peek().is_none() && !tok.ends_with('*') {
+            out.push('*');
+        }
+    }
+
+    if out.is_empty() { None } else { Some(out) }
+}
+
 impl ClientReader for DieselRepository {
     fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>> {
         use crate::schema::clients;
@@ -132,14 +168,13 @@ impl ClientReader for DieselRepository {
 
         let mut conn = self.conn()?;
 
+        // Prepare a safe FTS5 MATCH query using helper
         let match_query = match &query.search {
             None => return Ok((0, vec![])),
-            Some(query) if query.is_empty() => {
-                return Ok((0, vec![]));
-            }
-            Some(query) => {
-                format!("{query}*")
-            }
+            Some(raw) => match build_fts_match_query(raw) {
+                Some(mq) => mq,
+                None => return Ok((0, vec![])),
+            },
         };
 
         // Build base SQL
@@ -387,5 +422,54 @@ impl ClientWriter for DieselRepository {
             .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_fts_match_query;
+
+    #[test]
+    fn empty_input_returns_none() {
+        assert_eq!(build_fts_match_query(""), None);
+        assert_eq!(build_fts_match_query("   \t  \n"), None);
+        assert_eq!(build_fts_match_query("..."), None);
+    }
+
+    #[test]
+    fn dot_separated_tokens_are_split_and_starred() {
+        assert_eq!(
+            build_fts_match_query("gmail.com"),
+            Some("gmail com*".into())
+        );
+        assert_eq!(
+            build_fts_match_query("john.doe@example.com"),
+            Some("john doe example com*".into())
+        );
+    }
+
+    #[test]
+    fn trailing_punctuation_is_ignored_and_star_added() {
+        assert_eq!(build_fts_match_query("john."), Some("john*".into()));
+        assert_eq!(build_fts_match_query("john-"), Some("john*".into()));
+    }
+
+    #[test]
+    fn whitespace_is_collapsed_and_last_token_starred() {
+        assert_eq!(
+            build_fts_match_query("  john   doe  "),
+            Some("john doe*".into())
+        );
+    }
+
+    #[test]
+    fn keeps_existing_star_on_last_token() {
+        assert_eq!(build_fts_match_query("john*"), Some("john*".into()));
+        assert_eq!(build_fts_match_query("john doe*"), Some("john doe*".into()));
+    }
+
+    #[test]
+    fn unicode_is_supported() {
+        assert_eq!(build_fts_match_query("Иванов.И."), Some("Иванов И*".into()));
     }
 }
