@@ -18,6 +18,7 @@ pub struct Client {
     pub phone: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub fields: Option<String>,
 }
 
 #[derive(QueryableByName)]
@@ -143,6 +144,7 @@ mod tests {
             phone: Some("p".to_string()),
             created_at: now,
             updated_at: now,
+            fields: None,
         };
         let domain: DomainClient = db_client.into();
         assert_eq!(domain.id, 1);

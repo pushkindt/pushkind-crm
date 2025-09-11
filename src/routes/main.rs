@@ -23,7 +23,7 @@ struct IndexQueryParams {
     page: Option<usize>,
 }
 #[get("/")]
-pub async fn index(
+pub async fn show_index(
     params: web::Query<IndexQueryParams>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
