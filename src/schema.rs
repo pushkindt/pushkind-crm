@@ -76,6 +76,7 @@ diesel::table! {
         phone -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        fields -> Nullable<Text>,
     }
 }
 

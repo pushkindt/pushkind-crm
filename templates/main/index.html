@@ -7,15 +7,19 @@
         align-items: center;
         text-align: center;
     }
-    .add-client-container > button:hover {
+
+    .add-client-container>button:hover {
         opacity: 0.5;
     }
-    .add-client-container > button {
+
+    .add-client-container>button {
         opacity: 1.0;
     }
-    .add-client-container > button:active {
+
+    .add-client-container>button:active {
         opacity: 1.0;
     }
+
     .add-client-container::before,
     .add-client-container::after {
         content: '';
@@ -27,57 +31,68 @@
 {% endblock %}
 
 {% block content %}
-    {% include 'components/navigation.html' %}
+{% include 'components/navigation.html' %}
 
-    <div class="container bg-white border rounded my-2">
+<div class="container bg-white border rounded my-2">
 
-        {% if "crm_admin" in current_user.roles %}
-            <div class="row">
-                <div class="col text-center add-client-container">
-                    <button class="btn btn-link" type="button" data-bs-toggle="modal" data-bs-target="#clientModal">
-                        <i class="bi bi-plus-circle"></i>
-                    </button>
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="row d-none d-sm-flex fw-bold">
-            <div class="col overflow-hidden">
-                Название
-            </div>
-            <div class="col overflow-hidden">
-                Электронный адрес
-            </div>
-            <div class="col overflow-hidden">
-                Телефон
-            </div>
+    {% if "crm_admin" in current_user.roles %}
+    <div class="row">
+        <div class="col text-center add-client-container">
+            <button class="btn btn-link" type="button" data-bs-toggle="modal" data-bs-target="#clientModal">
+                <i class="bi bi-plus-circle"></i>
+            </button>
         </div>
-        <div id="clientList">
-            {% for client in clients.items %}
-                <div class="row my-1 py-1 border-top client selectable" data-id="{{client.id}}">
-                    <div class="col-sm">
-                        <strong>{{ client.name }}</strong>
-                    </div>
-                    <div class="col-sm">
-                        <span class="d-sm-none fw-bold">Электронный адрес:</span>
-                        {{ client.email }}
-                    </div>
-                    <div class="col-sm">
-                        <span class="d-sm-none fw-bold">Телефон:</span>
-                        {{ client.phone }}
-                    </div>
-                </div>
-            {% else %}
-            <div class="alert alert-warning my-2" role="alert">
-                Нет клиентов для отображения.
-            </div>
-            {% endfor %}
-        </div>
-        {% set items = clients %}
-        {% include 'components/pagination.html' %}
     </div>
+    {% endif %}
 
-    {% include 'main/add_client_modal.html' %}
+    <div class="row d-none d-sm-flex fw-bold">
+        <div class="col overflow-hidden">
+            Название
+        </div>
+        <div class="col overflow-hidden">
+            Электронный адрес
+        </div>
+        <div class="col overflow-hidden">
+            Телефон
+        </div>
+        <div class="col overflow-hidden">
+            Дополнительные поля
+        </div>
+    </div>
+    <div id="clientList">
+        {% for client in clients.items %}
+        <div class="row my-1 py-1 border-top client selectable" data-id="{{client.id}}">
+            <div class="col-sm">
+                <strong>{{ client.name }}</strong>
+            </div>
+            <div class="col-sm">
+                <span class="d-sm-none fw-bold">Электронный адрес:</span>
+                {{ client.email }}
+            </div>
+            <div class="col-sm">
+                <span class="d-sm-none fw-bold">Телефон:</span>
+                {{ client.phone }}
+            </div>
+            <div class="col-sm">
+                <span class="d-sm-none fw-bold">Дополнительные поля:</span>
+                {% if client.fields %}
+                {% for key, value in client.fields %}
+                <span class="badge rounded-pill text-bg-light">{{key}}: {{value}}</span>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning my-2" role="alert">
+            Нет клиентов для отображения.
+        </div>
+        {% endfor %}
+    </div>
+    {% set items = clients %}
+    {% include 'components/pagination.html' %}
+</div>
+
+{% include 'main/add_client_modal.html' %}
 
 {% endblock %}
 
@@ -88,7 +103,7 @@
 
         var selectableList = document.querySelectorAll(".selectable");
         selectableList.forEach((selectable) => {
-            selectable.addEventListener("click",() => {
+            selectable.addEventListener("click", () => {
                 const clientId = selectable.dataset.id;
                 document.location.href = `/client/${clientId}`;
             });

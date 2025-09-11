@@ -16,7 +16,7 @@ use tera::Tera;
 use pushkind_crm::repository::DieselRepository;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
-use pushkind_crm::routes::main::{add_client, clients_upload, index};
+use pushkind_crm::routes::main::{add_client, clients_upload, show_index};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 #[actix_web::main]
@@ -89,7 +89,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("")
                     .wrap(RedirectUnauthorized)
-                    .service(index)
+                    .service(show_index)
                     .service(add_client)
                     .service(clients_upload)
                     .service(show_client)
