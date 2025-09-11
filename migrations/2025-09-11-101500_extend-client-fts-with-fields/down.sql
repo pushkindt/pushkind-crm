@@ -1,15 +1,16 @@
 -- Revert FTS extension and clients.fields column
 
--- Drop triggers on client_fields first
-DROP TRIGGER IF EXISTS client_fields_ai;
-DROP TRIGGER IF EXISTS client_fields_au;
-DROP TRIGGER IF EXISTS client_fields_ad;
+
 
 -- Drop FTS triggers and table
 DROP TRIGGER IF EXISTS clients_ai;
 DROP TRIGGER IF EXISTS clients_au;
 DROP TRIGGER IF EXISTS clients_ad;
 DROP TABLE IF EXISTS client_fts;
+DROP TABLE IF EXISTS client_fts_data;
+DROP TABLE IF EXISTS client_fts_idx;
+DROP TABLE IF EXISTS client_fts_docsize;
+DROP TABLE IF EXISTS client_fts_config;
 
 -- Remove the denormalized column
 ALTER TABLE clients DROP COLUMN fields;

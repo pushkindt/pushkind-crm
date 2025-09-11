@@ -8,6 +8,10 @@ DROP TRIGGER IF EXISTS clients_ai;
 DROP TRIGGER IF EXISTS clients_au;
 DROP TRIGGER IF EXISTS clients_ad;
 DROP TABLE IF EXISTS client_fts;
+DROP TABLE IF EXISTS client_fts_data;
+DROP TABLE IF EXISTS client_fts_idx;
+DROP TABLE IF EXISTS client_fts_docsize;
+DROP TABLE IF EXISTS client_fts_config;
 
 -- Add a column to store concatenated optional fields for FTS
 ALTER TABLE clients ADD COLUMN fields TEXT;
@@ -41,42 +45,11 @@ CREATE TRIGGER clients_ai AFTER INSERT ON clients BEGIN
 END;
 
 CREATE TRIGGER clients_ad AFTER DELETE ON clients BEGIN
-  DELETE FROM client_fts WHERE rowid = old.id;
+  INSERT INTO client_fts(client_fts, rowid, name, email, phone, fields) VALUES('delete', old.id, old.name, old.email, old.phone, old.fields);
 END;
 
 CREATE TRIGGER clients_au AFTER UPDATE ON clients BEGIN
-  DELETE FROM client_fts WHERE rowid = old.id;
+  INSERT INTO client_fts(client_fts, rowid, name, email, phone, fields) VALUES('delete', old.id, old.name, old.email, old.phone, old.fields);
   INSERT INTO client_fts(rowid, name, email, phone, fields)
   VALUES (new.id, new.name, new.email, new.phone, new.fields);
-END;
-
--- Triggers on client_fields to keep clients.fields denormalized value up-to-date
-CREATE TRIGGER client_fields_ai AFTER INSERT ON client_fields BEGIN
-  UPDATE clients
-  SET fields = (
-    SELECT trim(COALESCE(group_concat(value, ' '), ''))
-    FROM client_fields cf
-    WHERE cf.client_id = new.client_id
-  )
-  WHERE id = new.client_id;
-END;
-
-CREATE TRIGGER client_fields_au AFTER UPDATE ON client_fields BEGIN
-  UPDATE clients
-  SET fields = (
-    SELECT trim(COALESCE(group_concat(value, ' '), ''))
-    FROM client_fields cf
-    WHERE cf.client_id = new.client_id
-  )
-  WHERE id = new.client_id;
-END;
-
-CREATE TRIGGER client_fields_ad AFTER DELETE ON client_fields BEGIN
-  UPDATE clients
-  SET fields = (
-    SELECT trim(COALESCE(group_concat(value, ' '), ''))
-    FROM client_fields cf
-    WHERE cf.client_id = old.client_id
-  )
-  WHERE id = old.client_id;
 END;

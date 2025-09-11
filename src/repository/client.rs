@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use diesel::result::DatabaseErrorKind;
-use diesel::sql_types::{BigInt, Integer, Text};
+use diesel::sql_types::{BigInt, Integer, Nullable, Text};
 use diesel::upsert::excluded;
 use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
@@ -101,9 +101,7 @@ impl ClientReader for DieselRepository {
 
         // Final load
         let db_clients = items.order(clients::id.asc()).load::<DbClient>(&mut conn)?;
-        // .into_iter()
-        // .map(Into::into)
-        // .collect::<Vec<Client>>();
+
         if db_clients.is_empty() {
             return Ok((total, Vec::new()));
         }
@@ -340,6 +338,18 @@ impl ClientWriter for DieselRepository {
                     }
                 }
 
+                // Update denormalized `clients.fields` using a Diesel subselect
+                diesel::update(clients::table.find(client_id))
+                    .set(
+                        clients::fields.eq(client_fields::table
+                            .filter(client_fields::client_id.eq(client_id))
+                            .select(diesel::dsl::sql::<Nullable<Text>>(
+                                "trim(COALESCE(group_concat(value, ' '), ''))",
+                            ))
+                            .single_value()),
+                    )
+                    .execute(conn)?;
+
                 count_inserted += 1;
             }
 
@@ -373,6 +383,18 @@ impl ClientWriter for DieselRepository {
                     .execute(&mut conn)?;
             }
         }
+
+        // Update denormalized `clients.fields` using a Diesel subselect
+        diesel::update(clients::table.find(client_id))
+            .set(
+                clients::fields.eq(client_fields::table
+                    .filter(client_fields::client_id.eq(client_id))
+                    .select(diesel::dsl::sql::<Nullable<Text>>(
+                        "trim(COALESCE(group_concat(value, ' '), ''))",
+                    ))
+                    .single_value()),
+            )
+            .execute(&mut conn)?;
 
         // Reload fields
         let fields_vec = client_fields::table
