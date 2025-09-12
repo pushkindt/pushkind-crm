@@ -1,7 +1,7 @@
 <p class="mb-0">
     {% if event_type == "DocumentLink" %}
-        <a href='{{ event_data["url"] }}'>{{ event_data["text"] }}</a>
+    <a href="{{ event_data['url'] }}">{{ event_data["text"] }}</a>
     {% else %}
-        {{ event_data["text"] }}
+    {{ event_data["text"] }}
     {% endif %}
 </p>

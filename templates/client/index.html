@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    {% include 'components/navigation.html' %}
+{% include 'components/navigation.html' %}
 
 <div class="container">
     <div class="row my-2">
@@ -29,57 +29,57 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        function removeCustomField(button) {
-            const row = button.closest("div.row");
-            row.remove();
-        }
-        function addCustomField(button) {
-            const container = document.getElementById("custom-fields");
+<script>
+    function removeCustomField(button) {
+        const row = button.closest("div.row");
+        row.remove();
+    }
+    function addCustomField(button) {
+        const container = document.getElementById("custom-fields");
 
-            const row = document.createElement("div");
-            row.classList.add("row");
-            row.classList.add("mb-3");
-            container.appendChild(row);
+        const row = document.createElement("div");
+        row.classList.add("row");
+        row.classList.add("mb-3");
+        container.appendChild(row);
 
-            let col = document.createElement("div");
-            col.classList.add("col");
-            row.appendChild(col);
-            let input = document.createElement("input");
-            input.classList.add("form-control");
-            input.name = "field";
-            input.type = "text";
-            input.placeholder = "Поле";
-            input.required = true;
-            col.appendChild(input);
+        let col = document.createElement("div");
+        col.classList.add("col");
+        row.appendChild(col);
+        let input = document.createElement("input");
+        input.classList.add("form-control");
+        input.name = "field";
+        input.type = "text";
+        input.placeholder = "Поле";
+        input.required = true;
+        col.appendChild(input);
 
-            col = document.createElement("div");
-            col.classList.add("col");
-            row.appendChild(col);
-            input = document.createElement("input");
-            input.classList.add("form-control");
-            input.name = "value";
-            input.type = "text";
-            input.placeholder = "Значение";
-            input.required = true;
-            col.appendChild(input);
+        col = document.createElement("div");
+        col.classList.add("col");
+        row.appendChild(col);
+        input = document.createElement("input");
+        input.classList.add("form-control");
+        input.name = "value";
+        input.type = "text";
+        input.placeholder = "Значение";
+        input.required = true;
+        col.appendChild(input);
 
-            col = document.createElement("div");
-            col.classList.add("col-auto");
-            row.appendChild(col);
-            const btn = document.createElement("a");
-            btn.classList.add("btn");
-            btn.classList.add("btn-danger");
-            btn.classList.add("btn-sm");
-            btn.href = "#";
-            btn.onclick = function () {
-                removeCustomField(btn);
-            };
-            col.appendChild(btn);
-            const icon = document.createElement("i");
-            icon.classList.add("bi");
-            icon.classList.add("bi-slash-circle");
-            btn.appendChild(icon);
-        }
-    </script>
+        col = document.createElement("div");
+        col.classList.add("col-auto");
+        row.appendChild(col);
+        const btn = document.createElement("a");
+        btn.classList.add("btn");
+        btn.classList.add("btn-danger");
+        btn.classList.add("btn-sm");
+        btn.href = "#";
+        btn.onclick = function () {
+            removeCustomField(btn);
+        };
+        col.appendChild(btn);
+        const icon = document.createElement("i");
+        icon.classList.add("bi");
+        icon.classList.add("bi-slash-circle");
+        btn.appendChild(icon);
+    }
+</script>
 {% endblock %}
