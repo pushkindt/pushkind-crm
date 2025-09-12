@@ -1,48 +1,48 @@
 <div class="row">
     <div class="col">
-        <span class="fw-bold">Электронный адрес:</span>
-        <a href="#clientModal" data-bs-toggle="modal">{{client.email | default(value="не указан")}}</a>
+        <a href="#clientModal" data-bs-toggle="modal">{{client.email | default(value="Электронный адрес")}}</a>
     </div>
 </div>
 <div class="row">
     <div class="col">
-        <span class="fw-bold">Телефон:</span>
-        <a href="#clientModal" data-bs-toggle="modal">{{client.phone | default(value="не указан")}}</a>
+        <a href="#clientModal" data-bs-toggle="modal">{{client.phone | default(value="Телефон")}}</a>
     </div>
 </div>
 {% if client.fields %}
-    {% for key, value in client.fields %}
-        <div class="row">
-            <div class="col">
-                <span class="fw-bold">{{key}}:</span>
-                <a href="#clientModal" data-bs-toggle="modal">{{value}}</a>
-            </div>
-        </div>
-    {% endfor %}
+{% for key, value in client.fields %}
+<div class="row">
+    <div class="col-3 overflow-hidden">
+        <span class="fw-bold">{{key}}:</span>
+    </div>
+    <div class="col overflow-hidden">
+        <a href="#clientModal" data-bs-toggle="modal">{{value}}</a>
+    </div>
+</div>
+{% endfor %}
 {%endif%}
 {% if managers %}
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Менеджеры:</span>
-            {% for manager in managers %}
-                {% include 'components/user_popover.html' %}
-            {% endfor %}
-        </div>
+<div class="row">
+    <div class="col">
+        <span class="fw-bold">Менеджеры:</span>
+        {% for manager in managers %}
+        {% include 'components/user_popover.html' %}
+        {% endfor %}
     </div>
+</div>
 {% endif %}
 {% if documents %}
-    <div class="row">
-        <div class="col">
-            <span class="fw-bold">Документы:</span>
-            <ul>
-                {% for document in documents %}
-                    <li>
-                        <a class="text-warning" href="{{ document.event_data["url"] }}">
-                            {{ document.event_data["text"] }}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
+<div class="row">
+    <div class="col">
+        <span class="fw-bold">Документы:</span>
+        <ul>
+            {% for document in documents %}
+            <li>
+                <a class="text-warning" href="{{ document.event_data[" url"] }}">
+                    {{ document.event_data["text"] }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
+</div>
 {% endif %}

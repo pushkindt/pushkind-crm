@@ -77,7 +77,7 @@
                 <span class="d-sm-none fw-bold">Дополнительные поля:</span>
                 {% if client.fields %}
                 {% for key, value in client.fields %}
-                <span class="badge rounded-pill text-bg-light">{{key}}: {{value | truncate(length=5)}}</span>
+                <span class="badge rounded-pill text-bg-light">{{value | truncate(length=10)}}</span>
                 {% endfor %}
                 {% endif %}
             </div>
