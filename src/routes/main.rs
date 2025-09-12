@@ -45,22 +45,16 @@ pub async fn show_index(
         &server_config.auth_service_url,
     );
 
+    let query = ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE);
+
     let clients_result = if !q.is_empty() {
         context.insert("search_query", q);
-        repo.search_clients(
-            ClientListQuery::new(user.hub_id)
-                .search(q)
-                .paginate(page, DEFAULT_ITEMS_PER_PAGE),
-        )
+        repo.search_clients(query.search(q))
     } else if check_role("crm_admin", &user.roles) {
-        repo.list_clients(ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE))
+        repo.list_clients(query)
     } else if check_role("crm_manager", &user.roles) {
         match repo.create_or_update_manager(&(&user).into()) {
-            Ok(manager) => repo.list_clients(
-                ClientListQuery::new(user.hub_id)
-                    .manager_email(&manager.email)
-                    .paginate(page, DEFAULT_ITEMS_PER_PAGE),
-            ),
+            Ok(manager) => repo.list_clients(query.manager_email(&manager.email)),
             Err(e) => {
                 log::error!("Failed to update manager: {e}");
                 return HttpResponse::InternalServerError().finish();
