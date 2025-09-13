@@ -12,10 +12,11 @@
 {% for key, value in client.fields %}
 <div class="row">
     <div class="col-3 overflow-hidden">
-        <span class="fw-bold">{{key}}:</span>
+        <span class="fw-bold">{{key}}</span>
     </div>
     <div class="col overflow-hidden">
-        <a href="#clientModal" data-bs-toggle="modal">{{value}}</a>
+        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
+            href="#clientModal" data-bs-toggle="modal">{{value}}</a>
     </div>
 </div>
 {% endfor %}
@@ -37,7 +38,8 @@
         <ul>
             {% for document in documents %}
             <li>
-                <a class="text-warning" href="{{ document.event_data['url'] }}">
+                <a class="link-warning link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
+                    href="{{ document.event_data['url'] }}">
                     {{ document.event_data["text"] }}
                 </a>
             </li>
