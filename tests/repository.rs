@@ -127,6 +127,21 @@ fn test_client_event_repository_crud() {
     let created = client_event_repo.create_client_event(&new_event).unwrap();
     assert_eq!(created.event_type, ClientEventType::Comment);
 
+    let duplicate_attempt = NewClientEvent {
+        created_at: Utc::now().naive_utc(),
+        ..new_event.clone()
+    };
+    let duplicate = client_event_repo
+        .create_client_event(&duplicate_attempt)
+        .unwrap();
+    assert_eq!(duplicate.id, created.id);
+
+    let (total_after_duplicate, events_after_duplicate) = client_event_repo
+        .list_client_events(ClientEventListQuery::new(client.id))
+        .unwrap();
+    assert_eq!(total_after_duplicate, 1);
+    assert_eq!(events_after_duplicate.len(), 1);
+
     let _ = client_event_repo
         .create_client_event(&NewClientEvent {
             client_id: client.id,
