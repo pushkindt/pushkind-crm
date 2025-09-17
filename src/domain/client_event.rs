@@ -21,6 +21,7 @@ pub enum ClientEventType {
     Call,
     Email,
     Reply,
+    Unsubscribed,
     Other(String),
 }
 
@@ -41,6 +42,7 @@ impl Display for ClientEventType {
             ClientEventType::Call => write!(f, "Call"),
             ClientEventType::Email => write!(f, "Email"),
             ClientEventType::Reply => write!(f, "Reply"),
+            ClientEventType::Unsubscribed => write!(f, "Unsubscribed"),
             ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
@@ -54,6 +56,7 @@ impl From<&str> for ClientEventType {
             "Call" => ClientEventType::Call,
             "Email" => ClientEventType::Email,
             "Reply" => ClientEventType::Reply,
+            "Unsubscribed" => ClientEventType::Unsubscribed,
             _ => ClientEventType::Other(s.to_string()),
         }
     }

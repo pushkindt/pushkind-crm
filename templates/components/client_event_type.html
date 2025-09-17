@@ -1,25 +1,29 @@
 {% if event_type == "Comment" %}
-    <span class="badge bg-primary bg-opacity-10 text-primary ms-2">
-        комментарий
-    </span>
+<span class="badge bg-primary bg-opacity-10 text-primary ms-2">
+    комментарий
+</span>
 {% elif event_type == "DocumentLink" %}
-    <span class="badge bg-warning bg-opacity-10 text-warning ms-2">
-        вложение
-    </span>
+<span class="badge bg-warning bg-opacity-10 text-warning ms-2">
+    вложение
+</span>
 {% elif event_type == "Call" %}
-    <span class="badge bg-success bg-opacity-10 text-success ms-2">
-        звонок
-    </span>
+<span class="badge bg-success bg-opacity-10 text-success ms-2">
+    звонок
+</span>
 {% elif event_type == "Email" %}
-    <span class="badge bg-info bg-opacity-10 text-info ms-2">
-        рассылка
-    </span>
+<span class="badge bg-info bg-opacity-10 text-info ms-2">
+    рассылка
+</span>
 {% elif event_type == "Reply" %}
-    <span class="badge bg-info bg-opacity-10 text-info ms-2">
-        ответ
-    </span>
+<span class="badge bg-info bg-opacity-10 text-info ms-2">
+    ответ
+</span>
+{% elif event_type == "Unsubscribed" %}
+<span class="badge bg-info bg-opacity-10 text-info ms-2">
+    отписался
+</span>
 {% else %}
-    <span class="badge bg-secondary bg-opacity-10 text-secondary ms-2">
-        другое
-    </span>
+<span class="badge bg-secondary bg-opacity-10 text-secondary ms-2">
+    другое
+</span>
 {% endif %}
