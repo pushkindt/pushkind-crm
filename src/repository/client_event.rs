@@ -1,3 +1,4 @@
+use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use pushkind_common::repository::errors::RepositoryResult;
 
@@ -75,6 +76,23 @@ impl ClientEventReader for DieselRepository {
             .collect();
 
         Ok((total, combined))
+    }
+
+    fn client_event_exists(&self, event: &NewClientEvent) -> RepositoryResult<bool> {
+        use crate::schema::client_events;
+
+        let mut conn = self.conn()?;
+        let db_event: DbNewClientEvent = event.into();
+
+        let query = client_events::table
+            .filter(client_events::client_id.eq(db_event.client_id))
+            .filter(client_events::manager_id.eq(db_event.manager_id))
+            .filter(client_events::event_type.eq(db_event.event_type))
+            .filter(client_events::event_data.eq(db_event.event_data));
+
+        let exists = select(exists(query)).get_result::<bool>(&mut conn)?;
+
+        Ok(exists)
     }
 }
 

@@ -129,6 +129,7 @@ pub trait ClientEventReader {
         &self,
         query: ClientEventListQuery,
     ) -> RepositoryResult<(usize, Vec<(ClientEvent, Manager)>)>;
+    fn client_event_exists(&self, event: &NewClientEvent) -> RepositoryResult<bool>;
 }
 
 pub trait ClientEventWriter {

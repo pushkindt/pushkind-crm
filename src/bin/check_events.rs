@@ -10,8 +10,7 @@ use pushkind_crm::domain::{
     manager::NewManager,
 };
 use pushkind_crm::repository::{
-    ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, DieselRepository,
-    ManagerWriter,
+    ClientEventReader, ClientEventWriter, ClientReader, DieselRepository, ManagerWriter,
 };
 use serde_json::json;
 
@@ -19,13 +18,7 @@ fn is_duplicate_event<R>(repo: &R, new_event: &NewClientEvent) -> RepositoryResu
 where
     R: ClientEventReader,
 {
-    let (_, events) = repo.list_client_events(
-        ClientEventListQuery::new(new_event.client_id).event_type(new_event.event_type.clone()),
-    )?;
-
-    Ok(events.into_iter().any(|(event, _)| {
-        event.manager_id == new_event.manager_id && event.event_data == new_event.event_data
-    }))
+    repo.client_event_exists(new_event)
 }
 
 fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
