@@ -2,7 +2,9 @@ use std::env;
 
 use chrono::Utc;
 use dotenvy::dotenv;
-use pushkind_common::models::emailer::zmq::{ZMQReplyMessage, ZMQSendEmailMessage};
+use pushkind_common::models::emailer::zmq::{
+    ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
+};
 use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
 
 use pushkind_crm::domain::{
@@ -110,6 +112,48 @@ where
     Ok(())
 }
 
+fn process_unsubscribe_message<R>(message: ZMQUnsubscribeMessage, repo: R) -> RepositoryResult<()>
+where
+    R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
+{
+    log::info!(
+        "Unsubscribe notification for {} in hub#{}",
+        message.email,
+        message.hub_id
+    );
+
+    match repo.get_client_by_email(&message.email, message.hub_id)? {
+        Some(client) => {
+            let new_manager =
+                NewManager::new(client.hub_id, client.name.clone(), message.email.clone());
+            let manager = repo.create_or_update_manager(&new_manager)?;
+            let event = NewClientEvent {
+                client_id: client.id,
+                manager_id: manager.id,
+                event_type: ClientEventType::Unsubscribed,
+                event_data: json!({
+                    "text": &message.reason,
+                }),
+                created_at: Utc::now().naive_utc(),
+            };
+
+            if is_duplicate_event(&repo, &event)? {
+                log::info!(
+                    "Skipping duplicate unsubscribe event for client {} and manager {}",
+                    client.id,
+                    manager.id
+                );
+                return Ok(());
+            }
+
+            let _event = repo.create_client_event(&event)?;
+        }
+        None => return Ok(()),
+    }
+
+    Ok(())
+}
+
 fn main() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
     dotenv().ok(); // Load .env file
@@ -149,14 +193,23 @@ fn main() {
     std::thread::spawn(move || {
         loop {
             let msg = replier.recv_bytes(0).unwrap();
-            match serde_json::from_slice::<ZMQReplyMessage>(&msg) {
-                Ok(reply) => {
+
+            if let Ok(reply) = serde_json::from_slice::<ZMQReplyMessage>(&msg) {
+                let repo = reply_repo.clone();
+                if let Err(e) = process_reply_message(reply, repo) {
+                    log::error!("Error processing reply message: {e}");
+                }
+                continue;
+            }
+
+            match serde_json::from_slice::<ZMQUnsubscribeMessage>(&msg) {
+                Ok(unsubscribe) => {
                     let repo = reply_repo.clone();
-                    if let Err(e) = process_reply_message(reply, repo) {
-                        log::error!("Error processing reply message: {e}");
+                    if let Err(e) = process_unsubscribe_message(unsubscribe, repo) {
+                        log::error!("Error processing unsubscribe message: {e}");
                     }
                 }
-                Err(e) => log::error!("Error receiving reply message: {e}"),
+                Err(e) => log::error!("Error receiving replier message: {e}"),
             }
         }
     });
