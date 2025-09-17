@@ -86,18 +86,6 @@ impl ClientEventWriter for DieselRepository {
 
         let new_client_event: DbNewClientEvent = client_event.into();
 
-        if let Some(existing_event) = client_events::table
-            .filter(client_events::client_id.eq(new_client_event.client_id))
-            .filter(client_events::manager_id.eq(new_client_event.manager_id))
-            .filter(client_events::event_type.eq(&new_client_event.event_type))
-            .filter(client_events::event_data.eq(&new_client_event.event_data))
-            .order(client_events::created_at.desc())
-            .first::<DbClientEvent>(&mut conn)
-            .optional()?
-        {
-            return Ok(existing_event.into());
-        }
-
         let client_event = diesel::insert_into(client_events::table)
             .values(&new_client_event)
             .get_result::<DbClientEvent>(&mut conn)?;
