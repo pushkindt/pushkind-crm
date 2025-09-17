@@ -1,3 +1,4 @@
+use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use pushkind_common::repository::errors::RepositoryResult;
 
@@ -76,6 +77,23 @@ impl ClientEventReader for DieselRepository {
 
         Ok((total, combined))
     }
+
+    fn client_event_exists(&self, event: &NewClientEvent) -> RepositoryResult<bool> {
+        use crate::schema::client_events;
+
+        let mut conn = self.conn()?;
+        let db_event: DbNewClientEvent = event.into();
+
+        let query = client_events::table
+            .filter(client_events::client_id.eq(db_event.client_id))
+            .filter(client_events::manager_id.eq(db_event.manager_id))
+            .filter(client_events::event_type.eq(db_event.event_type))
+            .filter(client_events::event_data.eq(db_event.event_data));
+
+        let exists = select(exists(query)).get_result::<bool>(&mut conn)?;
+
+        Ok(exists)
+    }
 }
 
 impl ClientEventWriter for DieselRepository {
@@ -85,18 +103,6 @@ impl ClientEventWriter for DieselRepository {
         let mut conn = self.conn()?;
 
         let new_client_event: DbNewClientEvent = client_event.into();
-
-        if let Some(existing_event) = client_events::table
-            .filter(client_events::client_id.eq(new_client_event.client_id))
-            .filter(client_events::manager_id.eq(new_client_event.manager_id))
-            .filter(client_events::event_type.eq(&new_client_event.event_type))
-            .filter(client_events::event_data.eq(&new_client_event.event_data))
-            .order(client_events::created_at.desc())
-            .first::<DbClientEvent>(&mut conn)
-            .optional()?
-        {
-            return Ok(existing_event.into());
-        }
 
         let client_event = diesel::insert_into(client_events::table)
             .values(&new_client_event)

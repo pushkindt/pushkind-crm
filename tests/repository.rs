@@ -134,13 +134,13 @@ fn test_client_event_repository_crud() {
     let duplicate = client_event_repo
         .create_client_event(&duplicate_attempt)
         .unwrap();
-    assert_eq!(duplicate.id, created.id);
+    assert_ne!(duplicate.id, created.id);
 
     let (total_after_duplicate, events_after_duplicate) = client_event_repo
         .list_client_events(ClientEventListQuery::new(client.id))
         .unwrap();
-    assert_eq!(total_after_duplicate, 1);
-    assert_eq!(events_after_duplicate.len(), 1);
+    assert_eq!(total_after_duplicate, 2);
+    assert_eq!(events_after_duplicate.len(), 2);
 
     let _ = client_event_repo
         .create_client_event(&NewClientEvent {
@@ -155,8 +155,8 @@ fn test_client_event_repository_crud() {
     let (total, events) = client_event_repo
         .list_client_events(ClientEventListQuery::new(client.id))
         .unwrap();
-    assert_eq!(total, 2);
-    assert_eq!(events.len(), 2);
+    assert_eq!(total, 3);
+    assert_eq!(events.len(), 3);
     assert_eq!(events[0].1.id, manager.id);
 
     let (total_comment, comments) = client_event_repo
@@ -164,8 +164,12 @@ fn test_client_event_repository_crud() {
             ClientEventListQuery::new(client.id).event_type(ClientEventType::Comment),
         )
         .unwrap();
-    assert_eq!(total_comment, 1);
-    assert_eq!(comments[0].0.event_type, ClientEventType::Comment);
+    assert_eq!(total_comment, 2);
+    assert!(
+        comments
+            .iter()
+            .all(|(event, _)| event.event_type == ClientEventType::Comment)
+    );
 }
 
 #[test]

@@ -9,12 +9,21 @@ use pushkind_crm::domain::{
     client_event::{ClientEventType, NewClientEvent},
     manager::NewManager,
 };
-use pushkind_crm::repository::{ClientEventWriter, ClientReader, DieselRepository, ManagerWriter};
+use pushkind_crm::repository::{
+    ClientEventReader, ClientEventWriter, ClientReader, DieselRepository, ManagerWriter,
+};
 use serde_json::json;
+
+fn is_duplicate_event<R>(repo: &R, new_event: &NewClientEvent) -> RepositoryResult<bool>
+where
+    R: ClientEventReader,
+{
+    repo.client_event_exists(new_event)
+}
 
 fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
 where
-    R: ClientEventWriter + ManagerWriter + ClientReader,
+    R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
 {
     match msg {
         ZMQSendEmailMessage::NewEmail(boxed) => {
@@ -40,6 +49,15 @@ where
                     }),
                 };
 
+                if is_duplicate_event(&repo, &new_event)? {
+                    log::info!(
+                        "Skipping duplicate email event for client {} and manager {}",
+                        client.id,
+                        manager.id
+                    );
+                    continue;
+                }
+
                 match repo.create_client_event(&new_event) {
                     Ok(_) => {
                         log::info!("Created client event for client {}", client.id);
@@ -59,7 +77,7 @@ where
 
 fn process_reply_message<R>(reply: ZMQReplyMessage, repo: R) -> RepositoryResult<()>
 where
-    R: ClientEventWriter + ManagerWriter + ClientReader,
+    R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
 {
     log::info!("Reply from {} in hub#{}", reply.email, reply.hub_id);
 
@@ -77,6 +95,14 @@ where
                 }),
                 created_at: Utc::now().naive_utc(),
             };
+            if is_duplicate_event(&repo, &event)? {
+                log::info!(
+                    "Skipping duplicate reply event for client {} and manager {}",
+                    client.id,
+                    manager.id
+                );
+                return Ok(());
+            }
             let _event = repo.create_client_event(&event)?;
         }
         None => return Ok(()),
