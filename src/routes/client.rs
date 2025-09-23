@@ -1,10 +1,16 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
 use pushkind_common::models::config::CommonServerConfig;
+use pushkind_common::models::emailer::zmq::ZMQSendEmailMessage;
 use pushkind_common::routes::{base_context, render_template};
 use pushkind_common::routes::{check_role, ensure_role, redirect};
+use pushkind_common::zmq::ZmqSender;
 use serde_json::json;
 use tera::Tera;
 use validator::Validate;
@@ -159,10 +165,20 @@ pub async fn save_client(
 pub async fn comment_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
+    zmq_sender: web::Data<Arc<ZmqSender>>,
     web::Form(form): web::Form<AddCommentForm>,
 ) -> impl Responder {
     if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
         return response;
+    }
+
+    if check_role("crm_manager", &user.roles)
+        && !repo
+            .check_client_assigned_to_manager(form.id, &user.email)
+            .is_ok_and(|result| result)
+    {
+        FlashMessage::error("Этот клиент для вас не доступен").send();
+        return redirect("/");
     }
 
     if let Err(e) = form.validate() {
@@ -192,24 +208,50 @@ pub async fn comment_client(
         }
     };
 
+    if let Some(client_email) = &client.email
+        && form.event_type == "Email"
+    {
+        let new_email = NewEmail {
+            message: form.text.clone(),
+            subject: form.subject.clone(),
+            attachment: None,
+            attachment_name: None,
+            attachment_mime: None,
+            hub_id: user.hub_id,
+            recipients: vec![NewEmailRecipient {
+                address: client_email.clone(),
+                name: client.name.clone(),
+                fields: HashMap::new(),
+            }],
+        };
+
+        let zmq_message = ZMQSendEmailMessage::NewEmail(Box::new((user.clone(), new_email)));
+
+        if let Err(err) = zmq_sender.send_json(&zmq_message).await {
+            log::error!("Ошибка при добавлении сообщения в очередь: {err}");
+            FlashMessage::error("Ошибка при добавлении сообщения в очередь.").send();
+            return redirect(&format!("/client/{}", form.id));
+        }
+    } else {
+        FlashMessage::error("Клиент не имеет email").send();
+        return redirect(&format!("/client/{}", form.id));
+    }
+
+    let mut event_data = json!({
+        "text": &form.text,
+    });
+
+    if let Some(subject) = form.subject.as_ref() {
+        event_data["subject"] = json!(subject);
+    }
+
     let updates = NewClientEvent {
         client_id: client.id,
         event_type: ClientEventType::from(form.event_type.as_str()),
         manager_id: manager.id,
         created_at: Utc::now().naive_utc(),
-        event_data: json!({
-            "text": &form.text,
-        }),
+        event_data,
     };
-
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(form.id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
-    }
 
     match repo.create_client_event(&updates) {
         Ok(_) => {

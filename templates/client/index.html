@@ -81,5 +81,25 @@
         icon.classList.add("bi-slash-circle");
         btn.appendChild(icon);
     }
+    function toggleSubjectInputVisibility(select) {
+        const subjectInput = document.getElementById("event-form-subject");
+        if (!subjectInput || !select) {
+            return;
+        }
+
+        subjectInput.type = select.value === "Email" ? "text" : "hidden";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const eventTypeSelect = document.getElementById("event-form-event-type");
+        if (!eventTypeSelect) {
+            return;
+        }
+
+        toggleSubjectInputVisibility(eventTypeSelect);
+        eventTypeSelect.addEventListener("change", function () {
+            toggleSubjectInputVisibility(eventTypeSelect);
+        });
+    });
 </script>
 {% endblock %}

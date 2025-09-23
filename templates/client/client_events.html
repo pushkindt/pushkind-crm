@@ -2,14 +2,26 @@
     <input type="hidden" name="id" value="{{client.id}}" required readonly>
     <div class="row">
         <div class="col">
-            <textarea rows="2" name="text" class="form-control my-1" value="" placeholder="Комментарий" required></textarea>
+            <div class="row">
+                <div class="col">
+                    <input id="event-form-subject" type="hidden" name="subject"
+                        class="form-control form-control-sm mb-1" value="" placeholder="Тема">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <textarea rows="2" name="text" class="form-control mb-1" value="" placeholder="Комментарий"
+                        required></textarea>
+                </div>
+            </div>
         </div>
         <div class="col-auto">
             <div class="row">
                 <div class="col">
-                    <select name="event_type" class="form-select form-select-sm" aria-label="Select event type" required>
+                    <select name="event_type" id="event-form-event-type" class="form-select form-select-sm"
+                        aria-label="Select event type" required>
                         <option value="Comment">Комментарий</option>
-                        <option value="Call">Звонок</option>
+                        <option value="Email">Email</option>
                     </select>
                 </div>
             </div>
@@ -23,8 +35,8 @@
 </form>
 <div id="events">
     {% for event_manager in events %}
-        {% set event = event_manager.0 %}
-        {% set manager = event_manager.1 %}
-        {% include 'components/client_event.html' %}
+    {% set event = event_manager.0 %}
+    {% set manager = event_manager.1 %}
+    {% include 'components/client_event.html' %}
     {% endfor %}
 </div>
