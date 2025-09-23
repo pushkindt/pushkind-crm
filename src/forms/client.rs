@@ -32,6 +32,8 @@ pub struct SaveClientForm {
 pub struct AddCommentForm {
     /// Identifier of the client that receives the comment.
     pub id: i32,
+    /// Optional subject if the comment is an email.
+    pub subject: Option<String>,
     /// Comment text content.
     #[validate(length(min = 1))]
     pub text: String,

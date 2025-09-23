@@ -32,6 +32,7 @@ pushkind-common = { git = "https://github.com/pushkindt/pushkind-common.git", br
     "db",
     "actix",
     "emailer",
+    "zeromq",
 ] }
 validator = { version = "0.20.0", features = ["derive"] }
 zmq = "0.10.0"
