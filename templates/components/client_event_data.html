@@ -2,7 +2,9 @@
     {% if event_type == "DocumentLink" %}
     <a href="{{ event_data['url'] }}">{{ event_data["text"] }}</a>
     {% else %}
-    {% if event_data["subject"] %} <strong>{{event_data["subject"]}}</strong><br> {% endif %}
+    {% if event_data.subject is defined %}
+    <strong>{{ event_data.subject }}</strong><br>
+    {% endif %}
     {{ event_data["text"] }}
     {% endif %}
 </p>

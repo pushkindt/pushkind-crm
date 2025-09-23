@@ -208,9 +208,15 @@ pub async fn comment_client(
         }
     };
 
-    if let Some(client_email) = &client.email
-        && form.event_type == "Email"
-    {
+    if form.event_type == "Email" {
+        let client_email = match client.email.as_ref() {
+            Some(email) => email,
+            None => {
+                FlashMessage::error("Клиент не имеет email").send();
+                return redirect(&format!("/client/{}", form.id));
+            }
+        };
+
         let new_email = NewEmail {
             message: form.text.clone(),
             subject: form.subject.clone(),
@@ -232,9 +238,6 @@ pub async fn comment_client(
             FlashMessage::error("Ошибка при добавлении сообщения в очередь.").send();
             return redirect(&format!("/client/{}", form.id));
         }
-    } else {
-        FlashMessage::error("Клиент не имеет email").send();
-        return redirect(&format!("/client/{}", form.id));
     }
 
     let mut event_data = json!({
