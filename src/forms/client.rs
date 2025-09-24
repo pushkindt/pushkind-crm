@@ -36,7 +36,7 @@ pub struct AddCommentForm {
     pub subject: Option<String>,
     /// Comment text content.
     #[validate(length(min = 1))]
-    pub text: String,
+    pub message: String,
     /// Type of event associated with the comment.
     pub event_type: String,
 }

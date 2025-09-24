@@ -8,12 +8,7 @@
                         class="form-control form-control-sm mb-1" value="" placeholder="Тема">
                 </div>
             </div>
-            <div class="row">
-                <div class="col">
-                    <textarea rows="2" name="text" class="form-control mb-1" value="" placeholder="Комментарий"
-                        required></textarea>
-                </div>
-            </div>
+            {% include 'components/markdown.html' %}
         </div>
         <div class="col-auto">
             <div class="row">
