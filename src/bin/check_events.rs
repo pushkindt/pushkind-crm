@@ -93,7 +93,8 @@ where
                 manager_id: manager.id,
                 event_type: ClientEventType::Reply,
                 event_data: json!({
-                    "text": reply.message,
+                    "subject": &reply.subject,
+                    "text": ammonia::clean(&reply.message),
                 }),
                 created_at: Utc::now().naive_utc(),
             };
