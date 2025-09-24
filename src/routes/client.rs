@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
-use ammonia::Builder;
 use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
@@ -23,8 +22,6 @@ use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
     DieselRepository, ManagerWriter,
 };
-
-static COMMENT_SANITIZER: LazyLock<Builder<'static>> = LazyLock::new(Builder::empty);
 
 #[get("/client/{client_id}")]
 pub async fn show_client(
@@ -190,12 +187,7 @@ pub async fn comment_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let sanitized_message = sanitize_comment_input(&form.message);
-    let sanitized_subject = form
-        .subject
-        .as_ref()
-        .map(|subject| sanitize_comment_input(subject))
-        .filter(|subject| !subject.is_empty());
+    let sanitized_message = ammonia::clean(&form.message);
 
     let manager = match repo.create_or_update_manager(&(&user).into()) {
         Ok(manager) => manager,
@@ -229,7 +221,7 @@ pub async fn comment_client(
 
         let new_email = NewEmail {
             message: sanitized_message.clone(),
-            subject: sanitized_subject.clone(),
+            subject: form.subject.clone(),
             attachment: None,
             attachment_name: None,
             attachment_mime: None,
@@ -254,7 +246,7 @@ pub async fn comment_client(
         "text": sanitized_message,
     });
 
-    if let Some(subject) = sanitized_subject {
+    if let Some(subject) = form.subject.as_ref() {
         event_data["subject"] = json!(subject);
     }
 
@@ -347,8 +339,4 @@ pub async fn attachment_client(
     }
 
     redirect(&format!("/client/{}", form.id))
-}
-
-fn sanitize_comment_input(input: &str) -> String {
-    COMMENT_SANITIZER.clean(input).to_string()
 }
