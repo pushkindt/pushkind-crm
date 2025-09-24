@@ -244,11 +244,10 @@ pub async fn comment_client(
         "text": &form.message,
     });
 
-    if let Some(subject) = form.subject.as_ref() {
-        if !subject.is_empty() {
+    if let Some(subject) = form.subject.as_ref()
+        && !subject.is_empty() {
             event_data["subject"] = json!(subject);
         }
-    }
 
     let updates = NewClientEvent {
         client_id: client.id,
