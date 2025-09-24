@@ -218,7 +218,7 @@ pub async fn comment_client(
         };
 
         let new_email = NewEmail {
-            message: form.text.clone(),
+            message: form.message.clone(),
             subject: form.subject.clone(),
             attachment: None,
             attachment_name: None,
@@ -227,7 +227,7 @@ pub async fn comment_client(
             recipients: vec![NewEmailRecipient {
                 address: client_email.clone(),
                 name: client.name.clone(),
-                fields: HashMap::new(),
+                fields: client.fields.map(HashMap::from_iter).unwrap_or_default(),
             }],
         };
 
@@ -241,12 +241,13 @@ pub async fn comment_client(
     }
 
     let mut event_data = json!({
-        "text": &form.text,
+        "text": &form.message,
     });
 
-    if let Some(subject) = form.subject.as_ref() {
-        event_data["subject"] = json!(subject);
-    }
+    if let Some(subject) = form.subject.as_ref()
+        && !subject.is_empty() {
+            event_data["subject"] = json!(subject);
+        }
 
     let updates = NewClientEvent {
         client_id: client.id,

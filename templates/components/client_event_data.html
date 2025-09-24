@@ -1,10 +1,12 @@
-<p class="mb-0">
-    {% if event_type == "DocumentLink" %}
+{% if event_type == "DocumentLink" %}
+<p>
     <a href="{{ event_data['url'] }}">{{ event_data["text"] }}</a>
-    {% else %}
-    {% if event_data.subject is defined %}
-    <strong>{{ event_data.subject }}</strong><br>
-    {% endif %}
-    {{ event_data["text"] }}
-    {% endif %}
 </p>
+{% else %}
+{% if event_data["subject"] is defined %}
+<p>
+    <strong>{{ event_data["subject"] }}</strong>
+</p>
+{% endif %}
+{{ event_data["text"] | safe }}
+{% endif %}
