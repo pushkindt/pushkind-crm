@@ -1,6 +1,6 @@
 <div class="row g-1">
     <div class="col">
-        <textarea class="form-control" rows=10 id="message-input" required
+        <textarea autofocus class="form-control" rows=10 id="message-input" required
             placeholder="Содержание">{{message | default(value='') | safe}}</textarea>
         <input type="hidden" id="message" name="message" required value="{{message | default(value='')}}">
     </div>
