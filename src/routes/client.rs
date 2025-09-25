@@ -18,10 +18,8 @@ use validator::Validate;
 use crate::domain::client::UpdateClient;
 use crate::domain::client_event::{ClientEventType, NewClientEvent};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
-use crate::repository::{
-    ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
-    DieselRepository, ManagerWriter,
-};
+use crate::repository::{ClientEventListQuery, DieselRepository};
+use crate::services::client as client_service;
 
 #[get("/client/{client_id}")]
 pub async fn show_client(
@@ -37,17 +35,23 @@ pub async fn show_client(
     };
 
     let client_id = client_id.into_inner();
+    let repo = repo.get_ref();
 
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(client_id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
+    if check_role("crm_manager", &user.roles) {
+        match client_service::is_client_assigned_to_manager(repo, client_id, &user.email) {
+            Ok(true) => {}
+            Ok(false) => {
+                FlashMessage::error("Этот клиент для вас не доступен").send();
+                return redirect("/");
+            }
+            Err(e) => {
+                log::error!("Failed to check client access: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        }
     }
 
-    let client = match repo.get_client_by_id(client_id, user.hub_id) {
+    let client = match client_service::get_client_by_id(repo, client_id, user.hub_id) {
         Ok(Some(client)) => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
@@ -59,7 +63,7 @@ pub async fn show_client(
         }
     };
 
-    let managers = match repo.list_managers(client_id) {
+    let managers = match client_service::list_client_managers(repo, client_id) {
         Ok(managers) => managers,
         Err(e) => {
             log::error!("Failed to get managers: {e}");
@@ -67,14 +71,16 @@ pub async fn show_client(
         }
     };
 
-    let events_with_managers = match repo.list_client_events(ClientEventListQuery::new(client_id)) {
-        Ok((_total_events, events_with_managers)) => events_with_managers,
-        Err(e) => {
-            log::error!("Failed to get events: {e}");
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    let documents = match repo.list_client_events(
+    let events_with_managers =
+        match client_service::list_client_events(repo, ClientEventListQuery::new(client_id)) {
+            Ok((_total_events, events_with_managers)) => events_with_managers,
+            Err(e) => {
+                log::error!("Failed to get events: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+    let documents = match client_service::list_client_events(
+        repo,
         ClientEventListQuery::new(client_id).event_type(ClientEventType::DocumentLink),
     ) {
         Ok((_total_events, events_with_managers)) => events_with_managers
@@ -126,7 +132,9 @@ pub async fn save_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+    let repo = repo.get_ref();
+
+    let client = match client_service::get_client_by_id(repo, form.id, user.hub_id) {
         Ok(Some(client)) => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
@@ -138,17 +146,22 @@ pub async fn save_client(
         }
     };
 
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(client.id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
+    if check_role("crm_manager", &user.roles) {
+        match client_service::is_client_assigned_to_manager(repo, client.id, &user.email) {
+            Ok(true) => {}
+            Ok(false) => {
+                FlashMessage::error("Этот клиент для вас не доступен").send();
+                return redirect("/");
+            }
+            Err(e) => {
+                log::error!("Failed to check client access: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        }
     }
     let updates: UpdateClient = form.into();
 
-    match repo.update_client(client.id, &updates) {
+    match client_service::update_client(repo, client.id, &updates) {
         Ok(_) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
         }
@@ -172,13 +185,20 @@ pub async fn comment_client(
         return response;
     }
 
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(form.id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
+    let repo = repo.get_ref();
+
+    if check_role("crm_manager", &user.roles) {
+        match client_service::is_client_assigned_to_manager(repo, form.id, &user.email) {
+            Ok(true) => {}
+            Ok(false) => {
+                FlashMessage::error("Этот клиент для вас не доступен").send();
+                return redirect("/");
+            }
+            Err(e) => {
+                log::error!("Failed to check client access: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        }
     }
 
     if let Err(e) = form.validate() {
@@ -189,7 +209,7 @@ pub async fn comment_client(
 
     let sanitized_message = ammonia::clean(&form.message);
 
-    let manager = match repo.create_or_update_manager(&(&user).into()) {
+    let manager = match client_service::create_or_update_manager(repo, &(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
             log::error!("Failed to create or update manager: {err}");
@@ -198,7 +218,7 @@ pub async fn comment_client(
         }
     };
 
-    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+    let client = match client_service::get_client_by_id(repo, form.id, user.hub_id) {
         Ok(Some(client)) => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
@@ -258,7 +278,7 @@ pub async fn comment_client(
         event_data,
     };
 
-    match repo.create_client_event(&updates) {
+    match client_service::create_client_event(repo, &updates) {
         Ok(_) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }
@@ -287,7 +307,9 @@ pub async fn attachment_client(
         return redirect(&format!("/client/{}", form.id));
     }
 
-    let manager = match repo.create_or_update_manager(&(&user).into()) {
+    let repo = repo.get_ref();
+
+    let manager = match client_service::create_or_update_manager(repo, &(&user).into()) {
         Ok(manager) => manager,
         Err(err) => {
             log::error!("Failed to create or update manager: {err}");
@@ -296,7 +318,7 @@ pub async fn attachment_client(
         }
     };
 
-    let client = match repo.get_client_by_id(form.id, user.hub_id) {
+    let client = match client_service::get_client_by_id(repo, form.id, user.hub_id) {
         Ok(Some(client)) => client,
         Err(e) => {
             log::error!("Failed to get client: {e}");
@@ -319,16 +341,21 @@ pub async fn attachment_client(
         }),
     };
 
-    if check_role("crm_manager", &user.roles)
-        && !repo
-            .check_client_assigned_to_manager(form.id, &user.email)
-            .is_ok_and(|result| result)
-    {
-        FlashMessage::error("Этот клиент для вас не доступен").send();
-        return redirect("/");
+    if check_role("crm_manager", &user.roles) {
+        match client_service::is_client_assigned_to_manager(repo, form.id, &user.email) {
+            Ok(true) => {}
+            Ok(false) => {
+                FlashMessage::error("Этот клиент для вас не доступен").send();
+                return redirect("/");
+            }
+            Err(e) => {
+                log::error!("Failed to check client access: {e}");
+                return HttpResponse::InternalServerError().finish();
+            }
+        }
     }
 
-    match repo.create_client_event(&updates) {
+    match client_service::create_client_event(repo, &updates) {
         Ok(_) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
         }
