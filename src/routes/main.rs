@@ -3,19 +3,13 @@ use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
-use pushkind_common::pagination::Paginated;
-use pushkind_common::routes::{base_context, render_template};
-use pushkind_common::routes::{check_role, ensure_role, redirect};
+use pushkind_common::routes::{base_context, redirect, render_template};
 use serde::Deserialize;
 use tera::Tera;
-use validator::Validate;
 
-use crate::domain::client::NewClient;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
-use crate::repository::{
-    ClientListQuery, ClientReader, ClientWriter, DieselRepository, ManagerWriter,
-};
+use crate::repository::DieselRepository;
+use crate::services::{ServiceError, main as main_service};
 
 #[derive(Deserialize)]
 struct IndexQueryParams {
@@ -31,55 +25,34 @@ pub async fn show_index(
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
-    }
+    let query = main_service::IndexQuery {
+        search: params.q.clone(),
+        page: params.page,
+    };
 
-    let page = params.page.unwrap_or(1);
-    let q = params.q.as_deref().unwrap_or("").trim();
-
-    let mut context = base_context(
-        &flash_messages,
-        &user,
-        "index",
-        &server_config.auth_service_url,
-    );
-
-    let query = ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE);
-
-    let clients_result = if !q.is_empty() {
-        context.insert("search_query", q);
-        repo.search_clients(query.search(q))
-    } else if check_role("crm_admin", &user.roles) {
-        repo.list_clients(query)
-    } else if check_role("crm_manager", &user.roles) {
-        match repo.create_or_update_manager(&(&user).into()) {
-            Ok(manager) => repo.list_clients(query.manager_email(&manager.email)),
-            Err(e) => {
-                log::error!("Failed to update manager: {e}");
-                return HttpResponse::InternalServerError().finish();
+    match main_service::load_index_page(repo.get_ref(), &user, query) {
+        Ok(data) => {
+            let mut context = base_context(
+                &flash_messages,
+                &user,
+                "index",
+                &server_config.auth_service_url,
+            );
+            context.insert("clients", &data.clients);
+            if let Some(search_query) = data.search_query.as_ref() {
+                context.insert("search_query", search_query);
             }
+            render_template(&tera, "main/index.html", &context)
         }
-    } else {
-        Ok((0, vec![]))
-    };
-
-    let clients = match clients_result {
-        Ok((total, clients)) => {
-            Paginated::new(clients, page, total.div_ceil(DEFAULT_ITEMS_PER_PAGE))
+        Err(ServiceError::Unauthorized) => {
+            FlashMessage::error("Недостаточно прав.").send();
+            redirect("/na")
         }
-        Err(e) => {
-            log::error!("Failed to list clients: {e}");
-            return HttpResponse::InternalServerError().finish();
+        Err(err) => {
+            log::error!("Failed to list clients: {err}");
+            HttpResponse::InternalServerError().finish()
         }
-    };
-
-    context.insert("clients", &clients);
-    if !q.is_empty() {
-        context.insert("search_query", q); // optional: show search term in UI
     }
-
-    render_template(&tera, "main/index.html", &context)
 }
 
 #[post("/client/add")]
@@ -88,28 +61,25 @@ pub async fn add_client(
     repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddClientForm>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
-        return response;
-    };
-
-    if let Err(e) = form.validate() {
-        log::error!("Failed to validate form: {e}");
-        FlashMessage::error("Ошибка валидации формы").send();
-        return redirect("/");
-    }
-
-    let new_client: NewClient = form.to_new_client(user.hub_id);
-
-    match repo.create_clients(&[new_client]) {
-        Ok(_) => {
-            FlashMessage::success("Клиент добавлен.".to_string()).send();
+    match main_service::add_client(repo.get_ref(), &user, form) {
+        Ok(outcome) => {
+            FlashMessage::success(outcome.message).send();
+            redirect(&outcome.redirect_to)
+        }
+        Err(ServiceError::Unauthorized) => {
+            FlashMessage::error("Недостаточно прав.").send();
+            redirect("/na")
+        }
+        Err(ServiceError::Form(message)) => {
+            FlashMessage::error(message).send();
+            redirect("/")
         }
         Err(err) => {
             log::error!("Failed to add a client: {err}");
             FlashMessage::error("Ошибка при добавлении клиента").send();
+            redirect("/")
         }
     }
-    redirect("/")
 }
 
 #[post("/clients/upload")]
@@ -118,28 +88,23 @@ pub async fn clients_upload(
     repo: web::Data<DieselRepository>,
     MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm_admin", Some("/na")) {
-        return response;
-    };
-
-    let clients = match form.parse(user.hub_id) {
-        Ok(clients) => clients,
-        Err(err) => {
-            log::error!("Failed to parse clients: {err}");
-            FlashMessage::error("Ошибка при парсинге клиентов").send();
-            return redirect("/");
+    match main_service::upload_clients(repo.get_ref(), &user, &mut form) {
+        Ok(outcome) => {
+            FlashMessage::success(outcome.message).send();
+            redirect(&outcome.redirect_to)
         }
-    };
-
-    match repo.create_clients(&clients) {
-        Ok(_) => {
-            FlashMessage::success("Клиенты добавлены.".to_string()).send();
+        Err(ServiceError::Unauthorized) => {
+            FlashMessage::error("Недостаточно прав.").send();
+            redirect("/na")
+        }
+        Err(ServiceError::Form(message)) => {
+            FlashMessage::error(message).send();
+            redirect("/")
         }
         Err(err) => {
             log::error!("Failed to add clients: {err}");
             FlashMessage::error("Ошибка при добавлении клиентов").send();
+            redirect("/")
         }
     }
-
-    redirect("/")
 }
