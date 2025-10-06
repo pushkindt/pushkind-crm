@@ -15,6 +15,7 @@ pub struct Manager {
     pub hub_id: i32,
     pub name: String,
     pub email: String,
+    pub is_user: bool,
 }
 
 #[derive(Insertable)]
@@ -24,6 +25,7 @@ pub struct NewManager<'a> {
     pub hub_id: i32,
     pub name: &'a str,
     pub email: &'a str,
+    pub is_user: bool,
 }
 
 #[derive(AsChangeset)]
@@ -31,6 +33,7 @@ pub struct NewManager<'a> {
 /// Data used when updating a [`Manager`] record.
 pub struct UpdateManager<'a> {
     pub name: &'a str,
+    pub is_user: bool,
 }
 
 #[derive(Debug, Clone, Queryable, Associations, Identifiable)]
@@ -59,6 +62,7 @@ impl From<Manager> for DomainManager {
             hub_id: manager.hub_id,
             name: manager.name,
             email: manager.email,
+            is_user: manager.is_user,
         }
     }
 }
@@ -69,6 +73,7 @@ impl<'a> From<&'a DomainNewManager> for NewManager<'a> {
             hub_id: manager.hub_id,
             name: manager.name.as_str(),
             email: manager.email.as_str(),
+            is_user: manager.is_user,
         }
     }
 }
@@ -77,6 +82,7 @@ impl<'a> From<&'a DomainUpdateManager> for UpdateManager<'a> {
     fn from(manager: &'a DomainUpdateManager) -> Self {
         Self {
             name: manager.name.as_str(),
+            is_user: manager.is_user,
         }
     }
 }
@@ -85,13 +91,17 @@ impl<'a> From<&'a DomainNewManager> for UpdateManager<'a> {
     fn from(manager: &'a DomainNewManager) -> Self {
         Self {
             name: manager.name.as_str(),
+            is_user: manager.is_user,
         }
     }
 }
 
 impl<'a> From<&NewManager<'a>> for UpdateManager<'a> {
     fn from(manager: &NewManager<'a>) -> Self {
-        Self { name: manager.name }
+        Self {
+            name: manager.name,
+            is_user: manager.is_user,
+        }
     }
 }
 
@@ -119,7 +129,7 @@ mod tests {
 
     #[test]
     fn from_domain_newmanager() {
-        let domain = DomainNewManager::new(1, "Alice".to_string(), "a@b.c".to_string());
+        let domain = DomainNewManager::new(1, "Alice".to_string(), "a@b.c".to_string(), true);
         let new: NewManager = (&domain).into();
         assert_eq!(new.hub_id, domain.hub_id);
         assert_eq!(new.name, domain.name);
@@ -139,6 +149,7 @@ mod tests {
             hub_id: 2,
             name: "Bob".into(),
             email: "b@c.d".into(),
+            is_user: true,
         };
         let domain: DomainManager = db.into();
         assert_eq!(domain.id, 1);

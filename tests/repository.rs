@@ -112,6 +112,7 @@ fn test_client_event_repository_crud() {
             1,
             "Manager".to_string(),
             "m@example.com".to_string(),
+            true,
         ))
         .unwrap();
 
@@ -205,6 +206,7 @@ fn test_manager_repository_crud() {
             1,
             "Manager".to_string(),
             "m@example.com".to_string(),
+            true,
         ))
         .unwrap();
     assert!(manager.id > 0);
@@ -214,6 +216,7 @@ fn test_manager_repository_crud() {
             1,
             "Updated".to_string(),
             "m@example.com".to_string(),
+            true,
         ))
         .unwrap();
     assert_eq!(updated.id, manager.id);

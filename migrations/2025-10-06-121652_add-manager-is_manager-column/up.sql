@@ -1,0 +1,2 @@
+-- Your SQL goes here
+ALTER TABLE managers ADD COLUMN is_user BOOLEAN NOT NULL DEFAULT FALSE;

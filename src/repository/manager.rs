@@ -102,6 +102,7 @@ impl ManagerReader for DieselRepository {
         let mut conn = self.conn()?;
         let managers = managers::table
             .filter(managers::hub_id.eq(hub_id))
+            .filter(managers::is_user.eq(true))
             .load::<DbManager>(&mut conn)?;
 
         let managers_ids = managers

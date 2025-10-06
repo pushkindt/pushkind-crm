@@ -87,6 +87,7 @@ diesel::table! {
         hub_id -> Integer,
         name -> Text,
         email -> Text,
+        is_user -> Bool,
     }
 }
 

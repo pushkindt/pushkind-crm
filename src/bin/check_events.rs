@@ -85,8 +85,12 @@ where
 
     match repo.get_client_by_email(&reply.email, reply.hub_id)? {
         Some(client) => {
-            let new_manager =
-                NewManager::new(client.hub_id, client.name.clone(), reply.email.clone());
+            let new_manager = NewManager::new(
+                client.hub_id,
+                client.name.clone(),
+                reply.email.clone(),
+                false,
+            );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
                 client_id: client.id,
@@ -125,8 +129,12 @@ where
 
     match repo.get_client_by_email(&message.email, message.hub_id)? {
         Some(client) => {
-            let new_manager =
-                NewManager::new(client.hub_id, client.name.clone(), message.email.clone());
+            let new_manager = NewManager::new(
+                client.hub_id,
+                client.name.clone(),
+                message.email.clone(),
+                false,
+            );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
                 client_id: client.id,
