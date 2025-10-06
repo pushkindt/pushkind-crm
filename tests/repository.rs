@@ -222,6 +222,16 @@ fn test_manager_repository_crud() {
     assert_eq!(updated.id, manager.id);
     assert_eq!(updated.name, "Updated");
 
+    let preserved = manager_repo
+        .create_or_update_manager(&NewManager::new(
+            1,
+            "Updated".to_string(),
+            "m@example.com".to_string(),
+            false,
+        ))
+        .unwrap();
+    assert!(preserved.is_user);
+
     let by_id = manager_repo
         .get_manager_by_id(manager.id, 1)
         .unwrap()

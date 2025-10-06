@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use diesel::{prelude::*, upsert::excluded};
 use pushkind_common::repository::errors::RepositoryResult;
 
 use crate::{
@@ -9,8 +9,7 @@ use crate::{
     models::{
         client::Client as DbClient,
         manager::{
-            Manager as DbManager, NewClientManager as DbNewClientManager,
-            NewManager as DbNewManager, UpdateManager as DbUpdateManager,
+            Manager as DbManager, NewClientManager as DbNewClientManager, NewManager as DbNewManager,
         },
     },
     repository::{DieselRepository, ManagerReader, ManagerWriter},
@@ -24,13 +23,15 @@ impl ManagerWriter for DieselRepository {
 
         let db_new_manager: DbNewManager = new_manager.into();
 
-        let db_update_manager: DbUpdateManager = new_manager.into();
-
         let db_manager = diesel::insert_into(managers::table)
             .values(&db_new_manager)
             .on_conflict((managers::email, managers::hub_id))
             .do_update()
-            .set(&db_update_manager)
+            .set((
+                managers::name.eq(excluded(managers::name)),
+                managers::is_user
+                    .eq(managers::is_user.or(excluded(managers::is_user))),
+            ))
             .get_result::<DbManager>(&mut conn)?;
 
         Ok(db_manager.into())
