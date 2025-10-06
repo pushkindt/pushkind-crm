@@ -82,8 +82,8 @@ pub async fn managers_modal(
             render_template(&tera, "managers/modal_body.html", &context)
         }
         Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Недостаточно прав.").send();
-            redirect("/na")
+            log::error!("Unauthorized to load manager modal.");
+            HttpResponse::Unauthorized().finish()
         }
         Err(ServiceError::NotFound) => HttpResponse::InternalServerError().finish(),
         Err(err) => {

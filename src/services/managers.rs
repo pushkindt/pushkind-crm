@@ -59,7 +59,7 @@ where
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
     }
 
-    let new_manager = NewManager::new(user.hub_id, form.name, form.email);
+    let new_manager = NewManager::new(user.hub_id, form.name, form.email, true);
 
     client_service::create_or_update_manager(repo, &new_manager).map_err(|err| {
         log::error!("Failed to save the manager: {err}");
