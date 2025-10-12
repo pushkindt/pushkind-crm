@@ -91,6 +91,7 @@ environment variables. Key values include:
 | `ZMQ_EMAILER_PUB` | ZeroMQ endpoint for queuing outbound emails | `tcp://127.0.0.1:5557` |
 | `ZMQ_EMAILER_SUB` | ZeroMQ endpoint for inbound email events (`check_events`) | `tcp://127.0.0.1:5558` |
 | `ZMQ_REPLIER_SUB` | ZeroMQ endpoint for reply/unsubscribe events (`check_events`) | `tcp://127.0.0.1:5560` |
+| `ZMQ_CLIENTS_SUB` | ZeroMQ endpoint for client upsert events (`check_events`) | `tcp://127.0.0.1:5562` |
 
 Create a `.env` file if you want these values loaded automatically via
 [`dotenvy`](https://crates.io/crates/dotenvy).
