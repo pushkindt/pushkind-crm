@@ -43,13 +43,13 @@ jobs:
           if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
       - name: Deploy
         run: |
-          ssh cicd@crm.pushkind.com "supervisorctl stop crm"
-          ssh cicd@crm.pushkind.com "supervisorctl stop crm_check_events"
+          ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl stop pushkind-crm.service"
+          ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl stop pushkind-crm-check-events.service"
           scp ./target/release/pushkind-crm cicd@crm.pushkind.com:/var/www8/html/
           scp ./target/release/check_events cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./assets/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./templates/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./migrations/ cicd@crm.pushkind.com:/var/www8/html/
           ssh cicd@crm.pushkind.com "cd /var/www8/html/ && /home/cicd/.cargo/bin/diesel migration run"
-          ssh cicd@crm.pushkind.com "supervisorctl start crm"
-          ssh cicd@crm.pushkind.com "supervisorctl start crm_check_events"
+          ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl start pushkind-crm.service"
+          ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl start pushkind-crm-check-events.service"
