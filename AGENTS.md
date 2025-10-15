@@ -9,8 +9,8 @@ architecture and conventions.
 `pushkind-crm` is a Rust 2024 Actix Web application that uses Diesel with
 SQLite, Tera templates, and the shared `pushkind-common` crate. The codebase is
 layered into domain models, repository traits and implementations, service
-modules, Actix routes, forms, and templates. Business logic belongs in the
-service layer; handlers and repositories should stay thin and focused on I/O
+modules, Actix routes, forms, and templates. Business logic belongs entirely in
+the service layer; handlers and repositories must stay thin and focused on I/O
 concerns.
 
 ## Development Commands
@@ -49,6 +49,9 @@ cargo fmt --all -- --check
   so the `DieselRepository` and `mockall`-powered fakes remain interchangeable.
 - Return domain structs or `()` from services; leave flash messaging and
   redirect selection to the HTTP layer.
+- Push all branching, validation, and orchestration into services; routes exist
+  only to call a service, translate its data or errors into flash messages, and
+  redirect.
 - Sanitize and validate user input early using `validator` and `ammonia` helpers
   from the form layer.
 - Prefer dependency injection through function parameters over global state.
@@ -67,8 +70,9 @@ cargo fmt --all -- --check
 
 ## HTTP and Template Guidelines
 
-- Keep Actix handlers in `src/routes` focused on extracting inputs, invoking a
-  service, and returning an HTTP response.
+- Keep Actix handlers in `src/routes` as thin wrappers that extract inputs,
+  invoke a service, then render or redirect; no business logic belongs in the
+  route layer.
 - Keep services free of HTTP presentation concerns; handlers are responsible
   for flash messaging and redirects.
 - Render templates with Tera contexts that only expose sanitized data. Use the
