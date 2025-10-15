@@ -8,7 +8,7 @@ use crate::domain::manager::NewManager;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::client as client_service;
-use crate::services::{RedirectSuccess, ServiceError, ServiceResult};
+use crate::services::{ServiceError, ServiceResult};
 
 /// Query parameters accepted by the index page service.
 #[derive(Debug, Default)]
@@ -76,11 +76,7 @@ where
 }
 
 /// Validates the add-client form and persists a new client record.
-pub fn add_client<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
-    form: AddClientForm,
-) -> ServiceResult<RedirectSuccess>
+pub fn add_client<R>(repo: &R, user: &AuthenticatedUser, form: AddClientForm) -> ServiceResult<()>
 where
     R: ClientWriter + ?Sized,
 {
@@ -100,10 +96,7 @@ where
         err
     })?;
 
-    Ok(RedirectSuccess {
-        message: "Клиент добавлен.".to_string(),
-        redirect_to: "/".to_string(),
-    })
+    Ok(())
 }
 
 /// Parses the uploaded CSV file and creates client records in bulk.
@@ -111,7 +104,7 @@ pub fn upload_clients<R>(
     repo: &R,
     user: &AuthenticatedUser,
     form: &mut UploadClientsForm,
-) -> ServiceResult<RedirectSuccess>
+) -> ServiceResult<()>
 where
     R: ClientWriter + ?Sized,
 {
@@ -129,8 +122,5 @@ where
         err
     })?;
 
-    Ok(RedirectSuccess {
-        message: "Клиенты добавлены.".to_string(),
-        redirect_to: "/".to_string(),
-    })
+    Ok(())
 }

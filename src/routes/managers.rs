@@ -47,9 +47,9 @@ pub async fn add_manager(
     web::Form(form): web::Form<AddManagerForm>,
 ) -> impl Responder {
     match managers_service::add_manager(repo.get_ref(), &user, form) {
-        Ok(outcome) => {
-            FlashMessage::success(outcome.message).send();
-            redirect(&outcome.redirect_to)
+        Ok(()) => {
+            FlashMessage::success("Менеджер добавлен.").send();
+            redirect("/managers")
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();
@@ -100,9 +100,9 @@ pub async fn assign_manager(
     form: web::Bytes,
 ) -> impl Responder {
     match managers_service::assign_manager(repo.get_ref(), &user, form.as_ref()) {
-        Ok(outcome) => {
-            FlashMessage::success(outcome.message).send();
-            redirect(&outcome.redirect_to)
+        Ok(()) => {
+            FlashMessage::success("Менеджер назначен клиентам.").send();
+            redirect("/managers")
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();

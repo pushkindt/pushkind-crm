@@ -9,7 +9,8 @@ use crate::{
     models::{
         client::Client as DbClient,
         manager::{
-            Manager as DbManager, NewClientManager as DbNewClientManager, NewManager as DbNewManager,
+            Manager as DbManager, NewClientManager as DbNewClientManager,
+            NewManager as DbNewManager,
         },
     },
     repository::{DieselRepository, ManagerReader, ManagerWriter},
@@ -29,8 +30,7 @@ impl ManagerWriter for DieselRepository {
             .do_update()
             .set((
                 managers::name.eq(excluded(managers::name)),
-                managers::is_user
-                    .eq(managers::is_user.or(excluded(managers::is_user))),
+                managers::is_user.eq(managers::is_user.or(excluded(managers::is_user))),
             ))
             .get_result::<DbManager>(&mut conn)?;
 
