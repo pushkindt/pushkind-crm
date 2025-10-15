@@ -47,6 +47,8 @@ cargo fmt --all -- --check
   functions.
 - Service functions should accept trait bounds (e.g., `ClientReader + ClientWriter`)
   so the `DieselRepository` and `mockall`-powered fakes remain interchangeable.
+- Return domain structs or `()` from services; leave flash messaging and
+  redirect selection to the HTTP layer.
 - Sanitize and validate user input early using `validator` and `ammonia` helpers
   from the form layer.
 - Prefer dependency injection through function parameters over global state.
@@ -67,8 +69,8 @@ cargo fmt --all -- --check
 
 - Keep Actix handlers in `src/routes` focused on extracting inputs, invoking a
   service, and returning an HTTP response.
-- Use the `RedirectSuccess` helper when services need to trigger a redirect with
-  flash messaging.
+- Keep services free of HTTP presentation concerns; handlers are responsible
+  for flash messaging and redirects.
 - Render templates with Tera contexts that only expose sanitized data. Use the
   existing component templates under `templates/` for shared UI.
 - Respect the authorization checks via `pushkind_common::routes::check_role` and

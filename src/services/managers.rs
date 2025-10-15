@@ -7,7 +7,7 @@ use crate::domain::manager::{Manager, NewManager};
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::services::client as client_service;
-use crate::services::{RedirectSuccess, ServiceError, ServiceResult};
+use crate::services::{ServiceError, ServiceResult};
 
 /// Data required to render the managers index page.
 #[derive(Debug)]
@@ -42,11 +42,7 @@ where
 }
 
 /// Validates the incoming form and persists the manager entity.
-pub fn add_manager<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
-    form: AddManagerForm,
-) -> ServiceResult<RedirectSuccess>
+pub fn add_manager<R>(repo: &R, user: &AuthenticatedUser, form: AddManagerForm) -> ServiceResult<()>
 where
     R: ManagerWriter + ?Sized,
 {
@@ -66,10 +62,7 @@ where
         err
     })?;
 
-    Ok(RedirectSuccess {
-        message: "Менеджер добавлен.".to_string(),
-        redirect_to: "/managers".to_string(),
-    })
+    Ok(())
 }
 
 /// Loads data necessary to render the manager modal body.
@@ -104,11 +97,7 @@ where
 }
 
 /// Assigns the provided client identifiers to the given manager.
-pub fn assign_manager<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
-    payload: &[u8],
-) -> ServiceResult<RedirectSuccess>
+pub fn assign_manager<R>(repo: &R, user: &AuthenticatedUser, payload: &[u8]) -> ServiceResult<()>
 where
     R: ManagerReader + ManagerWriter + ?Sized,
 {
@@ -140,8 +129,5 @@ where
         },
     )?;
 
-    Ok(RedirectSuccess {
-        message: "Менеджер назначен клиентам.".to_string(),
-        redirect_to: "/managers".to_string(),
-    })
+    Ok(())
 }

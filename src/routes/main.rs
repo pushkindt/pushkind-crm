@@ -62,9 +62,9 @@ pub async fn add_client(
     web::Form(form): web::Form<AddClientForm>,
 ) -> impl Responder {
     match main_service::add_client(repo.get_ref(), &user, form) {
-        Ok(outcome) => {
-            FlashMessage::success(outcome.message).send();
-            redirect(&outcome.redirect_to)
+        Ok(()) => {
+            FlashMessage::success("Клиент добавлен.").send();
+            redirect("/")
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();
@@ -89,9 +89,9 @@ pub async fn clients_upload(
     MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
     match main_service::upload_clients(repo.get_ref(), &user, &mut form) {
-        Ok(outcome) => {
-            FlashMessage::success(outcome.message).send();
-            redirect(&outcome.redirect_to)
+        Ok(()) => {
+            FlashMessage::success("Клиенты добавлены.").send();
+            redirect("/")
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();
