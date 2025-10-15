@@ -401,6 +401,10 @@ mod tests {
     }
 
     impl ClientReader for TestRepo {
+        fn list_available_fields(&self, _hub_id: i32) -> RepositoryResult<Vec<String>> {
+            Ok(Vec::new())
+        }
+
         fn get_client_by_id(&self, id: i32, _hub_id: i32) -> RepositoryResult<Option<Client>> {
             Ok(self.snapshot().get(&id).cloned())
         }

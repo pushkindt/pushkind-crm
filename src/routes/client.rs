@@ -93,6 +93,14 @@ pub async fn show_client(
         }
     };
 
+    let available_fields = match client_service::list_available_fields(repo, user.hub_id) {
+        Ok(fields) => fields,
+        Err(e) => {
+            log::error!("Failed to get available fields: {e}");
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+
     let mut context = base_context(
         &flash_messages,
         &user,
@@ -103,6 +111,7 @@ pub async fn show_client(
     context.insert("managers", &managers);
     context.insert("events", &events_with_managers);
     context.insert("documents", &documents);
+    context.insert("available_fields", &available_fields);
 
     render_template(&tera, "client/index.html", &context)
 }

@@ -31,7 +31,7 @@
                             {% for field, value in client.fields %}
                                 <div class="row mb-3">
                                     <div class="col">
-                                        <input type="text" class="form-control" value="{{field}}" name="field" required placeholder="Поле">
+                                        <input list="available-custom-fields" type="text" class="form-control" value="{{field}}" name="field" required placeholder="Поле">
                                     </div>
                                     <div class="col">
                                         <input type="text" class="form-control" value="{{value}}" name="value" required" placeholder="Значение">

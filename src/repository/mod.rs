@@ -99,6 +99,7 @@ pub trait ClientReader {
         client_id: i32,
         manager_email: &str,
     ) -> RepositoryResult<bool>;
+    fn list_available_fields(&self, hub_id: i32) -> RepositoryResult<Vec<String>>;
 }
 
 pub trait ClientWriter {
