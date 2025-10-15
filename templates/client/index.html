@@ -26,6 +26,12 @@
 {% include 'client/save_client_modal.html' %}
 {% include 'client/attachment_modal.html' %}
 
+<datalist id="available-custom-fields">
+    {% for field in available_fields %}
+        <option value="{{field}}"></option>
+    {% endfor %}
+</datalist>
+
 {% endblock %}
 
 {% block scripts %}
@@ -49,6 +55,7 @@
         input.classList.add("form-control");
         input.name = "field";
         input.type = "text";
+        input.setAttribute('list', "available-custom-fields");
         input.placeholder = "Поле";
         input.required = true;
         col.appendChild(input);

@@ -24,6 +24,15 @@ where
     repo.list_managers(client_id).map_err(ServiceError::from)
 }
 
+/// Returns the available client fields for a hub
+pub fn list_available_fields<R>(repo: &R, hub_id: i32) -> ServiceResult<Vec<String>>
+where
+    R: ClientReader + ?Sized,
+{
+    repo.list_available_fields(hub_id)
+        .map_err(ServiceError::from)
+}
+
 /// Retrieves the paginated list of client events with their managers.
 pub fn list_client_events<R>(
     repo: &R,
