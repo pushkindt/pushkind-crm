@@ -2,6 +2,7 @@ use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::check_role;
 use validator::Validate;
 
+use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::client::Client;
 use crate::domain::manager::{Manager, NewManager};
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
@@ -28,7 +29,7 @@ pub fn list_managers<R>(repo: &R, user: &AuthenticatedUser) -> ServiceResult<Man
 where
     R: ManagerReader + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
@@ -46,7 +47,7 @@ pub fn add_manager<R>(repo: &R, user: &AuthenticatedUser, form: AddManagerForm) 
 where
     R: ManagerWriter + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
@@ -74,7 +75,7 @@ pub fn load_manager_modal<R>(
 where
     R: ManagerReader + ClientReader + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
@@ -101,7 +102,7 @@ pub fn assign_manager<R>(repo: &R, user: &AuthenticatedUser, payload: &[u8]) -> 
 where
     R: ManagerReader + ManagerWriter + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 

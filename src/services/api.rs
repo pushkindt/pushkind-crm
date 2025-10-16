@@ -2,6 +2,7 @@ use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::check_role;
 
+use crate::SERVICE_ACCESS_ROLE;
 use crate::domain::client::Client;
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
@@ -33,7 +34,7 @@ pub fn list_clients<R>(
 where
     R: ClientReader + ?Sized,
 {
-    if !check_role("crm", &user.roles) {
+    if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
