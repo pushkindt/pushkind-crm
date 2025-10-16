@@ -4,7 +4,7 @@ use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::{base_context, ensure_role, redirect, render_template};
+use pushkind_common::routes::{base_context, redirect, render_template};
 use pushkind_common::zmq::ZmqSender;
 use tera::Tera;
 
@@ -21,10 +21,6 @@ pub async fn show_client(
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
-    };
-
     let client_id = client_id.into_inner();
     let repo = repo.get_ref();
 
@@ -65,10 +61,6 @@ pub async fn save_client(
     repo: web::Data<DieselRepository>,
     form: web::Bytes,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
-    }
-
     let repo = repo.get_ref();
 
     let form: SaveClientForm = match serde_html_form::from_bytes(&form) {
@@ -114,10 +106,6 @@ pub async fn comment_client(
     zmq_sender: web::Data<Arc<ZmqSender>>,
     web::Form(form): web::Form<AddCommentForm>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
-    }
-
     let repo = repo.get_ref();
     let client_id = form.id;
     let sender = zmq_sender.get_ref().as_ref();
@@ -157,10 +145,6 @@ pub async fn attachment_client(
     repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddAttachmentForm>,
 ) -> impl Responder {
-    if let Err(response) = ensure_role(&user, "crm", Some("/na")) {
-        return response;
-    }
-
     let repo = repo.get_ref();
     let client_id = form.id;
 

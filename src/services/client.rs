@@ -18,6 +18,7 @@ use crate::repository::{
     ManagerReader, ManagerWriter,
 };
 use crate::services::{ServiceError, ServiceResult};
+use crate::SERVICE_ACCESS_ROLE;
 
 /// Aggregated data required to render the client details page.
 #[derive(Debug)]
@@ -64,6 +65,20 @@ where
     }
 }
 
+/// Returns [`ServiceError::Unauthorized`] when the user lacks the CRM role.
+fn ensure_service_access(user: &AuthenticatedUser) -> ServiceResult<()> {
+    if check_role(SERVICE_ACCESS_ROLE, &user.roles) {
+        Ok(())
+    } else {
+        log::warn!(
+            "User {email} does not have required role {role}",
+            email = user.email,
+            role = SERVICE_ACCESS_ROLE
+        );
+        Err(ServiceError::Unauthorized)
+    }
+}
+
 /// Loads a client by id or returns [`ServiceError::NotFound`] with logging.
 fn load_client_or_not_found<R>(repo: &R, hub_id: i32, client_id: i32) -> ServiceResult<Client>
 where
@@ -93,6 +108,7 @@ pub fn load_client_details<R>(
 where
     R: ClientReader + ClientEventReader + ?Sized,
 {
+    ensure_service_access(user)?;
     ensure_client_access(repo, user, client_id)?;
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
@@ -141,6 +157,8 @@ pub fn save_client<R>(
 where
     R: ClientReader + ClientWriter + ?Sized,
 {
+    ensure_service_access(user)?;
+
     if let Err(err) = form.validate() {
         log::error!("Failed to validate save client form: {err}");
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
@@ -173,6 +191,8 @@ pub async fn add_comment<R>(
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
 {
+    ensure_service_access(user)?;
+
     if let Err(err) = form.validate() {
         log::error!("Failed to validate comment form: {err}");
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
@@ -261,6 +281,8 @@ pub fn add_attachment<R>(
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
 {
+    ensure_service_access(user)?;
+
     if let Err(err) = form.validate() {
         log::error!("Failed to validate attachment form: {err}");
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
