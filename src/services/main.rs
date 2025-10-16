@@ -9,6 +9,7 @@ use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
+use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE};
 
 /// Query parameters accepted by the index page service.
 #[derive(Debug, Default)]
@@ -36,7 +37,7 @@ pub fn load_index_page<R>(
 where
     R: ClientReader + ManagerWriter + ?Sized,
 {
-    if !check_role("crm", &user.roles) {
+    if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
@@ -52,7 +53,7 @@ where
         list_query = list_query.search(term.clone());
         repo.search_clients(list_query)
             .map_err(ServiceError::from)?
-    } else if check_role("crm_admin", &user.roles) {
+    } else if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         repo.list_clients(list_query).map_err(ServiceError::from)?
     } else if check_role("crm_manager", &user.roles) {
         let manager = client_service::create_or_update_manager(repo, &NewManager::from(user))
@@ -80,7 +81,7 @@ pub fn add_client<R>(repo: &R, user: &AuthenticatedUser, form: AddClientForm) ->
 where
     R: ClientWriter + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 
@@ -108,7 +109,7 @@ pub fn upload_clients<R>(
 where
     R: ClientWriter + ?Sized,
 {
-    if !check_role("crm_admin", &user.roles) {
+    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         return Err(ServiceError::Unauthorized);
     }
 

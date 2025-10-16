@@ -7,3 +7,4 @@ pub mod schema;
 pub mod services;
 
 pub const SERVICE_ACCESS_ROLE: &str = "crm";
+pub const SERVICE_ADMIN_ROLE: &str = "crm_admin";
