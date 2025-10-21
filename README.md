@@ -34,7 +34,8 @@ exercised and tested without going through the web framework:
 
 - **Domain (`src/domain`)** – Type-safe models for clients, client events, and
   managers. Builder-style helpers make it easy to construct new payloads while
-  capturing timestamps, normalising contact data, and sanitising inputs early.
+  capturing timestamps, normalising contact data (phone numbers stored in E164
+  format), and sanitising inputs early.
 - **Repository (`src/repository`)** – Traits that describe the persistence
   contract and a Diesel-backed implementation (`DieselRepository`) that speaks to
   a SQLite database. Each module translates between Diesel models and domain
