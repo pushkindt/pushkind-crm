@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use chrono::NaiveDateTime;
+use phonenumber::parse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -41,9 +42,7 @@ impl NewClient {
             email: email
                 .map(|s| s.to_lowercase().trim().to_string())
                 .filter(|s| !s.is_empty()),
-            phone: phone
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
+            phone: normalize_phone(phone),
             fields: fields.filter(|m| !m.is_empty()),
         }
     }
@@ -71,10 +70,56 @@ impl UpdateClient {
             email: email
                 .map(|s| s.to_lowercase().trim().to_string())
                 .filter(|s| !s.is_empty()),
-            phone: phone
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
+            phone: normalize_phone(phone),
             fields: fields.filter(|m| !m.is_empty()),
         }
+    }
+}
+
+fn normalize_phone(phone: Option<String>) -> Option<String> {
+    phone
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .and_then(|s| match parse(None, &s) {
+            Ok(number) if number.is_valid() => {
+                Some(format!("{}{}", number.country().code(), number.national()))
+            }
+            _ => None,
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_client_normalizes_valid_phone_numbers() {
+        let client = NewClient::new(
+            1,
+            "Alice".into(),
+            None,
+            Some("+1 (415) 555-2671".into()),
+            None,
+        );
+        assert_eq!(client.phone.as_deref(), Some("14155552671"));
+    }
+
+    #[test]
+    fn new_client_drops_invalid_phone_numbers() {
+        let client = NewClient::new(1, "Bob".into(), None, Some("invalid".into()), None);
+        assert!(client.phone.is_none());
+    }
+
+    #[test]
+    fn update_client_normalizes_valid_phone_numbers() {
+        let client =
+            UpdateClient::new("Alice".into(), None, Some("+1 (415) 555-2671".into()), None);
+        assert_eq!(client.phone.as_deref(), Some("14155552671"));
+    }
+
+    #[test]
+    fn update_client_drops_invalid_phone_numbers() {
+        let client = UpdateClient::new("Bob".into(), None, Some("".into()), None);
+        assert!(client.phone.is_none());
     }
 }

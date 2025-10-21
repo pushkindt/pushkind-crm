@@ -548,7 +548,7 @@ mod tests {
             hub_id: 1,
             name: "Updated".to_string(),
             email: Some("initial@example.com".to_string()),
-            phone: Some("555-0100".to_string()),
+            phone: Some("+1 (415) 555-2671".to_string()),
             fields: None,
         });
 
@@ -558,7 +558,7 @@ mod tests {
         assert_eq!(snapshot.len(), 1);
         let updated = snapshot.get(&inserted_id).expect("client missing");
         assert_eq!(updated.name, "Updated");
-        assert_eq!(updated.phone.as_deref(), Some("555-0100"));
+        assert_eq!(updated.phone.as_deref(), Some("14155552671"));
     }
 
     #[test]
