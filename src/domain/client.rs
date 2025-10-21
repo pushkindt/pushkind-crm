@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use chrono::NaiveDateTime;
-use phonenumber::{Mode, parse};
+use phonenumber::{Mode, country, parse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -80,7 +80,7 @@ fn normalize_phone(phone: Option<String>) -> Option<String> {
     phone
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
-        .and_then(|s| match parse(None, &s) {
+        .and_then(|s| match parse(Some(country::RU), &s) {
             Ok(number) if number.is_valid() => Some(number.format().mode(Mode::E164).to_string()),
             _ => None,
         })
