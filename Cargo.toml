@@ -38,6 +38,7 @@ pushkind-common = { git = "https://github.com/pushkindt/pushkind-common.git", br
 validator = { version = "0.20.0", features = ["derive"] }
 zmq = "0.10.0"
 tokio = { version = "1.47.1", features = ["full"] }
+phonenumber = "0.3.7"
 
 [[bin]]
 name = "check_events"
