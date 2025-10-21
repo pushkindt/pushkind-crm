@@ -9,6 +9,7 @@ use pushkind_common::zmq::ZmqSender;
 use serde_json::json;
 use validator::Validate;
 
+use crate::SERVICE_ACCESS_ROLE;
 use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::manager::{Manager, NewManager};
@@ -18,7 +19,6 @@ use crate::repository::{
     ManagerReader, ManagerWriter,
 };
 use crate::services::{ServiceError, ServiceResult};
-use crate::SERVICE_ACCESS_ROLE;
 
 /// Aggregated data required to render the client details page.
 #[derive(Debug)]

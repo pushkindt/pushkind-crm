@@ -558,7 +558,7 @@ mod tests {
         assert_eq!(snapshot.len(), 1);
         let updated = snapshot.get(&inserted_id).expect("client missing");
         assert_eq!(updated.name, "Updated");
-        assert_eq!(updated.phone.as_deref(), Some("14155552671"));
+        assert_eq!(updated.phone.as_deref(), Some("+14155552671"));
     }
 
     #[test]

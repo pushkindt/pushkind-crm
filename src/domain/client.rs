@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use chrono::NaiveDateTime;
-use phonenumber::parse;
+use phonenumber::{Mode, parse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -81,9 +81,7 @@ fn normalize_phone(phone: Option<String>) -> Option<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .and_then(|s| match parse(None, &s) {
-            Ok(number) if number.is_valid() => {
-                Some(format!("{}{}", number.country().code(), number.national()))
-            }
+            Ok(number) if number.is_valid() => Some(number.format().mode(Mode::E164).to_string()),
             _ => None,
         })
 }
@@ -101,7 +99,7 @@ mod tests {
             Some("+1 (415) 555-2671".into()),
             None,
         );
-        assert_eq!(client.phone.as_deref(), Some("14155552671"));
+        assert_eq!(client.phone.as_deref(), Some("+14155552671"));
     }
 
     #[test]
@@ -114,7 +112,7 @@ mod tests {
     fn update_client_normalizes_valid_phone_numbers() {
         let client =
             UpdateClient::new("Alice".into(), None, Some("+1 (415) 555-2671".into()), None);
-        assert_eq!(client.phone.as_deref(), Some("14155552671"));
+        assert_eq!(client.phone.as_deref(), Some("+14155552671"));
     }
 
     #[test]
