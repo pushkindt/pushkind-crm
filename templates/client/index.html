@@ -6,11 +6,25 @@
 <div class="container">
     <div class="row my-2">
         <div class="col">
-            <span class="fw-bold">
-                {{client.name}}
-            </span>
+            <div class="row">
+                <div class="col-sm-4">
+                    <span class="fw-bold">
+                        {{client.name}}
+                    </span>
+                </div>
+                <div class="col-sm">
+                    <span class="fw-bold">Менеджеры:</span>
+                    {% if managers %}
+                        {% for manager in managers %}
+                            {% include 'components/user_popover.html' %}
+                        {% endfor %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div class="col-auto">
+        <div class="col text-end">
             {% include 'client/actions.html' %}
         </div>
     </div>
