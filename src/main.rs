@@ -46,6 +46,16 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
+    let todo_service_url = match env::var("TODO_SERVICE_URL") {
+        Ok(url) => Some(url),
+        Err(_) => {
+            log::warn!(
+                "TODO_SERVICE_URL environment variable not set; manager todo links will be hidden"
+            );
+            None
+        }
+    };
+
     let zmq_sender = match ZmqSender::start(ZmqSenderOptions::pub_default(&zmq_address)) {
         Ok(zmq_sender) => zmq_sender,
         Err(e) => {
@@ -118,6 +128,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(repo.clone()))
             .app_data(web::Data::new(server_config.clone()))
             .app_data(web::Data::new(zmq_sender.clone()))
+            .app_data(web::Data::new(todo_service_url.clone()))
     })
     .bind((address, port))?
     .run()

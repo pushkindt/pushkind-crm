@@ -86,6 +86,7 @@ environment variables. Key values include:
 | `DATABASE_URL` | SQLite database path used by the Actix server and workers | `app.db` |
 | `SECRET_KEY` | 32-byte secret for signing cookies and sessions | generated at runtime |
 | `AUTH_SERVICE_URL` | Base URL of the Pushkind authentication service | _required_ |
+| `TODO_SERVICE_URL` | Base URL of the manager TODO service used for quick links | _optional_ |
 | `PORT` | HTTP port for the Actix server | `8080` |
 | `ADDRESS` | Interface to bind the Actix server | `127.0.0.1` |
 | `DOMAIN` | Cookie domain (without protocol) | `localhost` |

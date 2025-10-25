@@ -19,6 +19,7 @@ pub async fn show_client(
     repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
+    todo_service_url: web::Data<Option<String>>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
     let client_id = client_id.into_inner();
@@ -37,6 +38,9 @@ pub async fn show_client(
             context.insert("events", &data.events_with_managers);
             context.insert("documents", &data.documents);
             context.insert("available_fields", &data.available_fields);
+            if let Some(todo_service_url) = todo_service_url.get_ref().as_ref() {
+                context.insert("todo_service_url", todo_service_url);
+            }
 
             render_template(&tera, "client/index.html", &context)
         }
