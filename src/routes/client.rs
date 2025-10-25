@@ -9,6 +9,7 @@ use pushkind_common::zmq::ZmqSender;
 use tera::Tera;
 
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
+use crate::models::config::ServerConfig;
 use crate::repository::DieselRepository;
 use crate::services::{ServiceError, client as client_service};
 
@@ -18,8 +19,8 @@ pub async fn show_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
-    server_config: web::Data<CommonServerConfig>,
-    todo_service_url: web::Data<Option<String>>,
+    common_config: web::Data<CommonServerConfig>,
+    server_config: web::Data<ServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
     let client_id = client_id.into_inner();
@@ -31,14 +32,14 @@ pub async fn show_client(
                 &flash_messages,
                 &user,
                 "index",
-                &server_config.auth_service_url,
+                &common_config.auth_service_url,
             );
             context.insert("client", &data.client);
             context.insert("managers", &data.managers);
             context.insert("events", &data.events_with_managers);
             context.insert("documents", &data.documents);
             context.insert("available_fields", &data.available_fields);
-            if let Some(todo_service_url) = todo_service_url.get_ref().as_ref() {
+            if let Some(todo_service_url) = server_config.todo_service_url.as_ref() {
                 context.insert("todo_service_url", todo_service_url);
             }
 

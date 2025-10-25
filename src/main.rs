@@ -15,6 +15,7 @@ use pushkind_common::routes::{logout, not_assigned};
 use pushkind_common::zmq::{ZmqSender, ZmqSenderOptions};
 use tera::Tera;
 
+use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::DieselRepository;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
@@ -56,6 +57,8 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
+    let server_config = ServerConfig { todo_service_url };
+
     let zmq_sender = match ZmqSender::start(ZmqSenderOptions::pub_default(&zmq_address)) {
         Ok(zmq_sender) => zmq_sender,
         Err(e) => {
@@ -66,7 +69,7 @@ async fn main() -> std::io::Result<()> {
 
     let zmq_sender = Arc::new(zmq_sender);
 
-    let server_config = CommonServerConfig {
+    let common_config = CommonServerConfig {
         secret: secret.unwrap_or_default(),
         auth_service_url,
     };
@@ -126,9 +129,9 @@ async fn main() -> std::io::Result<()> {
             )
             .app_data(web::Data::new(tera.clone()))
             .app_data(web::Data::new(repo.clone()))
-            .app_data(web::Data::new(server_config.clone()))
+            .app_data(web::Data::new(common_config.clone()))
             .app_data(web::Data::new(zmq_sender.clone()))
-            .app_data(web::Data::new(todo_service_url.clone()))
+            .app_data(web::Data::new(server_config.clone()))
     })
     .bind((address, port))?
     .run()
