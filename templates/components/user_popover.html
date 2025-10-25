@@ -1,3 +1,11 @@
-<a role="button" tabindex="0" data-bs-trigger="focus" data-bs-toggle="popover" title="{{manager.name}}" data-bs-content="{{manager.email}}" data-bs-original-title="{{manager.name}}" aria-label="{{manager.name}}">
+<a  role="button"
+    tabindex="0"
+    data-bs-trigger="focus" 
+    data-bs-toggle="popover" 
+    title="{{manager.name}}" 
+    data-bs-content="{{manager.email}}{% if todo_service_url is defined and manager.is_user %}<br><a class='text-decoration-none' href='{{todo_service_url}}?email={{manager.email | urlencode}}&name={{manager.name | urlencode}}' target='_blank' rel='noopener noreferrer' aria-label='Открыть TODO для {{manager.name}}'>добавить задачу</a>{% endif %}" 
+    data-bs-original-title="{{manager.name}}" 
+    aria-label="{{manager.name}}"
+    data-bs-html="true">
     <i class="bi bi-person-circle"></i>&nbsp;{{manager.name}}
 </a>
