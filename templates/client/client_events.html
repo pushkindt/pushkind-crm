@@ -1,7 +1,7 @@
 <form action="/client/comment" method="POST">
     <input type="hidden" name="id" value="{{client.id}}" required readonly>
     <div class="row">
-        <div class="col">
+        <div class="col-sm">
             <div class="row">
                 <div class="col">
                     <input id="event-form-subject" type="hidden" name="subject"
@@ -10,7 +10,7 @@
             </div>
             {{ macros::markdown(id="comment") }}
         </div>
-        <div class="col-auto">
+        <div class="col-sm-auto">
             <div class="row">
                 <div class="col">
                     <select name="event_type" id="event-form-event-type" class="form-select form-select-sm"
