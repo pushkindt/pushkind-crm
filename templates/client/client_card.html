@@ -2,6 +2,9 @@
     <div class="col">
         <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.email | default(value="Электронный адрес")}}</a>
     </div>
+    <div class="col text-end">
+        {% include 'client/actions.html' %}
+    </div>
 </div>
 <div class="row">
     <div class="col">
@@ -12,7 +15,7 @@
 <div class="row">
     <div class="col">
         <a class="text-nowrap" data-bs-toggle="collapse" href="#client-fields" aria-expanded="false" aria-controls="client-fields">
-            Дополнительные поля <i class="bi bi-caret-down-fill"></i>
+            Подробнее <i class="bi bi-caret-down-fill"></i>
         </a>
     </div>
 </div>
@@ -35,6 +38,18 @@
     {% endfor %}
 </div>
 {%endif%}
+<div class="row">
+    <div class="col">
+        <span class="fw-bold">Менеджеры:</span>
+        {% if managers %}
+            {% for manager in managers %}
+                {% include 'components/user_popover.html' %}
+            {% endfor %}
+        {% else %}
+            —
+        {% endif %}
+    </div>
+</div>
 {% if documents %}
     <div class="row">
         <div class="col">
