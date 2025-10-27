@@ -20,6 +20,8 @@ fn test_client_repository_crud() {
         "Alice".into(),
         Some("alice@example.com".into()),
         Some("111".into()),
+        Some("123 Main St".into()),
+        Some("Alice Manager".into()),
         None,
     );
     let c2 = NewClient::new(
@@ -27,6 +29,8 @@ fn test_client_repository_crud() {
         "Bob".into(),
         Some("bob@example.com".into()),
         Some("222".into()),
+        None,
+        None,
         None,
     );
 
@@ -43,6 +47,9 @@ fn test_client_repository_crud() {
     items.sort_by(|a, b| a.name.cmp(&b.name));
     let mut alice = items[0].clone();
     let mut bob = items[1].clone();
+    assert_eq!(alice.address.as_deref(), Some("123 Main St"));
+    assert_eq!(alice.contact.as_deref(), Some("Alice Manager"));
+    assert!(bob.address.is_none());
 
     let (search_total, search_items) = client_repo
         .search_clients(ClientListQuery::new(1).search("Bob"))
@@ -57,6 +64,8 @@ fn test_client_repository_crud() {
                 alice.name.clone(),
                 alice.email.clone(),
                 alice.phone.clone(),
+                alice.address.clone(),
+                Some("Updated Contact".to_string()),
                 Some(BTreeMap::from([("vip".to_string(), "true".to_string())])),
             ),
         )
@@ -65,6 +74,7 @@ fn test_client_repository_crud() {
         alice.fields,
         Some(BTreeMap::from([("vip".to_string(), "true".to_string())]))
     );
+    assert_eq!(alice.contact.as_deref(), Some("Updated Contact"));
 
     bob = client_repo
         .update_client(
@@ -73,11 +83,14 @@ fn test_client_repository_crud() {
                 "Bobby".to_string(),
                 bob.email.clone(),
                 bob.phone.clone(),
+                Some("New Address".to_string()),
+                None,
                 Some(BTreeMap::new()),
             ),
         )
         .unwrap();
     assert_eq!(bob.name, "Bobby");
+    assert_eq!(bob.address.as_deref(), Some("New Address"));
 
     client_repo.delete_client(alice.id).unwrap();
     assert!(client_repo.get_client_by_id(alice.id, 1).unwrap().is_none());
@@ -98,6 +111,8 @@ fn test_client_event_repository_crud() {
             "Alice".into(),
             Some("alice@example.com".into()),
             Some("111".into()),
+            None,
+            None,
             None,
         );
         client_repo.create_clients(&[new_client]).unwrap();
@@ -186,6 +201,8 @@ fn test_manager_repository_crud() {
             "Alice".into(),
             Some("alice@example.com".into()),
             Some("111".into()),
+            Some("123".into()),
+            None,
             None,
         ),
         NewClient::new(
@@ -193,6 +210,8 @@ fn test_manager_repository_crud() {
             "Bob".into(),
             Some("bob@example.com".into()),
             Some("222".into()),
+            None,
+            Some("Contact".into()),
             None,
         ),
     ];

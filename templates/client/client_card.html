@@ -11,6 +11,16 @@
         <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.phone | default(value="Телефон")}}</a>
     </div>
 </div>
+<div class="row">
+    <div class="col">
+        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.address | default(value="Адрес")}}</a>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.contact | default(value="Контактное лицо")}}</a>
+    </div>
+</div>
 {% if client.fields %}
 <div class="row">
     <div class="col">

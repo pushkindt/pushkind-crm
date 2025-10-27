@@ -27,6 +27,18 @@
                         </div>
                     </div>
                     <div class="row mb-3">
+                        <label for="clientModalAddress" class="col-md-2 col-form-label">Адрес</label>
+                        <div class="col-md-10">
+                            <input name="address" type="text" class="form-control" id="clientModalAddress" value="" placeholder="Адрес">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="clientModalContact" class="col-md-2 col-form-label">Контакт</label>
+                        <div class="col-md-10">
+                            <input name="contact" type="text" class="form-control" id="clientModalContact" value="" placeholder="Контактное лицо">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
                         <div class="col">
                             <button class="btn btn-primary" type="submit">Сохранить</button>
                         </div>
@@ -38,7 +50,7 @@
                     <div class="row">
                         <div class="col">
                             <input class="form-control" type="file" name="csv" accept=".csv" required>
-                            <div class="w-100"><sup><small class="text-muted">"name","email","phone", "произвольные", "поля" </small></sup></div>
+                            <div class="w-100"><sup><small class="text-muted">"name","email","phone","address","contact", "произвольные", "поля" </small></sup></div>
                         </div>
                         <div class="col-auto">
                             <button class="btn btn-success" type="submit">Из csv</button>

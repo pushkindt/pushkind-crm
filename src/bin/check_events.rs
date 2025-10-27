@@ -173,6 +173,10 @@ struct ZmqClientPayload {
     email: Option<String>,
     phone: Option<String>,
     #[serde(default)]
+    address: Option<String>,
+    #[serde(default)]
+    contact: Option<String>,
+    #[serde(default)]
     fields: Option<BTreeMap<String, String>>,
 }
 
@@ -215,6 +219,8 @@ where
             name,
             email,
             phone,
+            address,
+            contact,
             fields,
         } = payload;
 
@@ -225,6 +231,8 @@ where
                         name.clone(),
                         email.clone(),
                         phone.clone(),
+                        address.clone(),
+                        contact.clone(),
                         fields.clone(),
                     );
 
@@ -259,7 +267,9 @@ where
             }
         }
 
-        new_clients.push(NewClient::new(hub_id, name, email, phone, fields));
+        new_clients.push(NewClient::new(
+            hub_id, name, email, phone, address, contact, fields,
+        ));
     }
 
     if !new_clients.is_empty() {
@@ -461,6 +471,8 @@ mod tests {
                     name: new.name.clone(),
                     email: new.email.clone(),
                     phone: new.phone.clone(),
+                    address: new.address.clone(),
+                    contact: new.contact.clone(),
                     created_at: timestamp,
                     updated_at: timestamp,
                     fields: new.fields.clone(),
@@ -485,6 +497,8 @@ mod tests {
             existing.name = updates.name.clone();
             existing.email = updates.email.clone();
             existing.phone = updates.phone.clone();
+            existing.address = updates.address.clone();
+            existing.contact = updates.contact.clone();
             existing.fields = updates.fields.clone();
             existing.updated_at = Utc::now().naive_utc();
 
@@ -510,6 +524,8 @@ mod tests {
                     name: "Alice".to_string(),
                     email: Some("alice@example.com".to_string()),
                     phone: None,
+                    address: None,
+                    contact: None,
                     fields: None,
                 },
                 ZmqClientPayload {
@@ -517,6 +533,8 @@ mod tests {
                     name: "Bob".to_string(),
                     email: Some("bob@example.com".to_string()),
                     phone: Some("123".to_string()),
+                    address: Some("Market St".to_string()),
+                    contact: Some("Alice".to_string()),
                     fields: None,
                 },
             ],
@@ -538,6 +556,8 @@ mod tests {
             name: "Initial".to_string(),
             email: Some("initial@example.com".to_string()),
             phone: None,
+            address: Some("Start".to_string()),
+            contact: Some("Person".to_string()),
             fields: None,
         });
         process_client_message(create_message, repo.clone()).expect("insert failed");
@@ -549,6 +569,8 @@ mod tests {
             name: "Updated".to_string(),
             email: Some("initial@example.com".to_string()),
             phone: Some("+1 (415) 555-2671".to_string()),
+            address: Some("Updated Address".to_string()),
+            contact: Some("Updated Contact".to_string()),
             fields: None,
         });
 
@@ -559,6 +581,8 @@ mod tests {
         let updated = snapshot.get(&inserted_id).expect("client missing");
         assert_eq!(updated.name, "Updated");
         assert_eq!(updated.phone.as_deref(), Some("+14155552671"));
+        assert_eq!(updated.address.as_deref(), Some("Updated Address"));
+        assert_eq!(updated.contact.as_deref(), Some("Updated Contact"));
     }
 
     #[test]
@@ -569,6 +593,8 @@ mod tests {
             name: "Fallback".to_string(),
             email: Some("fallback@example.com".to_string()),
             phone: None,
+            address: None,
+            contact: None,
             fields: None,
         });
 
@@ -587,6 +613,8 @@ mod tests {
             name: "No Email".to_string(),
             email: None,
             phone: None,
+            address: None,
+            contact: None,
             fields: None,
         });
 
