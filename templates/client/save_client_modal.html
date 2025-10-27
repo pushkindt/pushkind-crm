@@ -26,6 +26,18 @@
                             <input name="phone" type="tel" class="form-control" id="clientModalPhone" value="{{client.phone}}" placeholder="Телефон">
                         </div>
                     </div>
+                    <div class="row mb-3">
+                        <label for="clientModalAddress" class="col-md-2 col-form-label">Адрес</label>
+                        <div class="col-md-10">
+                            <input name="address" type="text" class="form-control" id="clientModalAddress" value="{{client.address}}" placeholder="Адрес">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="clientModalContact" class="col-md-2 col-form-label">Контакт</label>
+                        <div class="col-md-10">
+                            <input name="contact" type="text" class="form-control" id="clientModalContact" value="{{client.contact}}" placeholder="Контактное лицо">
+                        </div>
+                    </div>
                     <div id="custom-fields">
                         {% if client.fields %}
                             {% for field, value in client.fields %}

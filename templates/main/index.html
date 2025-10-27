@@ -56,6 +56,12 @@
             Телефон
         </div>
         <div class="col overflow-hidden">
+            Адрес
+        </div>
+        <div class="col overflow-hidden">
+            Контактное лицо
+        </div>
+        <div class="col overflow-hidden">
             Дополнительные поля
         </div>
     </div>
@@ -70,6 +76,12 @@
             </div>
             <div class="col-sm">
                 {{ client.phone }}
+            </div>
+            <div class="col-sm">
+                {{ client.address | default(value="—") }}
+            </div>
+            <div class="col-sm">
+                {{ client.contact | default(value="—") }}
             </div>
             <div class="col-sm">
                 {% if client.fields %}
