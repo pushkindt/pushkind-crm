@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    {% include 'components/navigation.html' %}
+
+    <div class="container my-3">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h1 class="h4 mb-3">Важные поля клиента</h1>
+                        <p class="text-muted">Укажите названия полей по одному на строку. Пустые строки будут проигнорированы.</p>
+                        <form method="POST" action="/important-fields">
+                            <div class="mb-3">
+                                <label for="important-fields-textarea" class="form-label">Список полей</label>
+                                <textarea
+                                    class="form-control"
+                                    id="important-fields-textarea"
+                                    name="fields"
+                                    rows="10">{{ fields_text | default(value='') }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
