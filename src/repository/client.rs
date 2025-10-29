@@ -28,17 +28,27 @@ use crate::{
 
 impl ClientReader for DieselRepository {
     fn list_available_fields(&self, hub_id: i32) -> RepositoryResult<Vec<String>> {
-        use crate::schema::{client_fields, clients};
+        use crate::schema::{client_fields, clients, important_fields};
 
         let mut conn = self.conn()?;
 
-        client_fields::table
+        let mut fields = client_fields::table
             .inner_join(clients::table)
             .filter(clients::hub_id.eq(hub_id))
             .select(client_fields::field)
             .distinct()
-            .load::<String>(&mut conn)
-            .map_err(Into::into)
+            .load::<String>(&mut conn)?;
+
+        let important = important_fields::table
+            .filter(important_fields::hub_id.eq(hub_id))
+            .select(important_fields::field)
+            .load::<String>(&mut conn)?;
+
+        fields.extend(important);
+        fields.sort();
+        fields.dedup();
+
+        Ok(fields)
     }
 
     fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>> {
