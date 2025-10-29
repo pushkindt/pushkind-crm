@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use diesel::Connection;
 use diesel::prelude::*;
 use diesel::result::DatabaseErrorKind;
 use diesel::sql_types::{BigInt, Integer, Nullable, Text};
@@ -7,7 +8,11 @@ use diesel::upsert::excluded;
 use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
+use crate::domain::important_field::ImportantField as DomainImportantField;
 use crate::models::client::ClientField;
+use crate::models::important_field::{
+    ImportantField as DbImportantField, NewImportantField as DbNewImportantField,
+};
 use crate::{
     domain::client::{Client, NewClient, UpdateClient},
     domain::manager::Manager,
@@ -15,7 +20,10 @@ use crate::{
         Client as DbClient, NewClient as DbNewClient, UpdateClient as DbUpdateClient,
     },
     models::manager::Manager as DbManager,
-    repository::{ClientListQuery, ClientReader, ClientWriter, DieselRepository},
+    repository::{
+        ClientListQuery, ClientReader, ClientWriter, DieselRepository, ImportantFieldReader,
+        ImportantFieldWriter,
+    },
 };
 
 impl ClientReader for DieselRepository {
@@ -448,5 +456,51 @@ impl ClientWriter for DieselRepository {
             .execute(&mut conn)?;
         diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
         Ok(())
+    }
+}
+
+impl ImportantFieldReader for DieselRepository {
+    fn list_important_fields(&self, hub: i32) -> RepositoryResult<Vec<DomainImportantField>> {
+        use crate::schema::important_fields;
+
+        let mut conn = self.conn()?;
+
+        let rows: Vec<DbImportantField> = important_fields::table
+            .filter(important_fields::hub_id.eq(hub))
+            .order(important_fields::field.asc())
+            .load(&mut conn)?;
+
+        Ok(rows.into_iter().map(Into::into).collect())
+    }
+}
+
+impl ImportantFieldWriter for DieselRepository {
+    fn replace_important_fields(
+        &self,
+        hub: i32,
+        fields: &[DomainImportantField],
+    ) -> RepositoryResult<()> {
+        use crate::schema::important_fields;
+
+        let mut conn = self.conn()?;
+
+        conn.transaction::<_, diesel::result::Error, _>(|conn| {
+            diesel::delete(important_fields::table.filter(important_fields::hub_id.eq(hub)))
+                .execute(conn)?;
+
+            if fields.is_empty() {
+                return Ok(());
+            }
+
+            let new_fields: Vec<DbNewImportantField<'_>> =
+                fields.iter().map(DbNewImportantField::from).collect();
+
+            diesel::insert_into(important_fields::table)
+                .values(&new_fields)
+                .execute(conn)?;
+
+            Ok(())
+        })
+        .map_err(RepositoryError::from)
     }
 }

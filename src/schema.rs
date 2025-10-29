@@ -95,6 +95,13 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    important_fields (hub_id, field) {
+        hub_id -> Integer,
+        field -> Text,
+    }
+}
+
 diesel::joinable!(client_events -> clients (client_id));
 diesel::joinable!(client_events -> managers (manager_id));
 diesel::joinable!(client_fields -> clients (client_id));
@@ -111,5 +118,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     client_fts_idx,
     client_manager,
     clients,
+    important_fields,
     managers,
 );

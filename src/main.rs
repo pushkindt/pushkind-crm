@@ -19,6 +19,7 @@ use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::DieselRepository;
 use pushkind_crm::routes::api::api_v1_clients;
 use pushkind_crm::routes::client::{attachment_client, comment_client, save_client, show_client};
+use pushkind_crm::routes::important_fields::{save_important_fields, show_important_fields};
 use pushkind_crm::routes::main::{add_client, clients_upload, show_index};
 use pushkind_crm::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
@@ -121,6 +122,8 @@ async fn main() -> std::io::Result<()> {
                     .service(save_client)
                     .service(comment_client)
                     .service(attachment_client)
+                    .service(show_important_fields)
+                    .service(save_important_fields)
                     .service(managers)
                     .service(add_manager)
                     .service(managers_modal)

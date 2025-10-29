@@ -5,6 +5,7 @@ use pushkind_common::repository::errors::RepositoryResult;
 use crate::domain::{
     client::{Client, NewClient, UpdateClient},
     client_event::{ClientEvent, ClientEventType, NewClientEvent},
+    important_field::ImportantField as DomainImportantField,
     manager::{Manager, NewManager},
 };
 
@@ -106,6 +107,18 @@ pub trait ClientWriter {
     fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
     fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client>;
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()>;
+}
+
+pub trait ImportantFieldReader {
+    fn list_important_fields(&self, hub_id: i32) -> RepositoryResult<Vec<DomainImportantField>>;
+}
+
+pub trait ImportantFieldWriter {
+    fn replace_important_fields(
+        &self,
+        hub_id: i32,
+        fields: &[DomainImportantField],
+    ) -> RepositoryResult<()>;
 }
 pub trait ManagerReader {
     fn get_manager_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Manager>>;
