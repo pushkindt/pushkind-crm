@@ -1,6 +1,7 @@
 use std::env;
 use std::sync::Arc;
 
+use actix_cors::Cors;
 use actix_files::Files;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
@@ -99,6 +100,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(Cors::permissive())
             .wrap(message_framework.clone())
             .wrap(IdentityMiddleware::default())
             .wrap(
