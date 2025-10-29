@@ -300,8 +300,6 @@ impl ClientWriter for DieselRepository {
                         clients::name.eq(&new.name),
                         clients::email.eq(new.email.as_deref()),
                         clients::phone.eq(new.phone.as_deref()),
-                        clients::address.eq(new.address.as_deref()),
-                        clients::contact.eq(new.contact.as_deref()),
                     ))
                     .get_result::<DbClient>(conn);
 
@@ -330,8 +328,6 @@ impl ClientWriter for DieselRepository {
                                     clients::name.eq(&new.name),
                                     clients::email.eq(new.email.as_deref()),
                                     clients::phone.eq(new.phone.as_deref()),
-                                    clients::address.eq(new.address.as_deref()),
-                                    clients::contact.eq(new.contact.as_deref()),
                                 ))
                                 .execute(conn)
                                 .is_err()

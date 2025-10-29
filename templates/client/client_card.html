@@ -14,29 +14,14 @@
 {% for field in important_fields %}
 <div class="row">
     <div class="col overflow-hidden">
-        <a class="fw-bold link-secondary link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
+        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
             href="#clientModal"
             data-bs-toggle="modal">
-            {{ field.label }}
+            {{ field.value | default(value=field.label) }}
         </a>
     </div>
 </div>
-<div class="row">
-    <div class="col text-truncate toggle-text-truncate">
-        {{ field.value | default(value="—") }}
-    </div>
-</div>
 {% endfor %}
-<div class="row">
-    <div class="col">
-        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.address | default(value="Адрес")}}</a>
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.contact | default(value="Контактное лицо")}}</a>
-    </div>
-</div>
 {% if other_fields | length > 0 %}
 <div class="row">
     <div class="col">
