@@ -11,17 +11,18 @@
         <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.phone | default(value="Телефон")}}</a>
     </div>
 </div>
+{% for field in important_fields %}
 <div class="row">
-    <div class="col">
-        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.address | default(value="Адрес")}}</a>
+    <div class="col overflow-hidden">
+        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
+            href="#clientModal"
+            data-bs-toggle="modal">
+            {{ field.value | default(value=field.label) }}
+        </a>
     </div>
 </div>
-<div class="row">
-    <div class="col">
-        <a class="link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover" href="#clientModal" data-bs-toggle="modal">{{client.contact | default(value="Контактное лицо")}}</a>
-    </div>
-</div>
-{% if client.fields %}
+{% endfor %}
+{% if other_fields | length > 0 %}
 <div class="row">
     <div class="col">
         <a class="text-nowrap" data-bs-toggle="collapse" href="#client-fields" aria-expanded="false" aria-controls="client-fields">
@@ -30,19 +31,19 @@
     </div>
 </div>
 <div class="collapse" id="client-fields">
-    {% for key, value in client.fields %}
+    {% for field in other_fields %}
         <div class="row">
             <div class="col overflow-hidden">
                 <a  class="fw-bold link-secondary link-offset-2 link-offset-2-hover link-underline link-underline-opacity-0 link-underline-opacity-75-hover"
                     href="#clientModal"
                     data-bs-toggle="modal">
-                    {{key}}
+                    {{ field.label }}
                 </a>
             </div>
         </div>
         <div class="row border-bottom">
             <div class="col text-truncate toggle-text-truncate">
-                {{value}}
+                {{ field.value | default(value="—") }}
             </div>
         </div>
     {% endfor %}

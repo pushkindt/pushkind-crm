@@ -21,25 +21,11 @@ pub struct AddClientForm {
     /// Contact phone number.
     #[serde(deserialize_with = "empty_string_as_none")]
     pub phone: Option<String>,
-    /// Client's physical address.
-    #[serde(deserialize_with = "empty_string_as_none")]
-    pub address: Option<String>,
-    /// Primary contact person.
-    #[serde(deserialize_with = "empty_string_as_none")]
-    pub contact: Option<String>,
 }
 
 impl AddClientForm {
     pub fn to_new_client(self, hub_id: i32) -> NewClient {
-        NewClient::new(
-            hub_id,
-            self.name,
-            self.email,
-            self.phone,
-            self.address,
-            self.contact,
-            None,
-        )
+        NewClient::new(hub_id, self.name, self.email, self.phone, None)
     }
 }
 
@@ -91,8 +77,6 @@ impl UploadClientsForm {
             let mut name: Option<String> = None;
             let mut email: Option<String> = None;
             let mut phone: Option<String> = None;
-            let mut address: Option<String> = None;
-            let mut contact: Option<String> = None;
 
             for (i, field) in record.iter().enumerate() {
                 let value = field.trim();
@@ -110,16 +94,6 @@ impl UploadClientsForm {
                     Some("phone") => {
                         if !value.is_empty() {
                             phone = Some(value.to_string());
-                        }
-                    }
-                    Some("address") => {
-                        if !value.is_empty() {
-                            address = Some(value.to_string());
-                        }
-                    }
-                    Some("contact") => {
-                        if !value.is_empty() {
-                            contact = Some(value.to_string());
                         }
                     }
                     Some(header) => {
@@ -142,8 +116,6 @@ impl UploadClientsForm {
                 name,
                 email,
                 phone,
-                address,
-                contact,
                 Some(optional_fields),
             ));
         }
@@ -162,8 +134,6 @@ mod tests {
             name: "Alice".to_string(),
             email: Some("Alice@Example.COM".to_string()),
             phone: Some("+1 (415) 555-2671".to_string()),
-            address: Some(" 1 Market St ".to_string()),
-            contact: Some("  Bob  ".to_string()),
         };
 
         let new_client = form.to_new_client(42);
@@ -171,8 +141,6 @@ mod tests {
         assert_eq!(new_client.hub_id, 42);
         assert_eq!(new_client.email.as_deref(), Some("alice@example.com"));
         assert_eq!(new_client.phone.as_deref(), Some("+14155552671"));
-        assert_eq!(new_client.address.as_deref(), Some("1 Market St"));
-        assert_eq!(new_client.contact.as_deref(), Some("Bob"));
     }
 
     #[test]
@@ -181,8 +149,6 @@ mod tests {
             name: "Bob".to_string(),
             email: None,
             phone: None,
-            address: None,
-            contact: None,
         };
 
         let new_client = form.to_new_client(7);
@@ -190,7 +156,5 @@ mod tests {
         assert_eq!(new_client.hub_id, 7);
         assert!(new_client.email.is_none());
         assert!(new_client.phone.is_none());
-        assert!(new_client.address.is_none());
-        assert!(new_client.contact.is_none());
     }
 }

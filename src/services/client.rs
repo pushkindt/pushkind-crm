@@ -6,19 +6,27 @@ use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
 use pushkind_common::models::emailer::zmq::ZMQSendEmailMessage;
 use pushkind_common::routes::check_role;
 use pushkind_common::zmq::ZmqSender;
+use serde::Serialize;
 use serde_json::json;
 use validator::Validate;
 
 use crate::SERVICE_ACCESS_ROLE;
 use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
+use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
-    ManagerReader, ManagerWriter,
+    ImportantFieldReader, ManagerReader, ManagerWriter,
 };
 use crate::services::{ServiceError, ServiceResult};
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ClientFieldDisplay {
+    pub label: String,
+    pub value: Option<String>,
+}
 
 /// Aggregated data required to render the client details page.
 #[derive(Debug)]
@@ -28,7 +36,140 @@ pub struct ClientPageData {
     pub events_with_managers: Vec<(ClientEvent, Manager)>,
     pub documents: Vec<ClientEvent>,
     pub available_fields: Vec<String>,
+    pub important_fields: Vec<ClientFieldDisplay>,
+    pub other_fields: Vec<ClientFieldDisplay>,
     pub total_events: usize,
+}
+
+fn partition_client_fields(
+    client: &Client,
+    important_fields: &[ImportantField],
+) -> (Vec<ClientFieldDisplay>, Vec<ClientFieldDisplay>) {
+    let mut remaining_fields: Vec<(String, String)> = client
+        .fields
+        .as_ref()
+        .map(|fields| {
+            fields
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut important = Vec::with_capacity(important_fields.len());
+
+    for field in important_fields {
+        let label = field.field.trim();
+        let normalized = label.to_lowercase();
+
+        let value = remaining_fields
+            .iter()
+            .position(|(key, _)| key.trim().to_lowercase() == normalized)
+            .map(|index| remaining_fields.remove(index).1)
+            .and_then(normalize_field_value);
+
+        important.push(ClientFieldDisplay {
+            label: label.to_string(),
+            value,
+        });
+    }
+
+    let other = remaining_fields
+        .into_iter()
+        .map(|(label, value)| ClientFieldDisplay {
+            label,
+            value: normalize_field_value(value),
+        })
+        .collect();
+
+    (important, other)
+}
+
+fn normalize_field_value(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
+        let mut map = BTreeMap::new();
+        for (key, value) in fields {
+            map.insert(key.to_string(), value.to_string());
+        }
+
+        Client {
+            fields: if map.is_empty() { None } else { Some(map) },
+            ..Client::default()
+        }
+    }
+
+    #[test]
+    fn partition_client_fields_extracts_configured_names() {
+        let client = client_with_fields(vec![
+            ("Favorite Color", "  Blue  "),
+            (" Stage ", " In progress "),
+            ("Other", "  "),
+        ]);
+
+        let configured = vec![
+            ImportantField::new(1, "Stage".to_string()),
+            ImportantField::new(1, "Missing".to_string()),
+            ImportantField::new(1, "favorite color ".to_string()),
+        ];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![
+                ClientFieldDisplay {
+                    label: "Stage".to_string(),
+                    value: Some("In progress".to_string()),
+                },
+                ClientFieldDisplay {
+                    label: "Missing".to_string(),
+                    value: None,
+                },
+                ClientFieldDisplay {
+                    label: "favorite color".to_string(),
+                    value: Some("Blue".to_string()),
+                },
+            ]
+        );
+
+        assert_eq!(
+            other,
+            vec![ClientFieldDisplay {
+                label: "Other".to_string(),
+                value: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn partition_client_fields_handles_missing_custom_fields() {
+        let client = client_with_fields(vec![]);
+        let configured = vec![ImportantField::new(1, "Stage".to_string())];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![ClientFieldDisplay {
+                label: "Stage".to_string(),
+                value: None,
+            }]
+        );
+        assert!(other.is_empty());
+    }
 }
 
 /// Generic result wrapper for client mutations so callers can redirect easily.
@@ -106,7 +247,7 @@ pub fn load_client_details<R>(
     client_id: i32,
 ) -> ServiceResult<ClientPageData>
 where
-    R: ClientReader + ClientEventReader + ?Sized,
+    R: ClientReader + ClientEventReader + ImportantFieldReader + ?Sized,
 {
     ensure_service_access(user)?;
     ensure_client_access(repo, user, client_id)?;
@@ -138,12 +279,24 @@ where
         err
     })?;
 
+    let important_field_names = repo.list_important_fields(user.hub_id).map_err(|err| {
+        log::error!(
+            "Failed to load important fields for hub {hub_id}: {err}",
+            hub_id = user.hub_id
+        );
+        err
+    })?;
+
+    let (important_fields, other_fields) = partition_client_fields(&client, &important_field_names);
+
     Ok(ClientPageData {
         client,
         managers,
         events_with_managers,
         documents,
         available_fields,
+        important_fields,
+        other_fields,
         total_events,
     })
 }
