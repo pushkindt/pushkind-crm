@@ -5,15 +5,10 @@ use pushkind_common::routes::check_role;
 
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::important_field::ImportantField;
+use crate::dto::important_fields::ImportantFieldsPageData;
 use crate::forms::important_fields::ImportantFieldsForm;
 use crate::repository::{ImportantFieldReader, ImportantFieldWriter};
 use crate::services::{ServiceError, ServiceResult};
-
-/// Data required to render the important fields management page.
-#[derive(Debug)]
-pub struct ImportantFieldsPageData {
-    pub fields: Vec<String>,
-}
 
 /// Loads the existing important field names for the admin interface.
 pub fn load_important_fields<R>(

@@ -5,24 +5,11 @@ use validator::Validate;
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::client::Client;
 use crate::domain::manager::{Manager, NewManager};
+use crate::dto::managers::{ManagerModalData, ManagersPageData};
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
-
-/// Data required to render the managers index page.
-#[derive(Debug)]
-pub struct ManagersPageData {
-    /// Managers with their assigned clients.
-    pub managers: Vec<(Manager, Vec<Client>)>,
-}
-
-/// Data displayed inside the manager modal.
-#[derive(Debug)]
-pub struct ManagerModalData {
-    pub manager: Manager,
-    pub clients: Vec<Client>,
-}
 
 /// Loads all managers with the clients assigned to them.
 pub fn list_managers<R>(repo: &R, user: &AuthenticatedUser) -> ServiceResult<ManagersPageData>

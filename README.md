@@ -44,6 +44,9 @@ exercised and tested without going through the web framework:
   logic, repository traits, and Pushkind authentication helpers. Services return
   `ServiceResult<T>` and map infrastructure errors into well-defined service
   errors.
+- **DTOs (`src/dto`)** – Data transfer objects for rendering templates and API
+  responses. Services convert domain types to DTOs before handing data to routes,
+  keeping handlers thin and domain models focused.
 - **Forms (`src/forms`)** – `serde`/`validator` powered structs that handle
   request payload validation, CSV parsing, and transformation into domain types.
 - **Routes (`src/routes`)** – Actix Web handlers that wire HTTP requests into the

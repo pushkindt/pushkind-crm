@@ -1,4 +1,4 @@
 domain: pushkind.com
-port: 9011
+port: 9008
 auth_service_url: https://users.pushkind.com
 todo_service_url: https://todo.pushkind.com

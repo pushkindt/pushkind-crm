@@ -5,28 +5,13 @@ use validator::Validate;
 
 use crate::domain::client::Client;
 use crate::domain::manager::NewManager;
+use crate::dto::main::IndexPageData;
+pub use crate::dto::main::IndexQuery;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
 use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE};
-
-/// Query parameters accepted by the index page service.
-#[derive(Debug, Default)]
-pub struct IndexQuery {
-    /// Optional search string entered by the user.
-    pub search: Option<String>,
-    /// Page number requested by the user interface.
-    pub page: Option<usize>,
-}
-
-/// Data required to render the main index template.
-pub struct IndexPageData {
-    /// Paginated list of clients to show in the table.
-    pub clients: Paginated<Client>,
-    /// Search query echoed back to the template when present.
-    pub search_query: Option<String>,
-}
 
 /// Loads the clients list for the main index page.
 pub fn load_index_page<R>(

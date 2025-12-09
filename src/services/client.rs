@@ -6,7 +6,6 @@ use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
 use pushkind_common::models::emailer::zmq::ZMQSendEmailMessage;
 use pushkind_common::routes::check_role;
 use pushkind_common::zmq::ZmqSender;
-use serde::Serialize;
 use serde_json::json;
 use validator::Validate;
 
@@ -15,31 +14,13 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
+use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageData};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
     ImportantFieldReader, ManagerReader, ManagerWriter,
 };
 use crate::services::{ServiceError, ServiceResult};
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct ClientFieldDisplay {
-    pub label: String,
-    pub value: Option<String>,
-}
-
-/// Aggregated data required to render the client details page.
-#[derive(Debug)]
-pub struct ClientPageData {
-    pub client: Client,
-    pub managers: Vec<Manager>,
-    pub events_with_managers: Vec<(ClientEvent, Manager)>,
-    pub documents: Vec<ClientEvent>,
-    pub available_fields: Vec<String>,
-    pub important_fields: Vec<ClientFieldDisplay>,
-    pub other_fields: Vec<ClientFieldDisplay>,
-    pub total_events: usize,
-}
 
 fn partition_client_fields(
     client: &Client,
@@ -170,12 +151,6 @@ mod tests {
         );
         assert!(other.is_empty());
     }
-}
-
-/// Generic result wrapper for client mutations so callers can redirect easily.
-#[derive(Debug)]
-pub struct ClientOperationOutcome {
-    pub client_id: i32,
 }
 
 /// Ensures that the current user has access to the provided client identifier.
