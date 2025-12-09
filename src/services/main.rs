@@ -76,7 +76,10 @@ where
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
     }
 
-    let new_client = form.to_new_client(user.hub_id);
+    let new_client = form.to_new_client(user.hub_id).map_err(|err| {
+        log::error!("Failed to build client from form: {err}");
+        ServiceError::Form("Ошибка при подготовке данных клиента".to_string())
+    })?;
 
     client_service::create_clients(repo, &[new_client]).map_err(|err| {
         log::error!("Failed to add a client: {err}");

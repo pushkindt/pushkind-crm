@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::domain::client::Client;
 use crate::domain::client_event::ClientEvent;
 use crate::domain::manager::Manager;
+use crate::domain::types::ClientId;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ClientFieldDisplay {
@@ -28,5 +29,5 @@ pub struct ClientPageData {
 /// Generic result wrapper for client mutations so callers can redirect easily.
 #[derive(Debug)]
 pub struct ClientOperationOutcome {
-    pub client_id: i32,
+    pub client_id: ClientId,
 }

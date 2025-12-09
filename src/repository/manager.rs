@@ -128,12 +128,15 @@ impl ManagerReader for DieselRepository {
                 let manager_clients = clients
                     .iter()
                     .filter(|(manager_id, _)| *manager_id == manager.id)
-                    .map(|(_, client)| client.clone().into())
-                    .collect();
-                (manager.into(), manager_clients)
-            })
-            .collect();
+                    .map(|(_, client)| {
+                        Client::try_from(client.clone()).map_err(RepositoryError::from)
+                    })
+                    .collect::<Result<Vec<_>, RepositoryError>>()?;
 
-        Ok(manager_with_clients) // Convert DbUser to DomainUser
+                Ok((manager.into(), manager_clients))
+            })
+            .collect::<Result<Vec<_>, RepositoryError>>()?;
+
+        Ok(manager_with_clients)
     }
 }

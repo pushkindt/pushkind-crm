@@ -73,7 +73,7 @@ impl ClientReader for DieselRepository {
 
         let field_map = fields.into_iter().map(|f| (f.field, f.value)).collect();
 
-        let mut result: Client = client.into();
+        let mut result: Client = Client::try_from(client).map_err(RepositoryError::from)?;
         result.fields = Some(field_map);
 
         Ok(Some(result))
@@ -89,7 +89,12 @@ impl ClientReader for DieselRepository {
             .first::<DbClient>(&mut conn)
             .optional()?;
 
-        Ok(client.map(Into::into))
+        let client = match client {
+            Some(client) => Some(Client::try_from(client).map_err(RepositoryError::from)?),
+            None => None,
+        };
+
+        Ok(client)
     }
 
     fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
@@ -150,12 +155,12 @@ impl ClientReader for DieselRepository {
             .into_iter()
             .zip(db_fields)
             .map(|(c, f)| {
-                let mut client: Client = c.into();
+                let mut client = Client::try_from(c).map_err(RepositoryError::from)?;
                 let fields = f.into_iter().map(|f| (f.field, f.value)).collect();
                 client.fields = Some(fields);
-                client
+                Ok(client)
             })
-            .collect();
+            .collect::<Result<Vec<_>, RepositoryError>>()?;
 
         Ok((total, clients))
     }
@@ -245,12 +250,12 @@ impl ClientReader for DieselRepository {
             .into_iter()
             .zip(db_fields)
             .map(|(c, f)| {
-                let mut client: Client = c.into();
+                let mut client = Client::try_from(c).map_err(RepositoryError::from)?;
                 let fields = f.into_iter().map(|f| (f.field, f.value)).collect();
                 client.fields = Some(fields);
-                client
+                Ok(client)
             })
-            .collect();
+            .collect::<Result<Vec<_>, RepositoryError>>()?;
 
         let total = total_query.get_result::<ClientCount>(&mut conn)?.count as usize;
         Ok((total, clients))
@@ -309,9 +314,9 @@ impl ClientWriter for DieselRepository {
                     .on_conflict((clients::email, clients::hub_id))
                     .do_update()
                     .set((
-                        clients::name.eq(&new.name),
-                        clients::email.eq(new.email.as_deref()),
-                        clients::phone.eq(new.phone.as_deref()),
+                        clients::name.eq(new.name.as_str()),
+                        clients::email.eq(new.email.as_ref().map(|email| email.as_str())),
+                        clients::phone.eq(new.phone.as_ref().map(|phone| phone.as_str())),
                     ))
                     .get_result::<DbClient>(conn);
 
@@ -327,8 +332,8 @@ impl ClientWriter for DieselRepository {
                             let Some(phone) = &new.phone else { continue };
 
                             let existing = match clients::table
-                                .filter(clients::hub_id.eq(new.hub_id))
-                                .filter(clients::phone.eq(phone))
+                                .filter(clients::hub_id.eq(new.hub_id.get()))
+                                .filter(clients::phone.eq(phone.as_str()))
                                 .first::<DbClient>(conn)
                             {
                                 Ok(client) => client,
@@ -337,9 +342,11 @@ impl ClientWriter for DieselRepository {
 
                             if diesel::update(clients::table.find(existing.id))
                                 .set((
-                                    clients::name.eq(&new.name),
-                                    clients::email.eq(new.email.as_deref()),
-                                    clients::phone.eq(new.phone.as_deref()),
+                                    clients::name.eq(new.name.as_str()),
+                                    clients::email
+                                        .eq(new.email.as_ref().map(|email| email.as_str())),
+                                    clients::phone
+                                        .eq(new.phone.as_ref().map(|phone| phone.as_str())),
                                 ))
                                 .execute(conn)
                                 .is_err()
@@ -404,57 +411,66 @@ impl ClientWriter for DieselRepository {
 
         let mut conn = self.conn()?;
 
-        conn.transaction::<Client, diesel::result::Error, _>(|conn| {
-            let db_updates: DbUpdateClient = updates.into();
-            let mut updated: Client = diesel::update(clients::table.find(client_id))
-                .set(&db_updates)
-                .get_result::<DbClient>(conn)?
-                .into();
-
-            // Update fields (delete all → insert new)
-            diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
-                .execute(conn)?;
-            if let Some(fields) = &updates.fields {
-                for (field, value) in fields {
-                    let new_field = ClientField {
-                        client_id,
-                        field: field.to_string(),
-                        value: value.to_string(),
-                    };
-                    diesel::insert_into(client_fields::table)
-                        .values(&new_field)
+        let (updated_record, updated_fields) = conn
+            .transaction::<(DbClient, BTreeMap<String, String>), diesel::result::Error, _>(
+                |conn| {
+                    let db_updates: DbUpdateClient = updates.into();
+                    diesel::update(clients::table.find(client_id))
+                        .set(&db_updates)
                         .execute(conn)?;
-                }
-            }
 
-            // Update denormalized `clients.fields` using a Diesel subselect
-            diesel::update(clients::table.find(client_id))
-                .set(
-                    clients::fields.eq(client_fields::table
+                    // Update fields (delete all → insert new)
+                    diesel::delete(
+                        client_fields::table.filter(client_fields::client_id.eq(client_id)),
+                    )
+                    .execute(conn)?;
+
+                    if let Some(fields) = &updates.fields {
+                        for (field, value) in fields {
+                            let new_field = ClientField {
+                                client_id,
+                                field: field.to_string(),
+                                value: value.to_string(),
+                            };
+                            diesel::insert_into(client_fields::table)
+                                .values(&new_field)
+                                .execute(conn)?;
+                        }
+                    }
+
+                    // Update denormalized `clients.fields` using a Diesel subselect
+                    diesel::update(clients::table.find(client_id))
+                        .set(
+                            clients::fields.eq(client_fields::table
+                                .filter(client_fields::client_id.eq(client_id))
+                                .select(diesel::dsl::sql::<Nullable<Text>>(
+                                    "trim(COALESCE(group_concat(value, ' '), ''))",
+                                ))
+                                .single_value()),
+                        )
+                        .execute(conn)?;
+
+                    // Reload the client row with its fields.
+                    let updated_client = clients::table.find(client_id).first::<DbClient>(conn)?;
+
+                    let fields_vec = client_fields::table
                         .filter(client_fields::client_id.eq(client_id))
-                        .select(diesel::dsl::sql::<Nullable<Text>>(
-                            "trim(COALESCE(group_concat(value, ' '), ''))",
-                        ))
-                        .single_value()),
-                )
-                .execute(conn)?;
+                        .select(ClientField::as_select())
+                        .load::<ClientField>(conn)?;
 
-            // Reload fields
-            let fields_vec = client_fields::table
-                .filter(client_fields::client_id.eq(client_id))
-                .select(ClientField::as_select())
-                .load::<ClientField>(conn)?;
+                    let fields_map = fields_vec
+                        .into_iter()
+                        .map(|f| (f.field, f.value))
+                        .collect::<BTreeMap<_, _>>();
 
-            let fields_map = fields_vec
-                .into_iter()
-                .map(|f| (f.field, f.value))
-                .collect::<BTreeMap<_, _>>();
+                    Ok((updated_client, fields_map))
+                },
+            )?;
 
-            updated.fields = Some(fields_map);
+        let mut updated = Client::try_from(updated_record).map_err(RepositoryError::from)?;
+        updated.fields = Some(updated_fields);
 
-            Ok(updated)
-        })
-        .map_err(RepositoryError::from)
+        Ok(updated)
     }
 
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {

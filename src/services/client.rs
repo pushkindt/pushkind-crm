@@ -16,7 +16,7 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
-use crate::domain::types::{ClientId, ManagerId};
+use crate::domain::types::ManagerId;
 use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageData};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
@@ -156,13 +156,13 @@ where
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
-    let managers = list_client_managers(repo, client.id).map_err(|err| {
+    let managers = list_client_managers(repo, client.id.get()).map_err(|err| {
         log::error!("Failed to load managers for client {client_id}: {err}");
         err
     })?;
 
     let (total_events, events_with_managers) =
-        list_client_events(repo, ClientEventListQuery::new(client.id)).map_err(|err| {
+        list_client_events(repo, ClientEventListQuery::new(client.id.get())).map_err(|err| {
             log::error!("Failed to load events for client {client_id}: {err}");
             err
         })?;
@@ -220,13 +220,16 @@ where
     }
 
     let client_id = form.id;
-    let updates: UpdateClient = form.into();
+    let updates = UpdateClient::try_from(form).map_err(|err| {
+        log::error!("Failed to convert save client form: {err}");
+        ServiceError::Form("Ошибка валидации формы".to_string())
+    })?;
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
-    ensure_client_access(repo, user, client.id)?;
+    ensure_client_access(repo, user, client.id.get())?;
 
-    let updated_client = update_client(repo, client.id, &updates).map_err(|err| {
+    let updated_client = update_client(repo, client.id.get(), &updates).map_err(|err| {
         log::error!("Failed to update client {client_id}: {err}");
         err
     })?;
@@ -290,8 +293,8 @@ where
             attachment_mime: None,
             hub_id: user.hub_id,
             recipients: vec![NewEmailRecipient {
-                address: client_email.clone(),
-                name: client.name.clone(),
+                address: client_email.clone().into_inner(),
+                name: client.name.as_str().to_string(),
                 fields,
             }],
         };
@@ -310,7 +313,7 @@ where
     }
 
     let new_event = NewClientEvent {
-        client_id: ClientId::try_from(client.id)?,
+        client_id: client.id,
         event_type,
         manager_id: ManagerId::try_from(manager.id)?,
         created_at: Utc::now().naive_utc(),
@@ -358,7 +361,7 @@ where
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
     let event = NewClientEvent {
-        client_id: ClientId::try_from(client.id)?,
+        client_id: client.id,
         event_type: ClientEventType::DocumentLink,
         manager_id: ManagerId::try_from(manager.id)?,
         created_at: Utc::now().naive_utc(),
@@ -490,6 +493,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::types::{ClientId, ClientName, HubId};
+    use chrono::Utc;
     use std::collections::BTreeMap;
 
     /// Creates a test client populated with the given field pairs.
@@ -500,8 +505,14 @@ mod tests {
         }
 
         Client {
+            id: ClientId::new(1).expect("valid client id"),
+            hub_id: HubId::new(1).expect("valid hub id"),
+            name: ClientName::new("Test").expect("valid name"),
+            email: None,
+            phone: None,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
             fields: if map.is_empty() { None } else { Some(map) },
-            ..Client::default()
         }
     }
 

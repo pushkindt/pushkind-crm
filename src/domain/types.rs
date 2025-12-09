@@ -30,6 +30,16 @@ pub enum TypeConstraintError {
     InvalidPhone,
 }
 
+/// Normalizes and validates an email string.
+fn normalize_email<S: Into<String>>(email: S) -> Result<String, TypeConstraintError> {
+    let normalized = email.into().trim().to_lowercase();
+    if normalized.validate_email() {
+        Ok(normalized)
+    } else {
+        Err(TypeConstraintError::InvalidEmail)
+    }
+}
+
 /// Macro to generate lightweight newtypes for positive identifiers.
 macro_rules! id_newtype {
     ($name:ident, $doc:expr) => {
@@ -87,12 +97,8 @@ pub struct ManagerEmail(String);
 impl ManagerEmail {
     /// Validates and normalizes an email string.
     pub fn new<S: Into<String>>(email: S) -> Result<Self, TypeConstraintError> {
-        let normalized = email.into().trim().to_lowercase();
-        if normalized.validate_email() {
-            Ok(Self(normalized))
-        } else {
-            Err(TypeConstraintError::InvalidEmail)
-        }
+        let normalized = normalize_email(email)?;
+        Ok(Self(normalized))
     }
 
     /// Borrow the email as a `&str`.
@@ -130,6 +136,56 @@ impl TryFrom<&str> for ManagerEmail {
 
 impl From<ManagerEmail> for String {
     fn from(value: ManagerEmail) -> Self {
+        value.0
+    }
+}
+
+/// General email wrapper for client contact addresses.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct ClientEmail(String);
+
+impl ClientEmail {
+    /// Validates and normalizes an email string.
+    pub fn new<S: Into<String>>(email: S) -> Result<Self, TypeConstraintError> {
+        let normalized = normalize_email(email)?;
+        Ok(Self(normalized))
+    }
+
+    /// Borrow the email as a `&str`.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Convert into the owned inner `String`.
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl Display for ClientEmail {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl TryFrom<String> for ClientEmail {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for ClientEmail {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<ClientEmail> for String {
+    fn from(value: ClientEmail) -> Self {
         value.0
     }
 }
@@ -190,7 +246,7 @@ impl From<NonEmptyString> for String {
 macro_rules! non_empty_string_newtype {
     ($name:ident, $doc:expr) => {
         #[doc = $doc]
-        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name(String);
 
         impl $name {

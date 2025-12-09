@@ -7,6 +7,7 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::domain::client::UpdateClient;
+use crate::domain::types::{ClientEmail, ClientName, PhoneNumber, TypeConstraintError};
 
 #[derive(Deserialize, Validate)]
 /// Form data for updating an existing client.
@@ -56,9 +57,11 @@ pub struct AddAttachmentForm {
     pub url: String,
 }
 
-impl From<SaveClientForm> for UpdateClient {
+impl TryFrom<SaveClientForm> for UpdateClient {
+    type Error = TypeConstraintError;
+
     /// Convert the [`SaveClientForm`] into an [`UpdateClient`] value for persistence.
-    fn from(form: SaveClientForm) -> Self {
+    fn try_from(form: SaveClientForm) -> Result<Self, Self::Error> {
         let fields: BTreeMap<String, String> = form
             .field
             .iter()
@@ -66,7 +69,13 @@ impl From<SaveClientForm> for UpdateClient {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        UpdateClient::new(form.name, form.email, form.phone, Some(fields))
+        let name = ClientName::new(form.name)?;
+        let email = form.email.map(ClientEmail::try_from).transpose()?;
+        let phone = form
+            .phone
+            .and_then(|value| PhoneNumber::try_from(value).ok());
+
+        Ok(UpdateClient::new(name, email, phone, Some(fields)))
     }
 }
 
@@ -85,10 +94,16 @@ mod tests {
             value: vec!["gold".to_string()],
         };
 
-        let update: UpdateClient = form.into();
+        let update = UpdateClient::try_from(form).expect("expected normalized update client");
 
-        assert_eq!(update.email.as_deref(), Some("alice@example.com"));
-        assert_eq!(update.phone.as_deref(), Some("+14155552671"));
+        assert_eq!(
+            update.email.as_ref().map(|email| email.as_str()),
+            Some("alice@example.com")
+        );
+        assert_eq!(
+            update.phone.as_ref().map(|phone| phone.as_str()),
+            Some("+14155552671")
+        );
 
         let fields = update.fields.expect("fields should be populated");
         assert_eq!(fields.get("tier"), Some(&"gold".to_string()));
@@ -105,7 +120,7 @@ mod tests {
             value: Vec::new(),
         };
 
-        let update: UpdateClient = form.into();
+        let update = UpdateClient::try_from(form).expect("expected normalized update client");
 
         assert!(update.fields.is_none());
     }

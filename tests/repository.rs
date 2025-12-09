@@ -4,7 +4,7 @@ use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
-use pushkind_crm::domain::types::{ClientId, ManagerId};
+use pushkind_crm::domain::types::{ClientEmail, ClientName, HubId, ManagerId, PhoneNumber};
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
 use pushkind_crm::repository::{DieselRepository, ManagerReader, ManagerWriter};
@@ -12,24 +12,22 @@ use serde_json::json;
 
 mod common;
 
+fn new_client_record(name: &str, email: Option<&str>, phone: Option<&str>) -> NewClient {
+    NewClient::new(
+        HubId::new(1).expect("valid hub id"),
+        ClientName::new(name).expect("valid name"),
+        email.map(|value| ClientEmail::new(value).expect("valid email")),
+        phone.and_then(|value| PhoneNumber::new(value).ok()),
+        None,
+    )
+}
+
 #[test]
 fn test_client_repository_crud() {
     let test_db = common::TestDb::new();
     let client_repo = DieselRepository::new(test_db.pool());
-    let c1 = NewClient::new(
-        1,
-        "Alice".into(),
-        Some("alice@example.com".into()),
-        Some("111".into()),
-        None,
-    );
-    let c2 = NewClient::new(
-        1,
-        "Bob".into(),
-        Some("bob@example.com".into()),
-        Some("222".into()),
-        None,
-    );
+    let c1 = new_client_record("Alice", Some("alice@example.com"), Some("+14155550111"));
+    let c2 = new_client_record("Bob", Some("bob@example.com"), Some("+14155550222"));
 
     assert_eq!(
         client_repo
@@ -49,11 +47,11 @@ fn test_client_repository_crud() {
         .search_clients(ClientListQuery::new(1).search("Bob"))
         .unwrap();
     assert_eq!(search_total, 1);
-    assert_eq!(search_items[0].name, "Bob");
+    assert_eq!(search_items[0].name.as_str(), "Bob");
 
     alice = client_repo
         .update_client(
-            alice.id,
+            alice.id.get(),
             &UpdateClient::new(
                 alice.name.clone(),
                 alice.email.clone(),
@@ -69,23 +67,28 @@ fn test_client_repository_crud() {
 
     bob = client_repo
         .update_client(
-            bob.id,
+            bob.id.get(),
             &UpdateClient::new(
-                "Bobby".to_string(),
+                ClientName::new("Bobby").expect("valid name"),
                 bob.email.clone(),
                 bob.phone.clone(),
                 Some(BTreeMap::new()),
             ),
         )
         .unwrap();
-    assert_eq!(bob.name, "Bobby");
+    assert_eq!(bob.name.as_str(), "Bobby");
 
-    client_repo.delete_client(alice.id).unwrap();
-    assert!(client_repo.get_client_by_id(alice.id, 1).unwrap().is_none());
+    client_repo.delete_client(alice.id.get()).unwrap();
+    assert!(
+        client_repo
+            .get_client_by_id(alice.id.get(), 1)
+            .unwrap()
+            .is_none()
+    );
 
     let (total_after, items_after) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
     assert_eq!(total_after, 1);
-    assert_eq!(items_after[0].name, "Bobby");
+    assert_eq!(items_after[0].name.as_str(), "Bobby");
 }
 
 #[test]
@@ -94,13 +97,8 @@ fn test_client_event_repository_crud() {
     let client_repo = DieselRepository::new(test_db.pool());
     let manager_repo = DieselRepository::new(test_db.pool());
     let client = {
-        let new_client = NewClient::new(
-            1,
-            "Alice".into(),
-            Some("alice@example.com".into()),
-            Some("111".into()),
-            None,
-        );
+        let new_client =
+            new_client_record("Alice", Some("alice@example.com"), Some("+14155550111"));
         client_repo.create_clients(&[new_client]).unwrap();
         client_repo
             .list_clients(ClientListQuery::new(1))
@@ -120,7 +118,7 @@ fn test_client_event_repository_crud() {
     let client_event_repo = DieselRepository::new(test_db.pool());
 
     let new_event = NewClientEvent {
-        client_id: ClientId::try_from(client.id).unwrap(),
+        client_id: client.id,
         manager_id: ManagerId::try_from(manager.id).unwrap(),
         event_type: ClientEventType::Comment,
         event_data: json!({"text": "hello"}),
@@ -139,14 +137,14 @@ fn test_client_event_repository_crud() {
     assert_ne!(duplicate.id, created.id);
 
     let (total_after_duplicate, events_after_duplicate) = client_event_repo
-        .list_client_events(ClientEventListQuery::new(client.id))
+        .list_client_events(ClientEventListQuery::new(client.id.get()))
         .unwrap();
     assert_eq!(total_after_duplicate, 2);
     assert_eq!(events_after_duplicate.len(), 2);
 
     let _ = client_event_repo
         .create_client_event(&NewClientEvent {
-            client_id: ClientId::try_from(client.id).unwrap(),
+            client_id: client.id,
             manager_id: ManagerId::try_from(manager.id).unwrap(),
             event_type: ClientEventType::Call,
             event_data: json!({}),
@@ -155,7 +153,7 @@ fn test_client_event_repository_crud() {
         .unwrap();
 
     let (total, events) = client_event_repo
-        .list_client_events(ClientEventListQuery::new(client.id))
+        .list_client_events(ClientEventListQuery::new(client.id.get()))
         .unwrap();
     assert_eq!(total, 3);
     assert_eq!(events.len(), 3);
@@ -163,7 +161,7 @@ fn test_client_event_repository_crud() {
 
     let (total_comment, comments) = client_event_repo
         .list_client_events(
-            ClientEventListQuery::new(client.id).event_type(ClientEventType::Comment),
+            ClientEventListQuery::new(client.id.get()).event_type(ClientEventType::Comment),
         )
         .unwrap();
     assert_eq!(total_comment, 2);
@@ -182,24 +180,12 @@ fn test_manager_repository_crud() {
 
     // create clients
     let clients = vec![
-        NewClient::new(
-            1,
-            "Alice".into(),
-            Some("alice@example.com".into()),
-            Some("111".into()),
-            None,
-        ),
-        NewClient::new(
-            1,
-            "Bob".into(),
-            Some("bob@example.com".into()),
-            Some("222".into()),
-            None,
-        ),
+        new_client_record("Alice", Some("alice@example.com"), Some("+14155550111")),
+        new_client_record("Bob", Some("bob@example.com"), Some("+14155550222")),
     ];
     client_repo.create_clients(&clients).unwrap();
     let (_, stored_clients) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
-    let client_ids: Vec<i32> = stored_clients.iter().map(|c| c.id).collect();
+    let client_ids: Vec<i32> = stored_clients.iter().map(|c| c.id.get()).collect();
 
     // create or update manager
     let manager = manager_repo

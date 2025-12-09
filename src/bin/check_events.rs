@@ -8,10 +8,7 @@ use dotenvy::dotenv;
 use pushkind_common::models::emailer::zmq::{
     ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
 };
-use pushkind_common::{
-    db::establish_connection_pool,
-    repository::errors::{RepositoryError, RepositoryResult},
-};
+use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -19,7 +16,7 @@ use pushkind_crm::domain::{
     client::{NewClient, UpdateClient},
     client_event::{ClientEventType, NewClientEvent},
     manager::NewManager,
-    types::{ClientId, ManagerId},
+    types::{ClientEmail, ClientName, HubId, ManagerId, PhoneNumber},
 };
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::{
@@ -53,7 +50,7 @@ where
                 };
 
                 let new_event = NewClientEvent {
-                    client_id: ClientId::try_from(client.id)?,
+                    client_id: client.id,
                     event_type: ClientEventType::Email,
                     manager_id: ManagerId::try_from(manager.id)?,
                     created_at: Utc::now().naive_utc(),
@@ -97,14 +94,14 @@ where
     match repo.get_client_by_email(&reply.email, reply.hub_id)? {
         Some(client) => {
             let new_manager = NewManager::new(
-                client.hub_id,
-                client.name.clone(),
+                client.hub_id.get(),
+                client.name.as_str().to_string(),
                 reply.email.clone(),
                 false,
             );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
-                client_id: ClientId::try_from(client.id)?,
+                client_id: client.id,
                 manager_id: ManagerId::try_from(manager.id)?,
                 event_type: ClientEventType::Reply,
                 event_data: json!({
@@ -141,14 +138,14 @@ where
     match repo.get_client_by_email(&message.email, message.hub_id)? {
         Some(client) => {
             let new_manager = NewManager::new(
-                client.hub_id,
-                client.name.clone(),
+                client.hub_id.get(),
+                client.name.as_str().to_string(),
                 message.email.clone(),
                 false,
             );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
-                client_id: ClientId::try_from(client.id)?,
+                client_id: client.id,
                 manager_id: ManagerId::try_from(manager.id)?,
                 event_type: ClientEventType::Unsubscribed,
                 event_data: json!({
@@ -226,17 +223,36 @@ where
             fields,
         } = payload;
 
+        let hub = match HubId::new(hub_id) {
+            Ok(hub) => hub,
+            Err(err) => {
+                log::error!("Invalid hub id {hub_id}: {err}");
+                continue;
+            }
+        };
+
+        let client_name = match ClientName::new(name.clone()) {
+            Ok(name) => name,
+            Err(_) => {
+                log::warn!("Skipping client without a valid name in hub {hub_id}");
+                continue;
+            }
+        };
+
+        let normalized_email = email.clone().and_then(|value| ClientEmail::new(value).ok());
+        let normalized_phone = phone.clone().and_then(|value| PhoneNumber::new(value).ok());
+
         if let Some(email_lookup) = email.clone() {
             match repo.get_client_by_email(&email_lookup, hub_id)? {
                 Some(existing) => {
                     let updates = UpdateClient::new(
-                        name.clone(),
-                        email.clone(),
-                        phone.clone(),
+                        client_name.clone(),
+                        normalized_email.clone(),
+                        normalized_phone.clone(),
                         fields.clone(),
                     );
 
-                    match repo.update_client(existing.id, &updates) {
+                    match repo.update_client(existing.id.get(), &updates) {
                         Ok(client) => {
                             log::info!(
                                 "Updated client {} in hub {} via ZMQ payload",
@@ -267,7 +283,13 @@ where
             }
         }
 
-        new_clients.push(NewClient::new(hub_id, name, email, phone, fields));
+        new_clients.push(NewClient::new(
+            hub,
+            client_name.clone(),
+            normalized_email.clone(),
+            normalized_phone.clone(),
+            fields,
+        ));
     }
 
     if !new_clients.is_empty() {
@@ -408,14 +430,24 @@ mod tests {
     use pushkind_common::repository::errors::RepositoryError;
     use pushkind_crm::domain::client::Client;
     use pushkind_crm::domain::manager::Manager;
+    use pushkind_crm::domain::types::ClientId;
     use pushkind_crm::repository::ClientListQuery;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
-    #[derive(Clone, Default)]
+    #[derive(Clone)]
     struct TestRepo {
         clients: Arc<Mutex<HashMap<i32, Client>>>,
         next_id: Arc<Mutex<i32>>,
+    }
+
+    impl Default for TestRepo {
+        fn default() -> Self {
+            Self {
+                clients: Arc::new(Mutex::new(HashMap::new())),
+                next_id: Arc::new(Mutex::new(1)),
+            }
+        }
     }
 
     impl TestRepo {
@@ -445,7 +477,10 @@ mod tests {
             Ok(self
                 .snapshot()
                 .values()
-                .find(|c| c.hub_id == hub_id && c.email.as_deref() == Some(email))
+                .find(|c| {
+                    c.hub_id.get() == hub_id
+                        && c.email.as_ref().map(|client_email| client_email.as_str()) == Some(email)
+                })
                 .cloned())
         }
 
@@ -484,7 +519,7 @@ mod tests {
                 *next_id += 1;
                 let timestamp = Utc::now().naive_utc();
                 let client = Client {
-                    id,
+                    id: ClientId::new(id).expect("valid client id"),
                     hub_id: new.hub_id,
                     name: new.name.clone(),
                     email: new.email.clone(),
@@ -554,8 +589,8 @@ mod tests {
 
         let snapshot = repo.snapshot();
         assert_eq!(snapshot.len(), 2);
-        assert!(snapshot.values().any(|c| c.name == "Alice"));
-        assert!(snapshot.values().any(|c| c.name == "Bob"));
+        assert!(snapshot.values().any(|c| c.name.as_str() == "Alice"));
+        assert!(snapshot.values().any(|c| c.name.as_str() == "Bob"));
     }
 
     #[test]
@@ -570,7 +605,13 @@ mod tests {
         });
         process_client_message(create_message, repo.clone()).expect("insert failed");
 
-        let inserted_id = repo.snapshot().values().next().expect("client missing").id;
+        let inserted_id = repo
+            .snapshot()
+            .values()
+            .next()
+            .expect("client missing")
+            .id
+            .get();
 
         let update_message = ZmqClientMessage::Plain(ZmqClientPayload {
             hub_id: 1,
@@ -585,8 +626,11 @@ mod tests {
         let snapshot = repo.snapshot();
         assert_eq!(snapshot.len(), 1);
         let updated = snapshot.get(&inserted_id).expect("client missing");
-        assert_eq!(updated.name, "Updated");
-        assert_eq!(updated.phone.as_deref(), Some("+14155552671"));
+        assert_eq!(updated.name.as_str(), "Updated");
+        assert_eq!(
+            updated.phone.as_ref().map(|phone| phone.as_str()),
+            Some("+14155552671")
+        );
     }
 
     #[test]
@@ -604,7 +648,7 @@ mod tests {
 
         let snapshot = repo.snapshot();
         assert_eq!(snapshot.len(), 1);
-        assert_eq!(snapshot.values().next().unwrap().hub_id, 9);
+        assert_eq!(snapshot.values().next().unwrap().hub_id.get(), 9);
     }
 
     #[test]
@@ -623,7 +667,7 @@ mod tests {
         let snapshot = repo.snapshot();
         assert_eq!(snapshot.len(), 1);
         let client = snapshot.values().next().unwrap();
-        assert_eq!(client.name, "No Email");
-        assert_eq!(client.hub_id, 3);
+        assert_eq!(client.name.as_str(), "No Email");
+        assert_eq!(client.hub_id.get(), 3);
     }
 }
