@@ -8,7 +8,10 @@ use dotenvy::dotenv;
 use pushkind_common::models::emailer::zmq::{
     ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
 };
-use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
+use pushkind_common::{
+    db::establish_connection_pool,
+    repository::errors::{RepositoryError, RepositoryResult},
+};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -16,6 +19,7 @@ use pushkind_crm::domain::{
     client::{NewClient, UpdateClient},
     client_event::{ClientEventType, NewClientEvent},
     manager::NewManager,
+    types::{ClientId, ManagerId},
 };
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::{
@@ -49,9 +53,9 @@ where
                 };
 
                 let new_event = NewClientEvent {
-                    client_id: client.id,
+                    client_id: ClientId::try_from(client.id)?,
                     event_type: ClientEventType::Email,
-                    manager_id: manager.id,
+                    manager_id: ManagerId::try_from(manager.id)?,
                     created_at: Utc::now().naive_utc(),
                     event_data: json!({
                         "text": new_email.subject.as_deref().unwrap_or_default(),
@@ -100,8 +104,8 @@ where
             );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
-                client_id: client.id,
-                manager_id: manager.id,
+                client_id: ClientId::try_from(client.id)?,
+                manager_id: ManagerId::try_from(manager.id)?,
                 event_type: ClientEventType::Reply,
                 event_data: json!({
                     "subject": &reply.subject,
@@ -144,8 +148,8 @@ where
             );
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
-                client_id: client.id,
-                manager_id: manager.id,
+                client_id: ClientId::try_from(client.id)?,
+                manager_id: ManagerId::try_from(manager.id)?,
                 event_type: ClientEventType::Unsubscribed,
                 event_data: json!({
                     "text": &message.reason,

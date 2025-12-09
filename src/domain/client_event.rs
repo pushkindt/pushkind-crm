@@ -6,11 +6,13 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::domain::types::{ClientEventId, ClientId, ManagerId};
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ClientEvent {
-    pub id: i32,
-    pub client_id: i32,
-    pub manager_id: i32,
+    pub id: ClientEventId,
+    pub client_id: ClientId,
+    pub manager_id: ManagerId,
     pub event_type: ClientEventType,
     pub event_data: Value,
     pub created_at: NaiveDateTime,
@@ -29,8 +31,8 @@ pub enum ClientEventType {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewClientEvent {
-    pub client_id: i32,
-    pub manager_id: i32,
+    pub client_id: ClientId,
+    pub manager_id: ManagerId,
     pub event_type: ClientEventType,
     pub event_data: Value,
     pub created_at: NaiveDateTime,

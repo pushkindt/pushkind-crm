@@ -7,3 +7,11 @@ pub mod main;
 pub mod managers;
 
 pub use pushkind_common::services::errors::{ServiceError, ServiceResult};
+
+use crate::domain::types::TypeConstraintError;
+
+impl From<TypeConstraintError> for ServiceError {
+    fn from(_: TypeConstraintError) -> Self {
+        ServiceError::Internal
+    }
+}

@@ -16,6 +16,7 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
+use crate::domain::types::{ClientId, ManagerId};
 use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageData};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
@@ -309,9 +310,9 @@ where
     }
 
     let new_event = NewClientEvent {
-        client_id: client.id,
+        client_id: ClientId::try_from(client.id)?,
         event_type,
-        manager_id: manager.id,
+        manager_id: ManagerId::try_from(manager.id)?,
         created_at: Utc::now().naive_utc(),
         event_data,
     };
@@ -357,9 +358,9 @@ where
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
     let event = NewClientEvent {
-        client_id: client.id,
+        client_id: ClientId::try_from(client.id)?,
         event_type: ClientEventType::DocumentLink,
-        manager_id: manager.id,
+        manager_id: ManagerId::try_from(manager.id)?,
         created_at: Utc::now().naive_utc(),
         event_data: json!({
             "text": form.text,

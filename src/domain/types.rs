@@ -78,6 +78,7 @@ macro_rules! id_newtype {
 id_newtype!(ManagerId, "Unique identifier for a manager.");
 id_newtype!(HubId, "Unique identifier for a hub.");
 id_newtype!(ClientId, "Unique identifier for a customer.");
+id_newtype!(ClientEventId, "Unique identifier for a client event.");
 
 /// Lower-cased and validated email address.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
