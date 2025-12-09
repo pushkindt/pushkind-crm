@@ -8,6 +8,7 @@ User=www-data8
 Group=www-data
 
 WorkingDirectory=/var/www8/html
+Environment=APP_ENV=prod
 ExecStart=/var/www8/html/check_events
 
 Restart=on-failure
