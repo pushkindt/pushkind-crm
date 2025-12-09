@@ -271,8 +271,8 @@ impl ClientReader for DieselRepository {
             .select(managers::all_columns)
             .load::<DbManager>(&mut conn)?
             .into_iter()
-            .map(Into::into)
-            .collect();
+            .map(|db_manager| Manager::try_from(db_manager).map_err(RepositoryError::from))
+            .collect::<Result<Vec<_>, RepositoryError>>()?;
         Ok(managers)
     }
 

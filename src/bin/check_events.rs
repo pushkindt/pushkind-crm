@@ -8,7 +8,10 @@ use dotenvy::dotenv;
 use pushkind_common::models::emailer::zmq::{
     ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
 };
-use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
+use pushkind_common::{
+    db::establish_connection_pool,
+    repository::errors::{RepositoryError, RepositoryResult},
+};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -16,7 +19,7 @@ use pushkind_crm::domain::{
     client::{NewClient, UpdateClient},
     client_event::{ClientEventType, NewClientEvent},
     manager::NewManager,
-    types::{ClientEmail, ClientName, HubId, ManagerId, PhoneNumber},
+    types::{ClientEmail, ClientName, HubId, PhoneNumber},
 };
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::{
@@ -39,20 +42,22 @@ where
         ZMQSendEmailMessage::NewEmail(boxed) => {
             let (user, new_email) = *boxed;
             log::info!("New email from user {user:?}, {:?}", new_email.subject);
-            let manager = repo.create_or_update_manager(&(&user).into())?;
+            let manager_payload = NewManager::try_from(&user).map_err(RepositoryError::from)?;
+            let manager = repo.create_or_update_manager(&manager_payload)?;
 
             for recipient in &new_email.recipients {
-                let client = match repo.get_client_by_email(&recipient.address, manager.hub_id)? {
-                    Some(client) => client,
-                    None => {
-                        continue;
-                    }
-                };
+                let client =
+                    match repo.get_client_by_email(&recipient.address, manager.hub_id.get())? {
+                        Some(client) => client,
+                        None => {
+                            continue;
+                        }
+                    };
 
                 let new_event = NewClientEvent {
                     client_id: client.id,
                     event_type: ClientEventType::Email,
-                    manager_id: ManagerId::try_from(manager.id)?,
+                    manager_id: manager.id,
                     created_at: Utc::now().naive_utc(),
                     event_data: json!({
                         "text": new_email.subject.as_deref().unwrap_or_default(),
@@ -93,16 +98,17 @@ where
 
     match repo.get_client_by_email(&reply.email, reply.hub_id)? {
         Some(client) => {
-            let new_manager = NewManager::new(
+            let new_manager = NewManager::try_from_parts(
                 client.hub_id.get(),
                 client.name.as_str().to_string(),
                 reply.email.clone(),
                 false,
-            );
+            )
+            .map_err(RepositoryError::from)?;
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
                 client_id: client.id,
-                manager_id: ManagerId::try_from(manager.id)?,
+                manager_id: manager.id,
                 event_type: ClientEventType::Reply,
                 event_data: json!({
                     "subject": &reply.subject,
@@ -137,16 +143,17 @@ where
 
     match repo.get_client_by_email(&message.email, message.hub_id)? {
         Some(client) => {
-            let new_manager = NewManager::new(
+            let new_manager = NewManager::try_from_parts(
                 client.hub_id.get(),
                 client.name.as_str().to_string(),
                 message.email.clone(),
                 false,
-            );
+            )
+            .map_err(RepositoryError::from)?;
             let manager = repo.create_or_update_manager(&new_manager)?;
             let event = NewClientEvent {
                 client_id: client.id,
-                manager_id: ManagerId::try_from(manager.id)?,
+                manager_id: manager.id,
                 event_type: ClientEventType::Unsubscribed,
                 event_data: json!({
                     "text": &message.reason,

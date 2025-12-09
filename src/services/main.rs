@@ -42,12 +42,16 @@ where
     } else if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         repo.list_clients(list_query).map_err(ServiceError::from)?
     } else if check_role("crm_manager", &user.roles) {
-        let manager = client_service::create_or_update_manager(repo, &NewManager::from(user))
-            .map_err(|err| {
+        let manager_payload = NewManager::try_from(user).map_err(|err| {
+            log::error!("Failed to build manager from user: {err}");
+            ServiceError::Internal
+        })?;
+        let manager =
+            client_service::create_or_update_manager(repo, &manager_payload).map_err(|err| {
                 log::error!("Failed to update manager: {err}");
                 err
             })?;
-        repo.list_clients(list_query.manager_email(&manager.email))
+        repo.list_clients(list_query.manager_email(manager.email.as_str()))
             .map_err(ServiceError::from)?
     } else {
         (0, Vec::new())

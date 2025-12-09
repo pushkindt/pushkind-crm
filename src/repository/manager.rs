@@ -36,7 +36,8 @@ impl ManagerWriter for DieselRepository {
             ))
             .get_result::<DbManager>(&mut conn)?;
 
-        Ok(db_manager.into())
+        let manager = Manager::try_from(db_manager).map_err(RepositoryError::from)?;
+        Ok(manager)
     }
 
     fn assign_clients_to_manager(
@@ -81,7 +82,12 @@ impl ManagerReader for DieselRepository {
             .first::<DbManager>(&mut conn)
             .optional()?;
 
-        Ok(db_manager.map(|db_manager| db_manager.into()))
+        match db_manager {
+            Some(db_manager) => Ok(Some(
+                Manager::try_from(db_manager).map_err(RepositoryError::from)?,
+            )),
+            None => Ok(None),
+        }
     }
 
     fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>> {
@@ -94,7 +100,12 @@ impl ManagerReader for DieselRepository {
             .first::<DbManager>(&mut conn)
             .optional()?;
 
-        Ok(db_manager.map(|db_manager| db_manager.into()))
+        match db_manager {
+            Some(db_manager) => Ok(Some(
+                Manager::try_from(db_manager).map_err(RepositoryError::from)?,
+            )),
+            None => Ok(None),
+        }
     }
 
     fn list_managers_with_clients(
@@ -133,7 +144,8 @@ impl ManagerReader for DieselRepository {
                     })
                     .collect::<Result<Vec<_>, RepositoryError>>()?;
 
-                Ok((manager.into(), manager_clients))
+                let domain_manager = Manager::try_from(manager).map_err(RepositoryError::from)?;
+                Ok((domain_manager, manager_clients))
             })
             .collect::<Result<Vec<_>, RepositoryError>>()?;
 

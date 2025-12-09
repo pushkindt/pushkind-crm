@@ -79,7 +79,11 @@ impl ClientEventReader for DieselRepository {
                 RepositoryError::ValidationError(err.to_string())
             })?;
             if let Some(manager) = manager_map.get(&manager_id) {
-                combined.push((event, manager.clone().into()));
+                let domain_manager =
+                    Manager::try_from(manager.clone()).map_err(|err: TypeConstraintError| {
+                        RepositoryError::ValidationError(err.to_string())
+                    })?;
+                combined.push((event, domain_manager));
             }
         }
 

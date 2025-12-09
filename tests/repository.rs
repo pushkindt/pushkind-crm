@@ -4,7 +4,7 @@ use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
-use pushkind_crm::domain::types::{ClientEmail, ClientName, HubId, ManagerId, PhoneNumber};
+use pushkind_crm::domain::types::{ClientEmail, ClientName, HubId, PhoneNumber};
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
 use pushkind_crm::repository::{DieselRepository, ManagerReader, ManagerWriter};
@@ -106,20 +106,18 @@ fn test_client_event_repository_crud() {
             .1
             .remove(0)
     };
+    let manager_payload =
+        NewManager::try_from_parts(1, "Manager".to_string(), "m@example.com".to_string(), true)
+            .unwrap();
     let manager = manager_repo
-        .create_or_update_manager(&NewManager::new(
-            1,
-            "Manager".to_string(),
-            "m@example.com".to_string(),
-            true,
-        ))
+        .create_or_update_manager(&manager_payload)
         .unwrap();
 
     let client_event_repo = DieselRepository::new(test_db.pool());
 
     let new_event = NewClientEvent {
         client_id: client.id,
-        manager_id: ManagerId::try_from(manager.id).unwrap(),
+        manager_id: manager.id,
         event_type: ClientEventType::Comment,
         event_data: json!({"text": "hello"}),
         created_at: Utc::now().naive_utc(),
@@ -145,7 +143,7 @@ fn test_client_event_repository_crud() {
     let _ = client_event_repo
         .create_client_event(&NewClientEvent {
             client_id: client.id,
-            manager_id: ManagerId::try_from(manager.id).unwrap(),
+            manager_id: manager.id,
             event_type: ClientEventType::Call,
             event_data: json!({}),
             created_at: Utc::now().naive_utc(),
@@ -188,42 +186,36 @@ fn test_manager_repository_crud() {
     let client_ids: Vec<i32> = stored_clients.iter().map(|c| c.id.get()).collect();
 
     // create or update manager
+    let manager_payload =
+        NewManager::try_from_parts(1, "Manager".to_string(), "m@example.com".to_string(), true)
+            .unwrap();
     let manager = manager_repo
-        .create_or_update_manager(&NewManager::new(
-            1,
-            "Manager".to_string(),
-            "m@example.com".to_string(),
-            true,
-        ))
+        .create_or_update_manager(&manager_payload)
         .unwrap();
-    assert!(manager.id > 0);
+    assert!(manager.id.get() > 0);
 
+    let updated_payload =
+        NewManager::try_from_parts(1, "Updated".to_string(), "m@example.com".to_string(), true)
+            .unwrap();
     let updated = manager_repo
-        .create_or_update_manager(&NewManager::new(
-            1,
-            "Updated".to_string(),
-            "m@example.com".to_string(),
-            true,
-        ))
+        .create_or_update_manager(&updated_payload)
         .unwrap();
     assert_eq!(updated.id, manager.id);
-    assert_eq!(updated.name, "Updated");
+    assert_eq!(updated.name.as_str(), "Updated");
 
+    let preserved_payload =
+        NewManager::try_from_parts(1, "Updated".to_string(), "m@example.com".to_string(), false)
+            .unwrap();
     let preserved = manager_repo
-        .create_or_update_manager(&NewManager::new(
-            1,
-            "Updated".to_string(),
-            "m@example.com".to_string(),
-            false,
-        ))
+        .create_or_update_manager(&preserved_payload)
         .unwrap();
     assert!(preserved.is_user);
 
     let by_id = manager_repo
-        .get_manager_by_id(manager.id, 1)
+        .get_manager_by_id(manager.id.get(), 1)
         .unwrap()
         .unwrap();
-    assert_eq!(by_id.name, "Updated");
+    assert_eq!(by_id.name.as_str(), "Updated");
 
     let by_email = manager_repo
         .get_manager_by_email("m@example.com", 1)
@@ -233,7 +225,7 @@ fn test_manager_repository_crud() {
 
     // assign clients to manager
     manager_repo
-        .assign_clients_to_manager(manager.id, &client_ids)
+        .assign_clients_to_manager(manager.id.get(), &client_ids)
         .unwrap();
 
     let managers_with_clients = manager_repo.list_managers_with_clients(1).unwrap();

@@ -16,7 +16,6 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
-use crate::domain::types::ManagerId;
 use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageData};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
@@ -263,7 +262,11 @@ where
 
     ensure_client_access(repo, user, client_id)?;
 
-    let manager = create_or_update_manager(repo, &user.into()).map_err(|err| {
+    let manager_payload = NewManager::try_from(user).map_err(|err| {
+        log::error!("Failed to build manager from user: {err}");
+        ServiceError::Internal
+    })?;
+    let manager = create_or_update_manager(repo, &manager_payload).map_err(|err| {
         log::error!(
             "Failed to create or update manager {email}: {err}",
             email = user.email
@@ -315,7 +318,7 @@ where
     let new_event = NewClientEvent {
         client_id: client.id,
         event_type,
-        manager_id: ManagerId::try_from(manager.id)?,
+        manager_id: manager.id,
         created_at: Utc::now().naive_utc(),
         event_data,
     };
@@ -350,7 +353,11 @@ where
 
     ensure_client_access(repo, user, client_id)?;
 
-    let manager = create_or_update_manager(repo, &user.into()).map_err(|err| {
+    let manager_payload = NewManager::try_from(user).map_err(|err| {
+        log::error!("Failed to build manager from user: {err}");
+        ServiceError::Internal
+    })?;
+    let manager = create_or_update_manager(repo, &manager_payload).map_err(|err| {
         log::error!(
             "Failed to create or update manager {email}: {err}",
             email = user.email
@@ -363,7 +370,7 @@ where
     let event = NewClientEvent {
         client_id: client.id,
         event_type: ClientEventType::DocumentLink,
-        manager_id: ManagerId::try_from(manager.id)?,
+        manager_id: manager.id,
         created_at: Utc::now().naive_utc(),
         event_data: json!({
             "text": form.text,
