@@ -79,87 +79,6 @@ fn normalize_field_value(value: String) -> Option<String> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::BTreeMap;
-
-    /// Creates a test client populated with the given field pairs.
-    fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
-        let mut map = BTreeMap::new();
-        for (key, value) in fields {
-            map.insert(key.to_string(), value.to_string());
-        }
-
-        Client {
-            fields: if map.is_empty() { None } else { Some(map) },
-            ..Client::default()
-        }
-    }
-
-    /// Verifies that configured names are extracted and normalized correctly.
-    #[test]
-    fn partition_client_fields_extracts_configured_names() {
-        let client = client_with_fields(vec![
-            ("Favorite Color", "  Blue  "),
-            (" Stage ", " In progress "),
-            ("Other", "  "),
-        ]);
-
-        let configured = vec![
-            ImportantField::new(1, "Stage".to_string()),
-            ImportantField::new(1, "Missing".to_string()),
-            ImportantField::new(1, "favorite color ".to_string()),
-        ];
-
-        let (important, other) = partition_client_fields(&client, &configured);
-
-        assert_eq!(
-            important,
-            vec![
-                ClientFieldDisplay {
-                    label: "Stage".to_string(),
-                    value: Some("In progress".to_string()),
-                },
-                ClientFieldDisplay {
-                    label: "Missing".to_string(),
-                    value: None,
-                },
-                ClientFieldDisplay {
-                    label: "favorite color".to_string(),
-                    value: Some("Blue".to_string()),
-                },
-            ]
-        );
-
-        assert_eq!(
-            other,
-            vec![ClientFieldDisplay {
-                label: "Other".to_string(),
-                value: None,
-            }]
-        );
-    }
-
-    /// Verifies that missing configured fields yield empty values.
-    #[test]
-    fn partition_client_fields_handles_missing_custom_fields() {
-        let client = client_with_fields(vec![]);
-        let configured = vec![ImportantField::new(1, "Stage".to_string())];
-
-        let (important, other) = partition_client_fields(&client, &configured);
-
-        assert_eq!(
-            important,
-            vec![ClientFieldDisplay {
-                label: "Stage".to_string(),
-                value: None,
-            }]
-        );
-        assert!(other.is_empty());
-    }
-}
-
 /// Ensures that the current user has access to the provided client identifier.
 fn ensure_client_access<R>(repo: &R, user: &AuthenticatedUser, client_id: i32) -> ServiceResult<()>
 where
@@ -565,4 +484,85 @@ where
 {
     repo.assign_clients_to_manager(manager_id, client_ids)
         .map_err(ServiceError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    /// Creates a test client populated with the given field pairs.
+    fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
+        let mut map = BTreeMap::new();
+        for (key, value) in fields {
+            map.insert(key.to_string(), value.to_string());
+        }
+
+        Client {
+            fields: if map.is_empty() { None } else { Some(map) },
+            ..Client::default()
+        }
+    }
+
+    /// Verifies that configured names are extracted and normalized correctly.
+    #[test]
+    fn partition_client_fields_extracts_configured_names() {
+        let client = client_with_fields(vec![
+            ("Favorite Color", "  Blue  "),
+            (" Stage ", " In progress "),
+            ("Other", "  "),
+        ]);
+
+        let configured = vec![
+            ImportantField::new(1, "Stage".to_string()),
+            ImportantField::new(1, "Missing".to_string()),
+            ImportantField::new(1, "favorite color ".to_string()),
+        ];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![
+                ClientFieldDisplay {
+                    label: "Stage".to_string(),
+                    value: Some("In progress".to_string()),
+                },
+                ClientFieldDisplay {
+                    label: "Missing".to_string(),
+                    value: None,
+                },
+                ClientFieldDisplay {
+                    label: "favorite color".to_string(),
+                    value: Some("Blue".to_string()),
+                },
+            ]
+        );
+
+        assert_eq!(
+            other,
+            vec![ClientFieldDisplay {
+                label: "Other".to_string(),
+                value: None,
+            }]
+        );
+    }
+
+    /// Verifies that missing configured fields yield empty values.
+    #[test]
+    fn partition_client_fields_handles_missing_custom_fields() {
+        let client = client_with_fields(vec![]);
+        let configured = vec![ImportantField::new(1, "Stage".to_string())];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![ClientFieldDisplay {
+                label: "Stage".to_string(),
+                value: None,
+            }]
+        );
+        assert!(other.is_empty());
+    }
 }

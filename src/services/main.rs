@@ -5,7 +5,6 @@ use pushkind_common::pagination::{DEFAULT_ITEMS_PER_PAGE, Paginated};
 use pushkind_common::routes::check_role;
 use validator::Validate;
 
-use crate::domain::client::Client;
 use crate::domain::manager::NewManager;
 use crate::dto::main::IndexPageData;
 pub use crate::dto::main::IndexQuery;

@@ -1,6 +1,6 @@
 //! Repository implementation for CRM managers.
 
-use diesel::{prelude::*, upsert::excluded, Connection};
+use diesel::{Connection, prelude::*, upsert::excluded};
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::{

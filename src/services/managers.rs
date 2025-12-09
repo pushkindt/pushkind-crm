@@ -5,8 +5,7 @@ use pushkind_common::routes::check_role;
 use validator::Validate;
 
 use crate::SERVICE_ADMIN_ROLE;
-use crate::domain::client::Client;
-use crate::domain::manager::{Manager, NewManager};
+use crate::domain::manager::NewManager;
 use crate::dto::managers::{ManagerModalData, ManagersPageData};
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
