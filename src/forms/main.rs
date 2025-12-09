@@ -31,9 +31,10 @@ impl AddClientForm {
         let hub_id = HubId::new(hub_id)?;
         let name = ClientName::new(self.name)?;
         let email = self.email.map(ClientEmail::try_from).transpose()?;
-        let phone = self
-            .phone
-            .and_then(|value| PhoneNumber::try_from(value).ok());
+        let phone = match self.phone {
+            Some(value) => Some(PhoneNumber::try_from(value)?),
+            None => None,
+        };
 
         Ok(NewClient::new(hub_id, name, email, phone, None))
     }
@@ -134,7 +135,10 @@ impl UploadClientsForm {
                 .map(ClientEmail::try_from)
                 .and_then(|result| result.ok());
 
-            let phone = phone.and_then(|value| PhoneNumber::try_from(value).ok());
+            let phone = match phone {
+                Some(value) => Some(PhoneNumber::try_from(value)?),
+                None => None,
+            };
 
             clients.push(NewClient::new(
                 hub_id,

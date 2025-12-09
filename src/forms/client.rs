@@ -71,9 +71,10 @@ impl TryFrom<SaveClientForm> for UpdateClient {
 
         let name = ClientName::new(form.name)?;
         let email = form.email.map(ClientEmail::try_from).transpose()?;
-        let phone = form
-            .phone
-            .and_then(|value| PhoneNumber::try_from(value).ok());
+        let phone = match form.phone {
+            Some(value) => Some(PhoneNumber::try_from(value)?),
+            None => None,
+        };
 
         Ok(UpdateClient::new(name, email, phone, Some(fields)))
     }
