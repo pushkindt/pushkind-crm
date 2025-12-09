@@ -12,6 +12,7 @@ use crate::repository::DieselRepository;
 use crate::services::{ServiceError, important_fields as important_fields_service};
 
 #[get("/important-fields")]
+/// Show the list of configured important fields for the current user.
 pub async fn show_important_fields(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -44,6 +45,7 @@ pub async fn show_important_fields(
 }
 
 #[post("/important-fields")]
+/// Save the posted list of important field names for the user.
 pub async fn save_important_fields(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,

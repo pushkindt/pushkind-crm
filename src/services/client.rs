@@ -24,6 +24,7 @@ use crate::repository::{
 };
 use crate::services::{ServiceError, ServiceResult};
 
+/// Splits client fields into configured important labels and the remaining entries.
 fn partition_client_fields(
     client: &Client,
     important_fields: &[ImportantField],
@@ -68,6 +69,7 @@ fn partition_client_fields(
     (important, other)
 }
 
+/// Trims and normalizes a field value, returning `None` when empty.
 fn normalize_field_value(value: String) -> Option<String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -82,6 +84,7 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
+    /// Creates a test client populated with the given field pairs.
     fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
         let mut map = BTreeMap::new();
         for (key, value) in fields {
@@ -94,6 +97,7 @@ mod tests {
         }
     }
 
+    /// Verifies that configured names are extracted and normalized correctly.
     #[test]
     fn partition_client_fields_extracts_configured_names() {
         let client = client_with_fields(vec![
@@ -137,6 +141,7 @@ mod tests {
         );
     }
 
+    /// Verifies that missing configured fields yield empty values.
     #[test]
     fn partition_client_fields_handles_missing_custom_fields() {
         let client = client_with_fields(vec![]);

@@ -100,12 +100,14 @@ mod tests {
     }
 
     impl ImportantFieldReader for MockRepo {
+        /// Returns the fields currently stored in the mock repository.
         fn list_important_fields(&self, _hub_id: i32) -> RepositoryResult<Vec<ImportantField>> {
             Ok(self.stored.borrow().clone())
         }
     }
 
     impl ImportantFieldWriter for MockRepo {
+        /// Replaces the stored fields in the mock repository.
         fn replace_important_fields(
             &self,
             _hub_id: i32,
@@ -116,6 +118,7 @@ mod tests {
         }
     }
 
+    /// Builds an admin user for test scenarios.
     fn admin_user() -> AuthenticatedUser {
         AuthenticatedUser {
             sub: "1".to_string(),
@@ -127,6 +130,7 @@ mod tests {
         }
     }
 
+    /// Builds a viewer user without admin rights.
     fn viewer_user() -> AuthenticatedUser {
         AuthenticatedUser {
             sub: "2".to_string(),
@@ -138,6 +142,7 @@ mod tests {
         }
     }
 
+    /// Ensures loading fails for users lacking the admin role.
     #[test]
     fn load_requires_admin_role() {
         let repo = MockRepo::default();
@@ -148,6 +153,7 @@ mod tests {
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
 
+    /// Ensures saving fails for users lacking the admin role.
     #[test]
     fn save_requires_admin_role() {
         let repo = MockRepo::default();
@@ -161,6 +167,7 @@ mod tests {
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
 
+    /// Verifies that normalization trims, sanitizes, and deduplicates input.
     #[test]
     fn normalize_fields_trims_sanitizes_and_deduplicates() {
         let fields = normalize_fields(
@@ -173,6 +180,7 @@ mod tests {
         assert_eq!(names, vec!["Name", "Company"]);
     }
 
+    /// Confirms saving replaces the stored important fields.
     #[test]
     fn save_replaces_existing_fields() {
         let repo = MockRepo::default();
@@ -189,6 +197,7 @@ mod tests {
         assert_eq!(stored[1].field, "Phone");
     }
 
+    /// Checks that loading returns already saved field names.
     #[test]
     fn load_returns_existing_fields() {
         let repo = MockRepo::default();

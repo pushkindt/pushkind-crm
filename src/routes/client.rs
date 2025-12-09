@@ -16,6 +16,7 @@ use crate::repository::DieselRepository;
 use crate::services::{ServiceError, client as client_service};
 
 #[get("/client/{client_id}")]
+/// Render the detail page for a single client, including events and attachments.
 pub async fn show_client(
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
@@ -63,6 +64,7 @@ pub async fn show_client(
 }
 
 #[post("/client/save")]
+/// Persist updates to a client's profile submitted from the client form.
 pub async fn save_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -107,6 +109,7 @@ pub async fn save_client(
 }
 
 #[post("/client/comment")]
+/// Queue a new comment event for the client via the ZMQ sender.
 pub async fn comment_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -147,6 +150,7 @@ pub async fn comment_client(
 }
 
 #[post("/client/attachment")]
+/// Upload and associate an attachment with the given client.
 pub async fn attachment_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
