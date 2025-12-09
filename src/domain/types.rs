@@ -307,6 +307,11 @@ non_empty_string_newtype!(
     "Customer name wrapper enforcing non-empty values."
 );
 
+non_empty_string_newtype!(
+    ImportantFieldName,
+    "Configured important field label enforcing trimmed, non-empty values."
+);
+
 /// Normalizes a phone number string to E.164 format.
 pub fn normalize_phone_to_e164(value: &str) -> Result<String, TypeConstraintError> {
     let trimmed = value.trim();

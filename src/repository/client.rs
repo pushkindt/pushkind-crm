@@ -11,6 +11,7 @@ use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::domain::important_field::ImportantField as DomainImportantField;
+use crate::domain::types::TypeConstraintError;
 use crate::models::client::ClientField;
 use crate::models::important_field::{
     ImportantField as DbImportantField, NewImportantField as DbNewImportantField,
@@ -501,7 +502,13 @@ impl ImportantFieldReader for DieselRepository {
             .order(important_fields::field.asc())
             .load(&mut conn)?;
 
-        Ok(rows.into_iter().map(Into::into).collect())
+        let fields = rows
+            .into_iter()
+            .map(DomainImportantField::try_from)
+            .collect::<Result<Vec<_>, TypeConstraintError>>()
+            .map_err(RepositoryError::from)?;
+
+        Ok(fields)
     }
 }
 

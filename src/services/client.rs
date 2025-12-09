@@ -44,7 +44,7 @@ fn partition_client_fields(
     let mut important = Vec::with_capacity(important_fields.len());
 
     for field in important_fields {
-        let label = field.field.trim();
+        let label = field.field.as_str().trim();
         let normalized = label.to_lowercase();
 
         let value = remaining_fields
@@ -493,7 +493,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::types::{ClientId, ClientName, HubId};
+    use crate::domain::types::{ClientId, ClientName, HubId, ImportantFieldName};
     use chrono::Utc;
     use std::collections::BTreeMap;
 
@@ -516,6 +516,13 @@ mod tests {
         }
     }
 
+    fn configured_field(hub: i32, name: &str) -> ImportantField {
+        ImportantField::new(
+            HubId::new(hub).expect("valid hub id"),
+            ImportantFieldName::new(name).expect("valid field name"),
+        )
+    }
+
     /// Verifies that configured names are extracted and normalized correctly.
     #[test]
     fn partition_client_fields_extracts_configured_names() {
@@ -526,9 +533,9 @@ mod tests {
         ]);
 
         let configured = vec![
-            ImportantField::new(1, "Stage".to_string()),
-            ImportantField::new(1, "Missing".to_string()),
-            ImportantField::new(1, "favorite color ".to_string()),
+            configured_field(1, "Stage"),
+            configured_field(1, "Missing"),
+            configured_field(1, "favorite color "),
         ];
 
         let (important, other) = partition_client_fields(&client, &configured);
@@ -564,7 +571,7 @@ mod tests {
     #[test]
     fn partition_client_fields_handles_missing_custom_fields() {
         let client = client_with_fields(vec![]);
-        let configured = vec![ImportantField::new(1, "Stage".to_string())];
+        let configured = vec![configured_field(1, "Stage")];
 
         let (important, other) = partition_client_fields(&client, &configured);
 
