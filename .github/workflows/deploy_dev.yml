@@ -51,6 +51,6 @@ jobs:
           scp -r ./assets/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./templates/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./migrations/ cicd@crm.pushkind.com:/var/www8/html/
-          ssh cicd@crm.pushkind.com "cd /var/www8/html/ && /home/cicd/.cargo/bin/diesel migration run"
+          ssh cicd@crm.pushkind.com "cd /var/www8/html/ && /home/cicd/.cargo/bin/diesel migration run --database-url app.db"
           ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl start pushkind-crm.service"
           ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl start pushkind-crm-check-events.service"
