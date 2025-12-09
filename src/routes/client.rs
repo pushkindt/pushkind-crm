@@ -41,9 +41,7 @@ pub async fn show_client(
             context.insert("available_fields", &data.available_fields);
             context.insert("important_fields", &data.important_fields);
             context.insert("other_fields", &data.other_fields);
-            if let Some(todo_service_url) = server_config.todo_service_url.as_ref() {
-                context.insert("todo_service_url", todo_service_url);
-            }
+            context.insert("todo_service_url", &server_config.todo_service_url);
 
             render_template(&tera, "client/index.html", &context)
         }
