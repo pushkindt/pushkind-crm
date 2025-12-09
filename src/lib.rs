@@ -40,7 +40,7 @@ pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
         secret: server_config.secret.clone(),
     };
 
-    // Start a background ZeroMQ publisher used for outbound sms notifications.
+    // Start a background ZeroMQ publisher used for outbound email notifications.
     let zmq_sender = ZmqSender::start(ZmqSenderOptions::pub_default(
         &server_config.zmq_emailer_pub,
     ))

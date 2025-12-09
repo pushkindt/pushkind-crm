@@ -95,7 +95,9 @@ Key settings you may want to override:
 | `APP_DOMAIN` | Cookie domain (without protocol) | _required_ |
 | `APP_TEMPLATES_DIR` | Glob pattern for templates consumed by Tera | `templates/**/*` |
 | `APP_ZMQ_EMAILER_PUB` | ZeroMQ PUB endpoint for outgoing email events | `tcp://127.0.0.1:5557` |
-| `APP_ZMQ_EMAILER_PUB` | ZeroMQ PUB endpoint for inbound email events | `tcp://127.0.0.1:5558` |
+| `APP_ZMQ_EMAILER_SUB` | ZeroMQ PUB endpoint for inbound email events | `tcp://127.0.0.1:5558` |
+| `APP_ZMQ_CLIENTS_SUB` | ZeroMQ PUB endpoint for inbound client events | `tcp://127.0.0.1:5562` |
+| `APP_ZMQ_REPLIER_SUB` | ZeroMQ PUB endpoint for inbound email reply events | `tcp://127.0.0.1:5560` |
 | `APP_AUTH_SERVICE_URL` | URL of the Pushkind authentication service | _required_ |
 | `TODO_SERVICE_URL` | Base URL of the manager TODO service used for quick links | _optional_ |
 

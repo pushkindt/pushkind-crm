@@ -4,6 +4,8 @@ port: 80
 database_url: app.db
 zmq_emailer_pub: tcp://127.0.0.1:5557
 zmq_emailer_sub: tcp://127.0.0.1:5558
+zmq_clients_sub: tcp://127.0.0.1:5562
+zmq_replier_sub: tcp://127.0.0.1:5560
 templates_dir: templates/**/*
 secret: env::APP_SECRET
 auth_service_url: ""

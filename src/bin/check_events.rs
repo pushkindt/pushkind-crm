@@ -1,23 +1,25 @@
 use std::{collections::BTreeMap, env};
 
 use chrono::Utc;
+use config::Config;
 use dotenvy::dotenv;
 use pushkind_common::models::emailer::zmq::{
     ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
 };
 use pushkind_common::{db::establish_connection_pool, repository::errors::RepositoryResult};
+use serde::Deserialize;
+use serde_json::json;
 
 use pushkind_crm::domain::{
     client::{NewClient, UpdateClient},
     client_event::{ClientEventType, NewClientEvent},
     manager::NewManager,
 };
+use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::{
     ClientEventReader, ClientEventWriter, ClientReader, ClientWriter, DieselRepository,
     ManagerWriter,
 };
-use serde::Deserialize;
-use serde_json::json;
 
 fn is_duplicate_event<R>(repo: &R, new_event: &NewClientEvent) -> RepositoryResult<bool>
 where
@@ -274,37 +276,57 @@ where
 }
 
 fn main() {
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
     dotenv().ok(); // Load .env file
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "app.db".to_string());
+    // Select config profile (defaults to `local`).
+    let app_env = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
 
-    let zmq_address =
-        env::var("ZMQ_EMAILER_SUB").unwrap_or_else(|_| "tcp://127.0.0.1:5558".to_string());
-    let replier_address =
-        env::var("ZMQ_REPLIER_SUB").unwrap_or_else(|_| "tcp://127.0.0.1:5560".to_string());
+    let settings = Config::builder()
+        // Add `./config/default.yaml`
+        .add_source(config::File::with_name("config/default"))
+        // Add environment-specific overrides
+        .add_source(config::File::with_name(&format!("config/{}", app_env)).required(false))
+        // Add settings from the environment (with a prefix of APP)
+        .add_source(config::Environment::with_prefix("APP"))
+        .build();
+
+    let settings = match settings {
+        Ok(settings) => settings,
+        Err(err) => {
+            log::error!("Error loading settings: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    let server_config = match settings.try_deserialize::<ServerConfig>() {
+        Ok(server_config) => server_config,
+        Err(err) => {
+            log::error!("Error loading server config: {}", err);
+            std::process::exit(1);
+        }
+    };
+
     let context = zmq::Context::new();
     let responder = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     responder
-        .connect(&zmq_address)
+        .connect(&server_config.zmq_emailer_sub)
         .expect("Cannot connect to zmq port");
     responder.set_subscribe(b"").expect("SUBSCRIBE failed");
 
     let replier = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     replier
-        .connect(&replier_address)
+        .connect(&server_config.zmq_replier_sub)
         .expect("Cannot connect to zmq port");
     replier.set_subscribe(b"").expect("SUBSCRIBE failed");
 
-    let clients_address =
-        env::var("ZMQ_CLIENTS_SUB").unwrap_or_else(|_| "tcp://127.0.0.1:5562".to_string());
     let clients = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     clients
-        .connect(&clients_address)
+        .connect(&server_config.zmq_clients_sub)
         .expect("Cannot connect to zmq port");
     clients.set_subscribe(b"").expect("SUBSCRIBE failed");
 
-    let pool = match establish_connection_pool(&database_url) {
+    let pool = match establish_connection_pool(&server_config.database_url) {
         Ok(pool) => pool,
         Err(e) => {
             log::error!("Failed to establish database connection: {e}");
