@@ -1,3 +1,5 @@
+//! Diesel models for important field records.
+
 use diesel::prelude::*;
 use serde::Serialize;
 

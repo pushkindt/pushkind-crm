@@ -1,3 +1,5 @@
+//! Service adaptors serving CRM API data.
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::check_role;

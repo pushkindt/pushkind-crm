@@ -1,3 +1,5 @@
+//! Repository implementation handling CRM clients.
+
 use std::collections::BTreeMap;
 
 use diesel::Connection;

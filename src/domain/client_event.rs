@@ -1,3 +1,5 @@
+//! Domain model that represents CRM client event history.
+
 use std::fmt::Display;
 
 use chrono::NaiveDateTime;

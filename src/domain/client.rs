@@ -1,3 +1,5 @@
+//! Domain model describing CRM clients.
+
 use std::collections::BTreeMap;
 
 use chrono::NaiveDateTime;

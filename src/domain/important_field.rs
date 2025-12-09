@@ -1,3 +1,5 @@
+//! Domain model for hub-specific important fields.
+
 use serde::{Deserialize, Serialize};
 
 /// Domain representation of a hub-specific important client field name.

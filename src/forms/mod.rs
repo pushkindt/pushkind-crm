@@ -1,3 +1,5 @@
+//! Form definitions backing the CRM routes.
+
 pub mod client;
 pub mod important_fields;
 pub mod main;

@@ -1,3 +1,5 @@
+//! DTOs shaped for client detail and edit templates.
+
 use serde::Serialize;
 
 use crate::domain::client::Client;

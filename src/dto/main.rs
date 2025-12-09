@@ -1,3 +1,5 @@
+//! DTOs powering the main dashboard views.
+
 use pushkind_common::pagination::Paginated;
 
 use crate::domain::client::Client;

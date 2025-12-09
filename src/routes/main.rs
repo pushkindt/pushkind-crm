@@ -1,3 +1,5 @@
+//! Routes for the main dashboard and uploads.
+
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};

@@ -1,3 +1,5 @@
+//! Diesel models for storing CRM client events.
+
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 

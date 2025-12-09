@@ -1,3 +1,5 @@
+//! Services coordinating important field workflows.
+
 use std::collections::HashSet;
 
 use pushkind_common::domain::auth::AuthenticatedUser;

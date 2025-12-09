@@ -1,3 +1,5 @@
+//! Forms that validate and normalize client input.
+
 use std::collections::BTreeMap;
 
 use pushkind_common::routes::empty_string_as_none;

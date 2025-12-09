@@ -1,3 +1,5 @@
+//! Diesel models representing managers and tokens.
+
 use diesel::prelude::*;
 
 use crate::domain::manager::{

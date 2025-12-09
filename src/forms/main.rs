@@ -1,3 +1,5 @@
+//! Forms tied to the main CRM dashboard.
+
 use std::{collections::BTreeMap, io::Read};
 
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};

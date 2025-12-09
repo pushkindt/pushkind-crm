@@ -1,3 +1,5 @@
+//! Services handling manager administration workflows.
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::check_role;
 use validator::Validate;

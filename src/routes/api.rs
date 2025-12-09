@@ -1,3 +1,5 @@
+//! Actix routes serving the CRM API surface.
+
 use actix_web::{HttpResponse, Responder, get, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
 use serde::Deserialize;

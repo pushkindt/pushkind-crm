@@ -1,3 +1,5 @@
+//! DTOs used in manager administration pages.
+
 use crate::domain::client::Client;
 use crate::domain::manager::Manager;
 

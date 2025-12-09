@@ -1,3 +1,5 @@
+//! Diesel models mapping CRM clients to database rows.
+
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::Serialize;

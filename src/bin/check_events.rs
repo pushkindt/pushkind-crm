@@ -1,3 +1,5 @@
+//! Background worker consuming ZeroMQ notifications and recording CRM client events.
+
 use std::{collections::BTreeMap, env};
 
 use chrono::Utc;

@@ -1,3 +1,5 @@
+//! CRM application module wiring domain, repository, and HTTP services.
+
 use std::sync::Arc;
 
 use actix_cors::Cors;

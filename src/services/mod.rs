@@ -1,3 +1,5 @@
+//! Service modules defining CRM business logic.
+
 pub mod api;
 pub mod client;
 pub mod important_fields;

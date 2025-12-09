@@ -1,3 +1,5 @@
+//! Repository implementation for CRM client events.
+
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use pushkind_common::repository::errors::RepositoryResult;

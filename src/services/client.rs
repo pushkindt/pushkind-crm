@@ -1,3 +1,5 @@
+//! Domain services orchestrating client operations.
+
 use std::collections::HashMap;
 
 use chrono::Utc;

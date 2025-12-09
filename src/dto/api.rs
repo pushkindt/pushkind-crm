@@ -1,3 +1,5 @@
+//! DTOs exposed by the CRM API endpoints.
+
 use crate::domain::client::Client;
 
 /// Query parameters accepted by the `/api/v1/clients` service.
