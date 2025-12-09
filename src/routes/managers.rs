@@ -1,3 +1,5 @@
+//! Routes that manage manager assignments.
+
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::domain::auth::AuthenticatedUser;
@@ -10,6 +12,7 @@ use crate::repository::DieselRepository;
 use crate::services::{ServiceError, managers as managers_service};
 
 #[get("/managers")]
+/// Render the managers list page, showing assignments and controls.
 pub async fn managers(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -41,6 +44,7 @@ pub async fn managers(
 }
 
 #[post("/managers/add")]
+/// Add a new manager record from the provided form data.
 pub async fn add_manager(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -68,6 +72,7 @@ pub async fn add_manager(
 }
 
 #[post("/managers/modal/{manager_id}")]
+/// Return the modal body with manager details for the assignee dialog.
 pub async fn managers_modal(
     manager_id: web::Path<i32>,
     user: AuthenticatedUser,
@@ -94,6 +99,7 @@ pub async fn managers_modal(
 }
 
 #[post("/managers/assign")]
+/// Assign a manager to multiple clients based on submitted payload.
 pub async fn assign_manager(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,

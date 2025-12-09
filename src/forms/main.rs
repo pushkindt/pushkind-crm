@@ -1,3 +1,5 @@
+//! Forms tied to the main CRM dashboard.
+
 use std::{collections::BTreeMap, io::Read};
 
 use actix_multipart::form::{MultipartForm, tempfile::TempFile};
@@ -7,6 +9,7 @@ use thiserror::Error;
 use validator::Validate;
 
 use crate::domain::client::NewClient;
+use crate::domain::types::{ClientEmail, ClientName, HubId, PhoneNumber, TypeConstraintError};
 
 #[derive(Deserialize, Validate)]
 /// Form data used to add a new client.
@@ -24,8 +27,16 @@ pub struct AddClientForm {
 }
 
 impl AddClientForm {
-    pub fn to_new_client(self, hub_id: i32) -> NewClient {
-        NewClient::new(hub_id, self.name, self.email, self.phone, None)
+    pub fn to_new_client(self, hub_id: i32) -> Result<NewClient, TypeConstraintError> {
+        let hub_id = HubId::new(hub_id)?;
+        let name = ClientName::new(self.name)?;
+        let email = self.email.map(ClientEmail::try_from).transpose()?;
+        let phone = match self.phone {
+            Some(value) => Some(PhoneNumber::try_from(value)?),
+            None => None,
+        };
+
+        Ok(NewClient::new(hub_id, name, email, phone, None))
     }
 }
 
@@ -44,6 +55,8 @@ pub enum UploadClientsFormError {
     FileReadError,
     #[error("Error parsing csv file")]
     CsvParseError,
+    #[error("Invalid client data: {0}")]
+    ValidationError(#[from] TypeConstraintError),
 }
 
 impl From<std::io::Error> for UploadClientsFormError {
@@ -69,6 +82,8 @@ impl UploadClientsForm {
         let mut clients = Vec::new();
 
         let headers = rdr.headers()?.clone();
+
+        let hub_id = HubId::new(hub_id)?;
 
         for result in rdr.records() {
             let record = result?;
@@ -111,6 +126,20 @@ impl UploadClientsForm {
                 continue;
             };
 
+            let name = match ClientName::new(name) {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
+
+            let email = email
+                .map(ClientEmail::try_from)
+                .and_then(|result| result.ok());
+
+            let phone = match phone {
+                Some(value) => Some(PhoneNumber::try_from(value)?),
+                None => None,
+            };
+
             clients.push(NewClient::new(
                 hub_id,
                 name,
@@ -136,11 +165,17 @@ mod tests {
             phone: Some("+1 (415) 555-2671".to_string()),
         };
 
-        let new_client = form.to_new_client(42);
+        let new_client = form.to_new_client(42).expect("valid client");
 
-        assert_eq!(new_client.hub_id, 42);
-        assert_eq!(new_client.email.as_deref(), Some("alice@example.com"));
-        assert_eq!(new_client.phone.as_deref(), Some("+14155552671"));
+        assert_eq!(new_client.hub_id.get(), 42);
+        assert_eq!(
+            new_client.email.as_ref().map(|email| email.as_str()),
+            Some("alice@example.com")
+        );
+        assert_eq!(
+            new_client.phone.as_ref().map(|phone| phone.as_str()),
+            Some("+14155552671")
+        );
     }
 
     #[test]
@@ -151,9 +186,9 @@ mod tests {
             phone: None,
         };
 
-        let new_client = form.to_new_client(7);
+        let new_client = form.to_new_client(7).expect("valid client");
 
-        assert_eq!(new_client.hub_id, 7);
+        assert_eq!(new_client.hub_id.get(), 7);
         assert!(new_client.email.is_none());
         assert!(new_client.phone.is_none());
     }

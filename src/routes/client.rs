@@ -1,3 +1,5 @@
+//! Actix routes for client CRUD interactions.
+
 use std::sync::Arc;
 
 use actix_web::{HttpResponse, Responder, get, post, web};
@@ -14,6 +16,7 @@ use crate::repository::DieselRepository;
 use crate::services::{ServiceError, client as client_service};
 
 #[get("/client/{client_id}")]
+/// Render the detail page for a single client, including events and attachments.
 pub async fn show_client(
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
@@ -61,6 +64,7 @@ pub async fn show_client(
 }
 
 #[post("/client/save")]
+/// Persist updates to a client's profile submitted from the client form.
 pub async fn save_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -82,7 +86,7 @@ pub async fn save_client(
     match client_service::save_client(repo, &user, form) {
         Ok(result) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id))
+            redirect(&format!("/client/{}", result.client_id.get()))
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Этот клиент для вас не доступен").send();
@@ -105,6 +109,7 @@ pub async fn save_client(
 }
 
 #[post("/client/comment")]
+/// Queue a new comment event for the client via the ZMQ sender.
 pub async fn comment_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -118,7 +123,7 @@ pub async fn comment_client(
     match client_service::add_comment(repo, &user, sender, form).await {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id))
+            redirect(&format!("/client/{}", result.client_id.get()))
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Этот клиент для вас не доступен").send();
@@ -145,6 +150,7 @@ pub async fn comment_client(
 }
 
 #[post("/client/attachment")]
+/// Upload and associate an attachment with the given client.
 pub async fn attachment_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -156,7 +162,7 @@ pub async fn attachment_client(
     match client_service::add_attachment(repo, &user, form) {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id))
+            redirect(&format!("/client/{}", result.client_id.get()))
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Этот клиент для вас не доступен").send();

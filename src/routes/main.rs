@@ -1,3 +1,5 @@
+//! Routes for the main dashboard and uploads.
+
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
@@ -17,6 +19,7 @@ struct IndexQueryParams {
     page: Option<usize>,
 }
 #[get("/")]
+/// Display the dashboard listing clients with optional search/pagination.
 pub async fn show_index(
     params: web::Query<IndexQueryParams>,
     user: AuthenticatedUser,
@@ -56,6 +59,7 @@ pub async fn show_index(
 }
 
 #[post("/client/add")]
+/// Handle client creation requests submitted from the dashboard.
 pub async fn add_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -83,6 +87,7 @@ pub async fn add_client(
 }
 
 #[post("/clients/upload")]
+/// Accept a multipart upload of clients and delegate bulk import logic.
 pub async fn clients_upload(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,

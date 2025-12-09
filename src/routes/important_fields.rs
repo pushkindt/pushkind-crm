@@ -1,3 +1,5 @@
+//! Routes for managing important fields in the CRM.
+
 use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::domain::auth::AuthenticatedUser;
@@ -10,6 +12,7 @@ use crate::repository::DieselRepository;
 use crate::services::{ServiceError, important_fields as important_fields_service};
 
 #[get("/important-fields")]
+/// Show the list of configured important fields for the current user.
 pub async fn show_important_fields(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
@@ -42,6 +45,7 @@ pub async fn show_important_fields(
 }
 
 #[post("/important-fields")]
+/// Save the posted list of important field names for the user.
 pub async fn save_important_fields(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,

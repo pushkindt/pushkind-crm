@@ -1,3 +1,5 @@
+//! Diesel schema definitions for CRM tables.
+
 // @generated automatically by Diesel CLI.
 
 diesel::table! {

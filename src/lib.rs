@@ -1,3 +1,5 @@
+//! CRM application module wiring domain, repository, and HTTP services.
+
 use std::sync::Arc;
 
 use actix_cors::Cors;
@@ -23,6 +25,7 @@ use crate::routes::main::{add_client, clients_upload, show_index};
 use crate::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
 pub mod domain;
+pub mod dto;
 pub mod forms;
 pub mod models;
 pub mod repository;

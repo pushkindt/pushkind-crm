@@ -1,4 +1,4 @@
-//! Route modules wired into the Actix application.
+//! DTO modules that bridge services with templates and APIs.
 
 pub mod api;
 pub mod client;

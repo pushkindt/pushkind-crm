@@ -1,32 +1,18 @@
+//! Services for the dashboard and bulk actions.
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::{DEFAULT_ITEMS_PER_PAGE, Paginated};
 use pushkind_common::routes::check_role;
 use validator::Validate;
 
-use crate::domain::client::Client;
 use crate::domain::manager::NewManager;
+use crate::dto::main::IndexPageData;
+pub use crate::dto::main::IndexQuery;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
 use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE};
-
-/// Query parameters accepted by the index page service.
-#[derive(Debug, Default)]
-pub struct IndexQuery {
-    /// Optional search string entered by the user.
-    pub search: Option<String>,
-    /// Page number requested by the user interface.
-    pub page: Option<usize>,
-}
-
-/// Data required to render the main index template.
-pub struct IndexPageData {
-    /// Paginated list of clients to show in the table.
-    pub clients: Paginated<Client>,
-    /// Search query echoed back to the template when present.
-    pub search_query: Option<String>,
-}
 
 /// Loads the clients list for the main index page.
 pub fn load_index_page<R>(
@@ -56,12 +42,16 @@ where
     } else if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         repo.list_clients(list_query).map_err(ServiceError::from)?
     } else if check_role("crm_manager", &user.roles) {
-        let manager = client_service::create_or_update_manager(repo, &NewManager::from(user))
-            .map_err(|err| {
+        let manager_payload = NewManager::try_from(user).map_err(|err| {
+            log::error!("Failed to build manager from user: {err}");
+            ServiceError::Internal
+        })?;
+        let manager =
+            client_service::create_or_update_manager(repo, &manager_payload).map_err(|err| {
                 log::error!("Failed to update manager: {err}");
                 err
             })?;
-        repo.list_clients(list_query.manager_email(&manager.email))
+        repo.list_clients(list_query.manager_email(manager.email.as_str()))
             .map_err(ServiceError::from)?
     } else {
         (0, Vec::new())
@@ -90,7 +80,10 @@ where
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
     }
 
-    let new_client = form.to_new_client(user.hub_id);
+    let new_client = form.to_new_client(user.hub_id).map_err(|err| {
+        log::error!("Failed to build client from form: {err}");
+        ServiceError::Form("Ошибка при подготовке данных клиента".to_string())
+    })?;
 
     client_service::create_clients(repo, &[new_client]).map_err(|err| {
         log::error!("Failed to add a client: {err}");

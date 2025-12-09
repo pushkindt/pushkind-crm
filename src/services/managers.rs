@@ -1,28 +1,16 @@
+//! Services handling manager administration workflows.
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::check_role;
 use validator::Validate;
 
 use crate::SERVICE_ADMIN_ROLE;
-use crate::domain::client::Client;
-use crate::domain::manager::{Manager, NewManager};
+use crate::domain::manager::NewManager;
+use crate::dto::managers::{ManagerModalData, ManagersPageData};
 use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
-
-/// Data required to render the managers index page.
-#[derive(Debug)]
-pub struct ManagersPageData {
-    /// Managers with their assigned clients.
-    pub managers: Vec<(Manager, Vec<Client>)>,
-}
-
-/// Data displayed inside the manager modal.
-#[derive(Debug)]
-pub struct ManagerModalData {
-    pub manager: Manager,
-    pub clients: Vec<Client>,
-}
 
 /// Loads all managers with the clients assigned to them.
 pub fn list_managers<R>(repo: &R, user: &AuthenticatedUser) -> ServiceResult<ManagersPageData>
@@ -56,7 +44,11 @@ where
         return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
     }
 
-    let new_manager = NewManager::new(user.hub_id, form.name, form.email, true);
+    let new_manager = NewManager::try_from_parts(user.hub_id, form.name, form.email, true)
+        .map_err(|err| {
+            log::error!("Invalid manager payload: {err}");
+            ServiceError::Form("Ошибка валидации формы".to_string())
+        })?;
 
     client_service::create_or_update_manager(repo, &new_manager).map_err(|err| {
         log::error!("Failed to save the manager: {err}");
@@ -91,7 +83,7 @@ where
         })?;
 
     let (_, clients) = repo
-        .list_clients(ClientListQuery::new(user.hub_id).manager_email(&manager.email))
+        .list_clients(ClientListQuery::new(user.hub_id).manager_email(manager.email.as_str()))
         .map_err(ServiceError::from)?;
 
     Ok(ManagerModalData { manager, clients })
@@ -123,7 +115,7 @@ where
             ServiceError::NotFound
         })?;
 
-    client_service::assign_clients_to_manager(repo, manager.id, &form.client_ids).map_err(
+    client_service::assign_clients_to_manager(repo, manager.id.get(), &form.client_ids).map_err(
         |err| {
             log::error!("Failed to assign clients to the manager: {err}");
             err

@@ -1,29 +1,13 @@
+//! Service adaptors serving CRM API data.
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::check_role;
 
 use crate::SERVICE_ACCESS_ROLE;
-use crate::domain::client::Client;
+pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
-
-/// Query parameters accepted by the `/api/v1/clients` service.
-#[derive(Debug, Default)]
-pub struct ClientsQuery {
-    /// Optional free-form search string applied to the client list.
-    pub search: Option<String>,
-    /// Optional page number for pagination.
-    pub page: Option<usize>,
-}
-
-/// Result payload returned by [`list_clients`].
-#[derive(Debug)]
-pub struct ClientsResponse {
-    /// Total number of clients matching the filter.
-    pub total: usize,
-    /// Page of clients requested by the caller.
-    pub clients: Vec<Client>,
-}
 
 /// Returns the filtered list of clients visible to the authenticated user.
 pub fn list_clients<R>(

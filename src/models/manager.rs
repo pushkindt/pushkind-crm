@@ -1,3 +1,5 @@
+//! Diesel models representing managers and tokens.
+
 use diesel::prelude::*;
 
 use crate::domain::manager::{
@@ -5,6 +7,7 @@ use crate::domain::manager::{
     NewClientManager as DomainNewClientManager, NewManager as DomainNewManager,
     UpdateManager as DomainUpdateManager,
 };
+use crate::domain::types::{HubId, ManagerEmail, ManagerId, ManagerName, TypeConstraintError};
 use crate::models::client::Client;
 
 #[derive(Debug, Clone, Identifiable, Queryable)]
@@ -55,22 +58,24 @@ pub struct NewClientManager {
     pub manager_id: i32,
 }
 
-impl From<Manager> for DomainManager {
-    fn from(manager: Manager) -> Self {
-        Self {
-            id: manager.id,
-            hub_id: manager.hub_id,
-            name: manager.name,
-            email: manager.email,
+impl TryFrom<Manager> for DomainManager {
+    type Error = TypeConstraintError;
+
+    fn try_from(manager: Manager) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: ManagerId::try_from(manager.id)?,
+            hub_id: HubId::try_from(manager.hub_id)?,
+            name: ManagerName::new(manager.name)?,
+            email: ManagerEmail::new(manager.email)?,
             is_user: manager.is_user,
-        }
+        })
     }
 }
 
 impl<'a> From<&'a DomainNewManager> for NewManager<'a> {
     fn from(manager: &'a DomainNewManager) -> Self {
         Self {
-            hub_id: manager.hub_id,
+            hub_id: manager.hub_id.get(),
             name: manager.name.as_str(),
             email: manager.email.as_str(),
             is_user: manager.is_user,
@@ -108,8 +113,8 @@ impl<'a> From<&NewManager<'a>> for UpdateManager<'a> {
 impl From<DomainClientManager> for ClientManager {
     fn from(manager: DomainClientManager) -> Self {
         Self {
-            client_id: manager.client_id,
-            manager_id: manager.manager_id,
+            client_id: manager.client_id.get(),
+            manager_id: manager.manager_id.get(),
         }
     }
 }
@@ -117,8 +122,8 @@ impl From<DomainClientManager> for ClientManager {
 impl From<DomainNewClientManager> for NewClientManager {
     fn from(manager: DomainNewClientManager) -> Self {
         Self {
-            client_id: manager.client_id,
-            manager_id: manager.manager_id,
+            client_id: manager.client_id.get(),
+            manager_id: manager.manager_id.get(),
         }
     }
 }
@@ -129,17 +134,20 @@ mod tests {
 
     #[test]
     fn from_domain_newmanager() {
-        let domain = DomainNewManager::new(1, "Alice".to_string(), "a@b.c".to_string(), true);
+        let hub_id = HubId::new(1).expect("valid hub id");
+        let name = ManagerName::new("Alice").expect("valid manager name");
+        let email = ManagerEmail::new("a@b.c").expect("valid manager email");
+        let domain = DomainNewManager::new(hub_id, name.clone(), email.clone(), true);
         let new: NewManager = (&domain).into();
-        assert_eq!(new.hub_id, domain.hub_id);
-        assert_eq!(new.name, domain.name);
-        assert_eq!(new.email, domain.email);
+        assert_eq!(new.hub_id, domain.hub_id.get());
+        assert_eq!(new.name, domain.name.as_str());
+        assert_eq!(new.email, domain.email.as_str());
 
         let update: UpdateManager = (&domain).into();
-        assert_eq!(update.name, domain.name);
+        assert_eq!(update.name, domain.name.as_str());
 
         let update_from_new: UpdateManager = (&new).into();
-        assert_eq!(update_from_new.name, domain.name);
+        assert_eq!(update_from_new.name, domain.name.as_str());
     }
 
     #[test]
@@ -151,10 +159,10 @@ mod tests {
             email: "b@c.d".into(),
             is_user: true,
         };
-        let domain: DomainManager = db.into();
-        assert_eq!(domain.id, 1);
-        assert_eq!(domain.hub_id, 2);
-        assert_eq!(domain.name, "Bob");
-        assert_eq!(domain.email, "b@c.d");
+        let domain: DomainManager = DomainManager::try_from(db).expect("valid manager");
+        assert_eq!(domain.id.get(), 1);
+        assert_eq!(domain.hub_id.get(), 2);
+        assert_eq!(domain.name.as_str(), "Bob");
+        assert_eq!(domain.email.as_str(), "b@c.d");
     }
 }

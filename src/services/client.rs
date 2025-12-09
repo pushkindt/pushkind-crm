@@ -1,3 +1,5 @@
+//! Domain services orchestrating client operations.
+
 use std::collections::HashMap;
 
 use chrono::Utc;
@@ -6,7 +8,6 @@ use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
 use pushkind_common::models::emailer::zmq::ZMQSendEmailMessage;
 use pushkind_common::routes::check_role;
 use pushkind_common::zmq::ZmqSender;
-use serde::Serialize;
 use serde_json::json;
 use validator::Validate;
 
@@ -15,6 +16,7 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
+use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageData};
 use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
@@ -22,25 +24,7 @@ use crate::repository::{
 };
 use crate::services::{ServiceError, ServiceResult};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct ClientFieldDisplay {
-    pub label: String,
-    pub value: Option<String>,
-}
-
-/// Aggregated data required to render the client details page.
-#[derive(Debug)]
-pub struct ClientPageData {
-    pub client: Client,
-    pub managers: Vec<Manager>,
-    pub events_with_managers: Vec<(ClientEvent, Manager)>,
-    pub documents: Vec<ClientEvent>,
-    pub available_fields: Vec<String>,
-    pub important_fields: Vec<ClientFieldDisplay>,
-    pub other_fields: Vec<ClientFieldDisplay>,
-    pub total_events: usize,
-}
-
+/// Splits client fields into configured important labels and the remaining entries.
 fn partition_client_fields(
     client: &Client,
     important_fields: &[ImportantField],
@@ -59,7 +43,7 @@ fn partition_client_fields(
     let mut important = Vec::with_capacity(important_fields.len());
 
     for field in important_fields {
-        let label = field.field.trim();
+        let label = field.field.as_str().trim();
         let normalized = label.to_lowercase();
 
         let value = remaining_fields
@@ -85,6 +69,7 @@ fn partition_client_fields(
     (important, other)
 }
 
+/// Trims and normalizes a field value, returning `None` when empty.
 fn normalize_field_value(value: String) -> Option<String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -92,90 +77,6 @@ fn normalize_field_value(value: String) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::BTreeMap;
-
-    fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
-        let mut map = BTreeMap::new();
-        for (key, value) in fields {
-            map.insert(key.to_string(), value.to_string());
-        }
-
-        Client {
-            fields: if map.is_empty() { None } else { Some(map) },
-            ..Client::default()
-        }
-    }
-
-    #[test]
-    fn partition_client_fields_extracts_configured_names() {
-        let client = client_with_fields(vec![
-            ("Favorite Color", "  Blue  "),
-            (" Stage ", " In progress "),
-            ("Other", "  "),
-        ]);
-
-        let configured = vec![
-            ImportantField::new(1, "Stage".to_string()),
-            ImportantField::new(1, "Missing".to_string()),
-            ImportantField::new(1, "favorite color ".to_string()),
-        ];
-
-        let (important, other) = partition_client_fields(&client, &configured);
-
-        assert_eq!(
-            important,
-            vec![
-                ClientFieldDisplay {
-                    label: "Stage".to_string(),
-                    value: Some("In progress".to_string()),
-                },
-                ClientFieldDisplay {
-                    label: "Missing".to_string(),
-                    value: None,
-                },
-                ClientFieldDisplay {
-                    label: "favorite color".to_string(),
-                    value: Some("Blue".to_string()),
-                },
-            ]
-        );
-
-        assert_eq!(
-            other,
-            vec![ClientFieldDisplay {
-                label: "Other".to_string(),
-                value: None,
-            }]
-        );
-    }
-
-    #[test]
-    fn partition_client_fields_handles_missing_custom_fields() {
-        let client = client_with_fields(vec![]);
-        let configured = vec![ImportantField::new(1, "Stage".to_string())];
-
-        let (important, other) = partition_client_fields(&client, &configured);
-
-        assert_eq!(
-            important,
-            vec![ClientFieldDisplay {
-                label: "Stage".to_string(),
-                value: None,
-            }]
-        );
-        assert!(other.is_empty());
-    }
-}
-
-/// Generic result wrapper for client mutations so callers can redirect easily.
-#[derive(Debug)]
-pub struct ClientOperationOutcome {
-    pub client_id: i32,
 }
 
 /// Ensures that the current user has access to the provided client identifier.
@@ -254,13 +155,13 @@ where
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
-    let managers = list_client_managers(repo, client.id).map_err(|err| {
+    let managers = list_client_managers(repo, client.id.get()).map_err(|err| {
         log::error!("Failed to load managers for client {client_id}: {err}");
         err
     })?;
 
     let (total_events, events_with_managers) =
-        list_client_events(repo, ClientEventListQuery::new(client.id)).map_err(|err| {
+        list_client_events(repo, ClientEventListQuery::new(client.id.get())).map_err(|err| {
             log::error!("Failed to load events for client {client_id}: {err}");
             err
         })?;
@@ -318,13 +219,16 @@ where
     }
 
     let client_id = form.id;
-    let updates: UpdateClient = form.into();
+    let updates = UpdateClient::try_from(form).map_err(|err| {
+        log::error!("Failed to convert save client form: {err}");
+        ServiceError::Form("Ошибка валидации формы".to_string())
+    })?;
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
 
-    ensure_client_access(repo, user, client.id)?;
+    ensure_client_access(repo, user, client.id.get())?;
 
-    let updated_client = update_client(repo, client.id, &updates).map_err(|err| {
+    let updated_client = update_client(repo, client.id.get(), &updates).map_err(|err| {
         log::error!("Failed to update client {client_id}: {err}");
         err
     })?;
@@ -358,7 +262,11 @@ where
 
     ensure_client_access(repo, user, client_id)?;
 
-    let manager = create_or_update_manager(repo, &user.into()).map_err(|err| {
+    let manager_payload = NewManager::try_from(user).map_err(|err| {
+        log::error!("Failed to build manager from user: {err}");
+        ServiceError::Internal
+    })?;
+    let manager = create_or_update_manager(repo, &manager_payload).map_err(|err| {
         log::error!(
             "Failed to create or update manager {email}: {err}",
             email = user.email
@@ -388,8 +296,8 @@ where
             attachment_mime: None,
             hub_id: user.hub_id,
             recipients: vec![NewEmailRecipient {
-                address: client_email.clone(),
-                name: client.name.clone(),
+                address: client_email.clone().into_inner(),
+                name: client.name.as_str().to_string(),
                 fields,
             }],
         };
@@ -445,7 +353,11 @@ where
 
     ensure_client_access(repo, user, client_id)?;
 
-    let manager = create_or_update_manager(repo, &user.into()).map_err(|err| {
+    let manager_payload = NewManager::try_from(user).map_err(|err| {
+        log::error!("Failed to build manager from user: {err}");
+        ServiceError::Internal
+    })?;
+    let manager = create_or_update_manager(repo, &manager_payload).map_err(|err| {
         log::error!(
             "Failed to create or update manager {email}: {err}",
             email = user.email
@@ -583,4 +495,100 @@ where
 {
     repo.assign_clients_to_manager(manager_id, client_ids)
         .map_err(ServiceError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::types::{ClientId, ClientName, HubId, ImportantFieldName};
+    use chrono::Utc;
+    use std::collections::BTreeMap;
+
+    /// Creates a test client populated with the given field pairs.
+    fn client_with_fields(fields: Vec<(&str, &str)>) -> Client {
+        let mut map = BTreeMap::new();
+        for (key, value) in fields {
+            map.insert(key.to_string(), value.to_string());
+        }
+
+        Client {
+            id: ClientId::new(1).expect("valid client id"),
+            hub_id: HubId::new(1).expect("valid hub id"),
+            name: ClientName::new("Test").expect("valid name"),
+            email: None,
+            phone: None,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            fields: if map.is_empty() { None } else { Some(map) },
+        }
+    }
+
+    fn configured_field(hub: i32, name: &str) -> ImportantField {
+        ImportantField::new(
+            HubId::new(hub).expect("valid hub id"),
+            ImportantFieldName::new(name).expect("valid field name"),
+        )
+    }
+
+    /// Verifies that configured names are extracted and normalized correctly.
+    #[test]
+    fn partition_client_fields_extracts_configured_names() {
+        let client = client_with_fields(vec![
+            ("Favorite Color", "  Blue  "),
+            (" Stage ", " In progress "),
+            ("Other", "  "),
+        ]);
+
+        let configured = vec![
+            configured_field(1, "Stage"),
+            configured_field(1, "Missing"),
+            configured_field(1, "favorite color "),
+        ];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![
+                ClientFieldDisplay {
+                    label: "Stage".to_string(),
+                    value: Some("In progress".to_string()),
+                },
+                ClientFieldDisplay {
+                    label: "Missing".to_string(),
+                    value: None,
+                },
+                ClientFieldDisplay {
+                    label: "favorite color".to_string(),
+                    value: Some("Blue".to_string()),
+                },
+            ]
+        );
+
+        assert_eq!(
+            other,
+            vec![ClientFieldDisplay {
+                label: "Other".to_string(),
+                value: None,
+            }]
+        );
+    }
+
+    /// Verifies that missing configured fields yield empty values.
+    #[test]
+    fn partition_client_fields_handles_missing_custom_fields() {
+        let client = client_with_fields(vec![]);
+        let configured = vec![configured_field(1, "Stage")];
+
+        let (important, other) = partition_client_fields(&client, &configured);
+
+        assert_eq!(
+            important,
+            vec![ClientFieldDisplay {
+                label: "Stage".to_string(),
+                value: None,
+            }]
+        );
+        assert!(other.is_empty());
+    }
 }

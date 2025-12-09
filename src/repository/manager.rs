@@ -1,5 +1,7 @@
-use diesel::{prelude::*, upsert::excluded};
-use pushkind_common::repository::errors::RepositoryResult;
+//! Repository implementation for CRM managers.
+
+use diesel::{Connection, prelude::*, upsert::excluded};
+use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::{
     domain::{
@@ -34,7 +36,8 @@ impl ManagerWriter for DieselRepository {
             ))
             .get_result::<DbManager>(&mut conn)?;
 
-        Ok(db_manager.into())
+        let manager = Manager::try_from(db_manager).map_err(RepositoryError::from)?;
+        Ok(manager)
     }
 
     fn assign_clients_to_manager(
@@ -54,14 +57,17 @@ impl ManagerWriter for DieselRepository {
             })
             .collect::<Vec<_>>();
 
-        diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
-            .execute(&mut conn)?;
+        conn.transaction::<usize, diesel::result::Error, _>(move |conn| {
+            diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
+                .execute(conn)?;
 
-        let result = diesel::insert_into(client_manager::table)
-            .values(db_client_manager)
-            .execute(&mut conn)?;
+            let result = diesel::insert_into(client_manager::table)
+                .values(db_client_manager)
+                .execute(conn)?;
 
-        Ok(result)
+            Ok(result)
+        })
+        .map_err(RepositoryError::from)
     }
 }
 
@@ -76,7 +82,12 @@ impl ManagerReader for DieselRepository {
             .first::<DbManager>(&mut conn)
             .optional()?;
 
-        Ok(db_manager.map(|db_manager| db_manager.into()))
+        match db_manager {
+            Some(db_manager) => Ok(Some(
+                Manager::try_from(db_manager).map_err(RepositoryError::from)?,
+            )),
+            None => Ok(None),
+        }
     }
 
     fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>> {
@@ -89,7 +100,12 @@ impl ManagerReader for DieselRepository {
             .first::<DbManager>(&mut conn)
             .optional()?;
 
-        Ok(db_manager.map(|db_manager| db_manager.into()))
+        match db_manager {
+            Some(db_manager) => Ok(Some(
+                Manager::try_from(db_manager).map_err(RepositoryError::from)?,
+            )),
+            None => Ok(None),
+        }
     }
 
     fn list_managers_with_clients(
@@ -123,12 +139,16 @@ impl ManagerReader for DieselRepository {
                 let manager_clients = clients
                     .iter()
                     .filter(|(manager_id, _)| *manager_id == manager.id)
-                    .map(|(_, client)| client.clone().into())
-                    .collect();
-                (manager.into(), manager_clients)
-            })
-            .collect();
+                    .map(|(_, client)| {
+                        Client::try_from(client.clone()).map_err(RepositoryError::from)
+                    })
+                    .collect::<Result<Vec<_>, RepositoryError>>()?;
 
-        Ok(manager_with_clients) // Convert DbUser to DomainUser
+                let domain_manager = Manager::try_from(manager).map_err(RepositoryError::from)?;
+                Ok((domain_manager, manager_clients))
+            })
+            .collect::<Result<Vec<_>, RepositoryError>>()?;
+
+        Ok(manager_with_clients)
     }
 }

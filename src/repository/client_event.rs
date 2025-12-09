@@ -1,9 +1,15 @@
+//! Repository implementation for CRM client events.
+
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use pushkind_common::repository::errors::RepositoryResult;
+use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
+use std::convert::TryInto;
 
-use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::manager::Manager;
+use crate::domain::{
+    client_event::{ClientEvent, NewClientEvent},
+    types::TypeConstraintError,
+};
 use crate::models::client_event::{
     ClientEvent as DbClientEvent, NewClientEvent as DbNewClientEvent,
 };
@@ -66,14 +72,20 @@ impl ClientEventReader for DieselRepository {
             db_managers.into_iter().map(|m| (m.id, m)).collect();
 
         // --- 7. Combine events with managers ---
-        let combined: Vec<(ClientEvent, Manager)> = db_events
-            .into_iter()
-            .filter_map(|event| {
-                manager_map
-                    .get(&event.manager_id)
-                    .map(|manager| (event.into(), manager.clone().into()))
-            })
-            .collect();
+        let mut combined = Vec::with_capacity(db_events.len());
+        for db_event in db_events {
+            let manager_id = db_event.manager_id;
+            let event: ClientEvent = db_event.try_into().map_err(|err: TypeConstraintError| {
+                RepositoryError::ValidationError(err.to_string())
+            })?;
+            if let Some(manager) = manager_map.get(&manager_id) {
+                let domain_manager =
+                    Manager::try_from(manager.clone()).map_err(|err: TypeConstraintError| {
+                        RepositoryError::ValidationError(err.to_string())
+                    })?;
+                combined.push((event, domain_manager));
+            }
+        }
 
         Ok((total, combined))
     }
@@ -104,10 +116,12 @@ impl ClientEventWriter for DieselRepository {
 
         let new_client_event: DbNewClientEvent = client_event.into();
 
-        let client_event = diesel::insert_into(client_events::table)
+        let db_client_event = diesel::insert_into(client_events::table)
             .values(&new_client_event)
             .get_result::<DbClientEvent>(&mut conn)?;
 
-        Ok(client_event.into())
+        db_client_event
+            .try_into()
+            .map_err(|err: TypeConstraintError| RepositoryError::ValidationError(err.to_string()))
     }
 }

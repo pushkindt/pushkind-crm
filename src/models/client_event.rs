@@ -1,8 +1,13 @@
+//! Diesel models for storing CRM client events.
+
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 
-use crate::domain::client_event::{
-    ClientEvent as DomainClientEvent, ClientEventType, NewClientEvent as DomainNewClientEvent,
+use crate::domain::{
+    client_event::{
+        ClientEvent as DomainClientEvent, ClientEventType, NewClientEvent as DomainNewClientEvent,
+    },
+    types::{ClientEventId, ClientId, ManagerId, TypeConstraintError},
 };
 use crate::models::client::Client;
 use crate::models::manager::Manager;
@@ -29,24 +34,26 @@ pub struct NewClientEvent {
     pub event_data: String,
 }
 
-impl From<ClientEvent> for DomainClientEvent {
-    fn from(event: ClientEvent) -> Self {
-        Self {
-            id: event.id,
-            client_id: event.client_id,
-            manager_id: event.manager_id,
+impl TryFrom<ClientEvent> for DomainClientEvent {
+    type Error = TypeConstraintError;
+
+    fn try_from(event: ClientEvent) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: ClientEventId::try_from(event.id)?,
+            client_id: ClientId::try_from(event.client_id)?,
+            manager_id: ManagerId::try_from(event.manager_id)?,
             event_type: ClientEventType::from(event.event_type.as_str()),
             event_data: serde_json::from_str(&event.event_data).unwrap_or_default(),
             created_at: event.created_at,
-        }
+        })
     }
 }
 
 impl<'a> From<&'a DomainNewClientEvent> for NewClientEvent {
     fn from(event: &'a DomainNewClientEvent) -> Self {
         Self {
-            client_id: event.client_id,
-            manager_id: event.manager_id,
+            client_id: event.client_id.get(),
+            manager_id: event.manager_id.get(),
             event_type: event.event_type.to_string(),
             event_data: event.event_data.to_string(),
         }

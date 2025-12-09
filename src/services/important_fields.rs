@@ -1,3 +1,5 @@
+//! Services coordinating important field workflows.
+
 use std::collections::HashSet;
 
 use pushkind_common::domain::auth::AuthenticatedUser;
@@ -5,15 +7,11 @@ use pushkind_common::routes::check_role;
 
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::important_field::ImportantField;
+use crate::domain::types::{HubId, ImportantFieldName, TypeConstraintError};
+use crate::dto::important_fields::ImportantFieldsPageData;
 use crate::forms::important_fields::ImportantFieldsForm;
 use crate::repository::{ImportantFieldReader, ImportantFieldWriter};
 use crate::services::{ServiceError, ServiceResult};
-
-/// Data required to render the important fields management page.
-#[derive(Debug)]
-pub struct ImportantFieldsPageData {
-    pub fields: Vec<String>,
-}
 
 /// Loads the existing important field names for the admin interface.
 pub fn load_important_fields<R>(
@@ -27,21 +25,23 @@ where
         return Err(ServiceError::Unauthorized);
     }
 
+    let hub_id = HubId::new(user.hub_id)?;
+
     let fields = repo
-        .list_important_fields(user.hub_id)
+        .list_important_fields(hub_id.get())
         .map_err(|err| {
             log::error!("Failed to load important fields: {err}");
             err
         })?
         .into_iter()
-        .map(|field| field.field)
+        .map(|field| field.field.as_str().to_string())
         .collect();
 
     Ok(ImportantFieldsPageData { fields })
 }
 
 /// Normalizes the textarea payload, sanitizing and deduplicating field names.
-fn normalize_fields(hub_id: i32, raw: &str) -> Vec<ImportantField> {
+fn normalize_fields(hub_id: HubId, raw: &str) -> Result<Vec<ImportantField>, TypeConstraintError> {
     let mut seen = HashSet::new();
     let mut result = Vec::new();
 
@@ -59,11 +59,12 @@ fn normalize_fields(hub_id: i32, raw: &str) -> Vec<ImportantField> {
 
         let normalized = normalized.to_string();
         if seen.insert(normalized.clone()) {
-            result.push(ImportantField::new(hub_id, normalized));
+            let field_name = ImportantFieldName::new(normalized)?;
+            result.push(ImportantField::new(hub_id, field_name));
         }
     }
 
-    result
+    Ok(result)
 }
 
 /// Persists the sanitized list of important field names for the hub.
@@ -79,9 +80,10 @@ where
         return Err(ServiceError::Unauthorized);
     }
 
-    let fields = normalize_fields(user.hub_id, &form.fields);
+    let hub_id = HubId::new(user.hub_id)?;
+    let fields = normalize_fields(hub_id, &form.fields)?;
 
-    repo.replace_important_fields(user.hub_id, &fields)
+    repo.replace_important_fields(hub_id.get(), &fields)
         .map_err(|err| {
             log::error!("Failed to save important fields: {err}");
             err
@@ -95,6 +97,7 @@ mod tests {
     use std::cell::RefCell;
 
     use super::*;
+    use crate::domain::types::{HubId, ImportantFieldName};
     use pushkind_common::repository::errors::RepositoryResult;
 
     #[derive(Default)]
@@ -103,12 +106,14 @@ mod tests {
     }
 
     impl ImportantFieldReader for MockRepo {
+        /// Returns the fields currently stored in the mock repository.
         fn list_important_fields(&self, _hub_id: i32) -> RepositoryResult<Vec<ImportantField>> {
             Ok(self.stored.borrow().clone())
         }
     }
 
     impl ImportantFieldWriter for MockRepo {
+        /// Replaces the stored fields in the mock repository.
         fn replace_important_fields(
             &self,
             _hub_id: i32,
@@ -119,6 +124,7 @@ mod tests {
         }
     }
 
+    /// Builds an admin user for test scenarios.
     fn admin_user() -> AuthenticatedUser {
         AuthenticatedUser {
             sub: "1".to_string(),
@@ -130,6 +136,7 @@ mod tests {
         }
     }
 
+    /// Builds a viewer user without admin rights.
     fn viewer_user() -> AuthenticatedUser {
         AuthenticatedUser {
             sub: "2".to_string(),
@@ -141,6 +148,14 @@ mod tests {
         }
     }
 
+    fn build_field(hub: i32, name: &str) -> ImportantField {
+        ImportantField::new(
+            HubId::new(hub).expect("valid hub id"),
+            ImportantFieldName::new(name).expect("valid field name"),
+        )
+    }
+
+    /// Ensures loading fails for users lacking the admin role.
     #[test]
     fn load_requires_admin_role() {
         let repo = MockRepo::default();
@@ -151,6 +166,7 @@ mod tests {
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
 
+    /// Ensures saving fails for users lacking the admin role.
     #[test]
     fn save_requires_admin_role() {
         let repo = MockRepo::default();
@@ -164,18 +180,25 @@ mod tests {
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
 
+    /// Verifies that normalization trims, sanitizes, and deduplicates input.
     #[test]
     fn normalize_fields_trims_sanitizes_and_deduplicates() {
+        let hub_id = HubId::new(7).expect("valid hub id");
         let fields = normalize_fields(
-            7,
+            hub_id,
             "  Name  \n<script>alert('x')</script>\nName\n\n Company ",
-        );
+        )
+        .expect("should normalize fields");
 
-        let names: Vec<_> = fields.into_iter().map(|f| f.field).collect();
+        let names: Vec<_> = fields
+            .into_iter()
+            .map(|f| f.field.as_str().to_string())
+            .collect();
 
         assert_eq!(names, vec!["Name", "Company"]);
     }
 
+    /// Confirms saving replaces the stored important fields.
     #[test]
     fn save_replaces_existing_fields() {
         let repo = MockRepo::default();
@@ -188,17 +211,16 @@ mod tests {
 
         let stored = repo.stored.borrow().clone();
         assert_eq!(stored.len(), 2);
-        assert_eq!(stored[0].field, "Name");
-        assert_eq!(stored[1].field, "Phone");
+        assert_eq!(stored[0].field.as_str(), "Name");
+        assert_eq!(stored[1].field.as_str(), "Phone");
     }
 
+    /// Checks that loading returns already saved field names.
     #[test]
     fn load_returns_existing_fields() {
         let repo = MockRepo::default();
-        repo.stored.replace(vec![
-            ImportantField::new(42, "Name".to_string()),
-            ImportantField::new(42, "Email".to_string()),
-        ]);
+        repo.stored
+            .replace(vec![build_field(42, "Name"), build_field(42, "Email")]);
 
         let user = admin_user();
         let data = load_important_fields(&repo, &user).expect("should load fields");

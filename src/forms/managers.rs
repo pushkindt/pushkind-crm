@@ -1,3 +1,5 @@
+//! Forms for creating and assigning managers.
+
 use serde::Deserialize;
 use validator::Validate;
 
