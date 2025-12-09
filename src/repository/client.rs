@@ -403,67 +403,74 @@ impl ClientWriter for DieselRepository {
         use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
-        let db_updates: DbUpdateClient = updates.into();
 
-        let mut updated: Client = diesel::update(clients::table.find(client_id))
-            .set(&db_updates)
-            .get_result::<DbClient>(&mut conn)?
-            .into();
+        conn.transaction::<Client, diesel::result::Error, _>(|conn| {
+            let db_updates: DbUpdateClient = updates.into();
+            let mut updated: Client = diesel::update(clients::table.find(client_id))
+                .set(&db_updates)
+                .get_result::<DbClient>(conn)?
+                .into();
 
-        // Update fields (delete all → insert new)
-        diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
-            .execute(&mut conn)?;
-        if let Some(fields) = &updates.fields {
-            for (field, value) in fields {
-                let new_field = ClientField {
-                    client_id,
-                    field: field.to_string(),
-                    value: value.to_string(),
-                };
-                diesel::insert_into(client_fields::table)
-                    .values(&new_field)
-                    .execute(&mut conn)?;
+            // Update fields (delete all → insert new)
+            diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
+                .execute(conn)?;
+            if let Some(fields) = &updates.fields {
+                for (field, value) in fields {
+                    let new_field = ClientField {
+                        client_id,
+                        field: field.to_string(),
+                        value: value.to_string(),
+                    };
+                    diesel::insert_into(client_fields::table)
+                        .values(&new_field)
+                        .execute(conn)?;
+                }
             }
-        }
 
-        // Update denormalized `clients.fields` using a Diesel subselect
-        diesel::update(clients::table.find(client_id))
-            .set(
-                clients::fields.eq(client_fields::table
-                    .filter(client_fields::client_id.eq(client_id))
-                    .select(diesel::dsl::sql::<Nullable<Text>>(
-                        "trim(COALESCE(group_concat(value, ' '), ''))",
-                    ))
-                    .single_value()),
-            )
-            .execute(&mut conn)?;
+            // Update denormalized `clients.fields` using a Diesel subselect
+            diesel::update(clients::table.find(client_id))
+                .set(
+                    clients::fields.eq(client_fields::table
+                        .filter(client_fields::client_id.eq(client_id))
+                        .select(diesel::dsl::sql::<Nullable<Text>>(
+                            "trim(COALESCE(group_concat(value, ' '), ''))",
+                        ))
+                        .single_value()),
+                )
+                .execute(conn)?;
 
-        // Reload fields
-        let fields_vec = client_fields::table
-            .filter(client_fields::client_id.eq(client_id))
-            .select(ClientField::as_select())
-            .load::<ClientField>(&mut conn)?;
+            // Reload fields
+            let fields_vec = client_fields::table
+                .filter(client_fields::client_id.eq(client_id))
+                .select(ClientField::as_select())
+                .load::<ClientField>(conn)?;
 
-        let fields_map = fields_vec
-            .into_iter()
-            .map(|f| (f.field, f.value))
-            .collect::<BTreeMap<_, _>>();
+            let fields_map = fields_vec
+                .into_iter()
+                .map(|f| (f.field, f.value))
+                .collect::<BTreeMap<_, _>>();
 
-        updated.fields = Some(fields_map);
+            updated.fields = Some(fields_map);
 
-        Ok(updated)
+            Ok(updated)
+        })
+        .map_err(RepositoryError::from)
     }
 
     fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {
         use crate::schema::{client_fields, client_manager, clients};
 
         let mut conn = self.conn()?;
-        diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
-            .execute(&mut conn)?;
-        diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
-            .execute(&mut conn)?;
-        diesel::delete(clients::table.find(client_id)).execute(&mut conn)?;
-        Ok(())
+
+        conn.transaction::<(), diesel::result::Error, _>(|conn| {
+            diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
+                .execute(conn)?;
+            diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
+                .execute(conn)?;
+            diesel::delete(clients::table.find(client_id)).execute(conn)?;
+            Ok(())
+        })
+        .map_err(RepositoryError::from)
     }
 }
 

@@ -1,7 +1,7 @@
 //! Repository implementation for CRM managers.
 
-use diesel::{prelude::*, upsert::excluded};
-use pushkind_common::repository::errors::RepositoryResult;
+use diesel::{prelude::*, upsert::excluded, Connection};
+use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::{
     domain::{
@@ -56,14 +56,17 @@ impl ManagerWriter for DieselRepository {
             })
             .collect::<Vec<_>>();
 
-        diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
-            .execute(&mut conn)?;
+        conn.transaction::<usize, diesel::result::Error, _>(move |conn| {
+            diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
+                .execute(conn)?;
 
-        let result = diesel::insert_into(client_manager::table)
-            .values(db_client_manager)
-            .execute(&mut conn)?;
+            let result = diesel::insert_into(client_manager::table)
+                .values(db_client_manager)
+                .execute(conn)?;
 
-        Ok(result)
+            Ok(result)
+        })
+        .map_err(RepositoryError::from)
     }
 }
 
