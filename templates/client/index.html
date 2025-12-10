@@ -1,5 +1,14 @@
 {% extends 'base.html' %}
 
+{% block styles %}
+<style>
+    #attachmentModal #file-browser-root {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 {% include 'components/navigation.html' %}
 
