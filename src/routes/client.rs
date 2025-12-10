@@ -45,6 +45,7 @@ pub async fn show_client(
             context.insert("important_fields", &data.important_fields);
             context.insert("other_fields", &data.other_fields);
             context.insert("todo_service_url", &server_config.todo_service_url);
+            context.insert("files_service_url", &server_config.files_service_url);
 
             render_template(&tera, "client/index.html", &context)
         }

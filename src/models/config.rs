@@ -17,4 +17,5 @@ pub struct ServerConfig {
     pub secret: String,
     pub auth_service_url: String,
     pub todo_service_url: String,
+    pub files_service_url: String,
 }

@@ -10,3 +10,4 @@ templates_dir: templates/**/*
 secret: env::APP_SECRET
 auth_service_url: ""
 todo_service_url: ""
+files_service_url: ""

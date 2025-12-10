@@ -32,6 +32,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{files_service_url | safe}}/assets/filebrowser.js"></script>
 <script>
     function removeCustomField(button) {
         const row = button.closest("div.row");
@@ -95,6 +96,15 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+
+
+        const root = document.getElementById("file-browser-root");
+        const initialPath = root?.dataset.initialPath ?? "";
+        if (window.mountFileBrowser) {
+            window.mountFileBrowser("#file-browser-root", initialPath, { baseUrl: "{{files_service_url | safe}}" });
+        }
+
+
         const eventTypeSelect = document.getElementById("event-form-event-type");
         if (!eventTypeSelect) {
             return;
