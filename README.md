@@ -102,7 +102,8 @@ Key settings you may want to override:
 | `APP_ZMQ_CLIENTS_SUB` | ZeroMQ PUB endpoint for inbound client events | `tcp://127.0.0.1:5562` |
 | `APP_ZMQ_REPLIER_SUB` | ZeroMQ PUB endpoint for inbound email reply events | `tcp://127.0.0.1:5560` |
 | `APP_AUTH_SERVICE_URL` | URL of the Pushkind authentication service | _required_ |
-| `TODO_SERVICE_URL` | Base URL of the manager TODO service used for quick links | _optional_ |
+| `APP_TODO_SERVICE_URL` | Base URL of the manager TODO service used for quick links | _required_ |
+| `APP_FILES_SERVICE_URL` | Base URL file storage service used for uploading files | _required_ |
 
 Switch to the production profile with `APP_ENV=prod` or provide your own
 `config/{env}.yaml`. Environment variables always win over YAML values, so a

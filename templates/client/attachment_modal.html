@@ -6,14 +6,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="border-bottom" id="file-browser-root" data-initial-path=""></div>
                 <form action="/client/attachment" method="POST">
                     <input type="hidden" name="id" value="{{client.id}}" required readonly>
                     <div class="row mb-3">
                         <div class="col-md">
                             <input type="text" name="text" class="form-control my-1" value="" placeholder="Название" required>
+                            <div class="form-text text-muted">Название документа</div>
                         </div>
                         <div class="col-md">
                             <input type="url" name="url" class="form-control my-1" value="" placeholder="https://example.com/" required>
+                            <div class="form-text text-muted">Ссылка на документ</div>
                         </div>
                     </div>
                     <div class="row mb-3">
