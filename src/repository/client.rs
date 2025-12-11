@@ -3,9 +3,10 @@
 use std::collections::BTreeMap;
 
 use diesel::Connection;
+use diesel::dsl::exists;
 use diesel::prelude::*;
 use diesel::result::DatabaseErrorKind;
-use diesel::sql_types::{BigInt, Integer, Nullable, Text};
+use diesel::sql_types::{Bool, Nullable, Text};
 use diesel::upsert::excluded;
 use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
@@ -99,7 +100,7 @@ impl ClientReader for DieselRepository {
     }
 
     fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
-        use crate::schema::{client_manager, clients, managers};
+        use crate::schema::{client_fts, client_manager, clients, managers};
 
         let mut conn = self.conn()?;
 
@@ -124,6 +125,21 @@ impl ClientReader for DieselRepository {
                     ),
                 );
             }
+
+            if let Some(term) = query.search.as_ref()
+                && let Some(fts_query) = build_fts_match_query(term)
+            {
+                let fts_filter = exists(
+                    client_fts::table
+                        .filter(client_fts::rowid.eq(clients::id))
+                        .filter(
+                            diesel::dsl::sql::<Bool>("client_fts MATCH ")
+                                .bind::<Text, _>(fts_query),
+                        ),
+                );
+                items = items.filter(fts_filter);
+            }
+
             items
         };
 
@@ -163,102 +179,6 @@ impl ClientReader for DieselRepository {
             })
             .collect::<Result<Vec<_>, RepositoryError>>()?;
 
-        Ok((total, clients))
-    }
-
-    fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
-        use crate::models::client::ClientCount;
-
-        let mut conn = self.conn()?;
-
-        // Prepare a safe FTS5 MATCH query using helper
-        let match_query = match &query.search {
-            None => return Ok((0, vec![])),
-            Some(raw) => match build_fts_match_query(raw) {
-                Some(mq) => mq,
-                None => return Ok((0, vec![])),
-            },
-        };
-
-        // Build base SQL
-        let mut sql = String::from(
-            r#"
-            SELECT clients.*
-            FROM clients
-            JOIN client_fts ON clients.id = client_fts.rowid
-            WHERE client_fts MATCH ?
-            AND clients.hub_id = ?
-            "#,
-        );
-
-        if query.manager_email.is_some() {
-            let manager_filter = r#"
-                AND clients.id IN (
-                    SELECT client_manager.client_id
-                    FROM client_manager
-                    JOIN managers ON client_manager.manager_id = managers.id
-                    WHERE managers.email = ?
-                    AND managers.hub_id = ?
-                )
-            "#;
-            sql.push_str(manager_filter);
-        }
-
-        let total_sql = format!("SELECT COUNT(*) as count FROM ({sql})");
-
-        // Now add pagination to SQL (but not count)
-        if query.pagination.is_some() {
-            sql.push_str(" LIMIT ? OFFSET ? ");
-        }
-
-        // Build final data query
-        let mut data_query = diesel::sql_query(&sql)
-            .into_boxed()
-            .bind::<Text, _>(&match_query)
-            .bind::<Integer, _>(query.hub_id);
-
-        let mut total_query = diesel::sql_query(&total_sql)
-            .into_boxed()
-            .bind::<Text, _>(&match_query)
-            .bind::<Integer, _>(query.hub_id);
-
-        if let Some(manager_email) = &query.manager_email {
-            data_query = data_query
-                .bind::<Text, _>(manager_email)
-                .bind::<Integer, _>(query.hub_id);
-            total_query = total_query
-                .bind::<Text, _>(manager_email)
-                .bind::<Integer, _>(query.hub_id);
-        }
-
-        if let Some(pagination) = &query.pagination {
-            let limit = pagination.per_page as i64;
-            let offset = ((pagination.page.max(1) - 1) * pagination.per_page) as i64;
-            data_query = data_query
-                .bind::<BigInt, _>(limit)
-                .bind::<BigInt, _>(offset);
-        }
-
-        let db_clients = data_query.load::<DbClient>(&mut conn)?;
-
-        // Load recipient fields, grouped by recipient
-        let db_fields = ClientField::belonging_to(&db_clients)
-            .select(ClientField::as_select())
-            .load::<ClientField>(&mut conn)?
-            .grouped_by(&db_clients);
-
-        let clients = db_clients
-            .into_iter()
-            .zip(db_fields)
-            .map(|(c, f)| {
-                let mut client = Client::try_from(c).map_err(RepositoryError::from)?;
-                let fields = f.into_iter().map(|f| (f.field, f.value)).collect();
-                client.fields = Some(fields);
-                Ok(client)
-            })
-            .collect::<Result<Vec<_>, RepositoryError>>()?;
-
-        let total = total_query.get_result::<ClientCount>(&mut conn)?.count as usize;
         Ok((total, clients))
     }
 

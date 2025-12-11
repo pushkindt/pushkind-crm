@@ -37,12 +37,11 @@ where
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
-    let (total, clients) = if let Some(term) = search {
-        repo.search_clients(query.search(term))
-            .map_err(ServiceError::from)?
-    } else {
-        repo.list_clients(query).map_err(ServiceError::from)?
-    };
+    if let Some(search) = search {
+        query = query.search(search);
+    }
+
+    let (total, clients) = repo.list_clients(query).map_err(ServiceError::from)?;
 
     Ok(ClientsResponse { total, clients })
 }

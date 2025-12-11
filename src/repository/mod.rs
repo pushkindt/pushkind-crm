@@ -96,7 +96,6 @@ pub trait ClientReader {
     fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>>;
     fn get_client_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Client>>;
     fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
-    fn search_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>>;
     fn check_client_assigned_to_manager(
         &self,

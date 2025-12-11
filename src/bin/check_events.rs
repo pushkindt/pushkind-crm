@@ -495,13 +495,6 @@ mod tests {
             Ok((0, Vec::new()))
         }
 
-        fn search_clients(
-            &self,
-            _query: ClientListQuery,
-        ) -> RepositoryResult<(usize, Vec<Client>)> {
-            Ok((0, Vec::new()))
-        }
-
         fn list_managers(&self, _id: i32) -> RepositoryResult<Vec<Manager>> {
             Ok(Vec::new())
         }
