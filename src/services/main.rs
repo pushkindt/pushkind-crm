@@ -35,11 +35,11 @@ where
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
-    let (total, clients) = if let Some(term) = &search_query {
-        list_query = list_query.search(term.clone());
-        repo.search_clients(list_query)
-            .map_err(ServiceError::from)?
-    } else if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
+    if let Some(search) = &search_query {
+        list_query = list_query.search(search);
+    }
+
+    let (total, clients) = if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         repo.list_clients(list_query).map_err(ServiceError::from)?
     } else if check_role("crm_manager", &user.roles) {
         let manager_payload = NewManager::try_from(user).map_err(|err| {

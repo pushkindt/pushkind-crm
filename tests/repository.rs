@@ -44,7 +44,7 @@ fn test_client_repository_crud() {
     let mut bob = items[1].clone();
 
     let (search_total, search_items) = client_repo
-        .search_clients(ClientListQuery::new(1).search("Bob"))
+        .list_clients(ClientListQuery::new(1).search("Bob"))
         .unwrap();
     assert_eq!(search_total, 1);
     assert_eq!(search_items[0].name.as_str(), "Bob");
