@@ -1,30 +1,30 @@
 //! Background worker consuming ZeroMQ notifications and recording CRM client events.
 
-use std::{collections::BTreeMap, env};
+use std::env;
 
 use chrono::Utc;
 use config::Config;
 use dotenvy::dotenv;
-use pushkind_common::models::emailer::zmq::{
-    ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
-};
 use pushkind_common::{
     db::establish_connection_pool,
     repository::errors::{RepositoryError, RepositoryResult},
 };
-use serde::Deserialize;
+use pushkind_emailer::models::zmq::{ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage};
 use serde_json::json;
 
-use pushkind_crm::domain::{
-    client::{NewClient, UpdateClient},
-    client_event::{ClientEventType, NewClientEvent},
-    manager::NewManager,
-    types::{ClientEmail, ClientName, HubId, PhoneNumber},
-};
 use pushkind_crm::models::config::ServerConfig;
 use pushkind_crm::repository::{
     ClientEventReader, ClientEventWriter, ClientReader, ClientWriter, DieselRepository,
     ManagerWriter,
+};
+use pushkind_crm::{
+    domain::{
+        client::NewClient,
+        client_event::{ClientEventType, NewClientEvent},
+        manager::NewManager,
+        types::{ClientEmail, ClientName, HubId, PhoneNumber},
+    },
+    models::zmq::ZmqClientMessage,
 };
 
 fn is_duplicate_event<R>(repo: &R, new_event: &NewClientEvent) -> RepositoryResult<bool>
@@ -46,13 +46,14 @@ where
             let manager = repo.create_or_update_manager(&manager_payload)?;
 
             for recipient in &new_email.recipients {
-                let client =
-                    match repo.get_client_by_email(&recipient.address, manager.hub_id.get())? {
-                        Some(client) => client,
-                        None => {
-                            continue;
-                        }
-                    };
+                let client = match repo
+                    .get_client_by_email(recipient.address.as_str(), manager.hub_id.get())?
+                {
+                    Some(client) => client,
+                    None => {
+                        continue;
+                    }
+                };
 
                 let new_event = NewClientEvent {
                     client_id: client.id,
@@ -60,7 +61,7 @@ where
                     manager_id: manager.id,
                     created_at: Utc::now().naive_utc(),
                     event_data: json!({
-                        "text": new_email.subject.as_deref().unwrap_or_default(),
+                        "text": new_email.subject.as_ref().map(|s| s.as_str()),
                     }),
                 };
 
@@ -178,134 +179,29 @@ where
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
-struct ZmqClientPayload {
-    hub_id: i32,
-    name: String,
-    email: Option<String>,
-    phone: Option<String>,
-    #[serde(default)]
-    fields: Option<BTreeMap<String, String>>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum ZmqClientMessage {
-    Batch { clients: Vec<ZmqClientPayload> },
-    Single { client: ZmqClientPayload },
-    Array(Vec<ZmqClientPayload>),
-    Plain(ZmqClientPayload),
-}
-
-impl ZmqClientMessage {
-    fn into_payloads(self) -> Vec<ZmqClientPayload> {
-        match self {
-            Self::Batch { clients } => clients,
-            Self::Single { client } => vec![client],
-            Self::Array(clients) => clients,
-            Self::Plain(client) => vec![client],
-        }
-    }
-}
-
 fn process_client_message<R>(message: ZmqClientMessage, repo: R) -> RepositoryResult<()>
 where
     R: ClientWriter + ClientReader,
 {
-    let payloads = message.into_payloads();
+    let new_client = NewClient::new(
+        HubId::new(message.hub_id)?,
+        ClientName::new(&message.name)?,
+        match message.email {
+            Some(email) => Some(ClientEmail::new(&email)?),
+            None => None,
+        },
+        match message.phone {
+            Some(phone) => Some(PhoneNumber::new(&phone)?),
+            None => None,
+        },
+        message.fields,
+    );
 
-    if payloads.is_empty() {
-        log::info!("Received empty client payload; skipping");
-        return Ok(());
-    }
-
-    let mut new_clients: Vec<NewClient> = Vec::new();
-
-    for payload in payloads {
-        let ZmqClientPayload {
-            hub_id,
-            name,
-            email,
-            phone,
-            fields,
-        } = payload;
-
-        let hub = match HubId::new(hub_id) {
-            Ok(hub) => hub,
-            Err(err) => {
-                log::error!("Invalid hub id {hub_id}: {err}");
-                continue;
-            }
-        };
-
-        let client_name = match ClientName::new(name.clone()) {
-            Ok(name) => name,
-            Err(_) => {
-                log::warn!("Skipping client without a valid name in hub {hub_id}");
-                continue;
-            }
-        };
-
-        let normalized_email = email.clone().and_then(|value| ClientEmail::new(value).ok());
-        let normalized_phone = phone.clone().and_then(|value| PhoneNumber::new(value).ok());
-
-        if let Some(email_lookup) = email.clone() {
-            match repo.get_client_by_email(&email_lookup, hub_id)? {
-                Some(existing) => {
-                    let updates = UpdateClient::new(
-                        client_name.clone(),
-                        normalized_email.clone(),
-                        normalized_phone.clone(),
-                        fields.clone(),
-                    );
-
-                    match repo.update_client(existing.id.get(), &updates) {
-                        Ok(client) => {
-                            log::info!(
-                                "Updated client {} in hub {} via ZMQ payload",
-                                client.id,
-                                client.hub_id
-                            );
-                        }
-                        Err(e) => {
-                            log::error!(
-                                "Failed to update client {} in hub {}: {}",
-                                existing.id,
-                                hub_id,
-                                e
-                            );
-                            return Err(e);
-                        }
-                    }
-
-                    continue;
-                }
-                None => {
-                    log::info!(
-                        "Creating new client in hub {} for email {}",
-                        hub_id,
-                        email_lookup
-                    );
-                }
-            }
-        }
-
-        new_clients.push(NewClient::new(
-            hub,
-            client_name.clone(),
-            normalized_email.clone(),
-            normalized_phone.clone(),
-            fields,
-        ));
-    }
-
-    if !new_clients.is_empty() {
-        let inserted = repo.create_clients(&new_clients)?;
-        log::info!(
-            "Inserted or updated {} client records via ZMQ payload",
-            inserted
-        );
-    }
+    let inserted = repo.create_clients(&[new_client])?;
+    log::info!(
+        "Inserted or updated {} client records via ZMQ payload",
+        inserted
+    );
 
     Ok(())
 }
@@ -435,7 +331,7 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use pushkind_common::repository::errors::RepositoryError;
-    use pushkind_crm::domain::client::Client;
+    use pushkind_crm::domain::client::{Client, UpdateClient};
     use pushkind_crm::domain::manager::Manager;
     use pushkind_crm::domain::types::ClientId;
     use pushkind_crm::repository::ClientListQuery;
@@ -515,17 +411,36 @@ mod tests {
             let mut next_id = self.next_id.lock().expect("lock poisoned");
 
             for new in new_clients {
+                let now = Utc::now().naive_utc();
+
+                let mut updated_existing = false;
+                if let Some(email) = new.email.as_ref()
+                    && let Some(existing) = clients.values_mut().find(|client| {
+                        client.hub_id == new.hub_id && client.email.as_ref() == Some(email)
+                    })
+                {
+                    existing.name = new.name.clone();
+                    existing.phone = new.phone.clone();
+                    existing.fields = new.fields.clone();
+                    existing.updated_at = now;
+                    updated_existing = true;
+                }
+
+                if updated_existing {
+                    count += 1;
+                    continue;
+                }
+
                 let id = *next_id;
                 *next_id += 1;
-                let timestamp = Utc::now().naive_utc();
                 let client = Client {
                     id: ClientId::new(id).expect("valid client id"),
                     hub_id: new.hub_id,
                     name: new.name.clone(),
                     email: new.email.clone(),
                     phone: new.phone.clone(),
-                    created_at: timestamp,
-                    updated_at: timestamp,
+                    created_at: now,
+                    updated_at: now,
                     fields: new.fields.clone(),
                 };
                 clients.insert(id, client);
@@ -566,26 +481,23 @@ mod tests {
     #[test]
     fn processes_new_client_payloads() {
         let repo = TestRepo::new();
-        let message = ZmqClientMessage::Batch {
-            clients: vec![
-                ZmqClientPayload {
-                    hub_id: 1,
-                    name: "Alice".to_string(),
-                    email: Some("alice@example.com".to_string()),
-                    phone: None,
-                    fields: None,
-                },
-                ZmqClientPayload {
-                    hub_id: 2,
-                    name: "Bob".to_string(),
-                    email: Some("bob@example.com".to_string()),
-                    phone: Some("123".to_string()),
-                    fields: None,
-                },
-            ],
+        let message_alice = ZmqClientMessage {
+            hub_id: 1,
+            name: "Alice".to_string(),
+            email: Some("alice@example.com".to_string()),
+            phone: None,
+            fields: None,
         };
+        process_client_message(message_alice, repo.clone()).expect("processing failed");
 
-        process_client_message(message, repo.clone()).expect("processing failed");
+        let message_bob = ZmqClientMessage {
+            hub_id: 2,
+            name: "Bob".to_string(),
+            email: Some("bob@example.com".to_string()),
+            phone: Some("+1 (415) 555-2671".to_string()),
+            fields: None,
+        };
+        process_client_message(message_bob, repo.clone()).expect("processing failed");
 
         let snapshot = repo.snapshot();
         assert_eq!(snapshot.len(), 2);
@@ -596,13 +508,13 @@ mod tests {
     #[test]
     fn updates_existing_clients_by_email() {
         let repo = TestRepo::new();
-        let create_message = ZmqClientMessage::Plain(ZmqClientPayload {
+        let create_message = ZmqClientMessage {
             hub_id: 1,
             name: "Initial".to_string(),
             email: Some("initial@example.com".to_string()),
             phone: None,
             fields: None,
-        });
+        };
         process_client_message(create_message, repo.clone()).expect("insert failed");
 
         let inserted_id = repo
@@ -613,13 +525,13 @@ mod tests {
             .id
             .get();
 
-        let update_message = ZmqClientMessage::Plain(ZmqClientPayload {
+        let update_message = ZmqClientMessage {
             hub_id: 1,
             name: "Updated".to_string(),
             email: Some("initial@example.com".to_string()),
             phone: Some("+1 (415) 555-2671".to_string()),
             fields: None,
-        });
+        };
 
         process_client_message(update_message, repo.clone()).expect("update failed");
 
@@ -636,13 +548,13 @@ mod tests {
     #[test]
     fn creates_new_when_email_not_found() {
         let repo = TestRepo::new();
-        let message = ZmqClientMessage::Plain(ZmqClientPayload {
+        let message = ZmqClientMessage {
             hub_id: 9,
             name: "Fallback".to_string(),
             email: Some("fallback@example.com".to_string()),
             phone: None,
             fields: None,
-        });
+        };
 
         process_client_message(message, repo.clone()).expect("processing failed");
 
@@ -654,13 +566,13 @@ mod tests {
     #[test]
     fn creates_new_when_email_missing() {
         let repo = TestRepo::new();
-        let message = ZmqClientMessage::Plain(ZmqClientPayload {
+        let message = ZmqClientMessage {
             hub_id: 3,
             name: "No Email".to_string(),
             email: None,
             phone: None,
             fields: None,
-        });
+        };
 
         process_client_message(message, repo.clone()).expect("processing failed");
 

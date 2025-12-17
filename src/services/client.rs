@@ -4,10 +4,16 @@ use std::collections::HashMap;
 
 use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::domain::emailer::email::{NewEmail, NewEmailRecipient};
-use pushkind_common::models::emailer::zmq::ZMQSendEmailMessage;
 use pushkind_common::routes::check_role;
 use pushkind_common::zmq::ZmqSender;
+use pushkind_common::zmq::ZmqSenderExt;
+use pushkind_emailer::domain::email::{NewEmail, NewEmailRecipient};
+use pushkind_emailer::domain::types::EmailBody;
+use pushkind_emailer::domain::types::EmailSubject;
+use pushkind_emailer::domain::types::HubId;
+use pushkind_emailer::domain::types::RecipientEmail;
+use pushkind_emailer::domain::types::RecipientName;
+use pushkind_emailer::models::zmq::ZMQSendEmailMessage;
 use serde_json::json;
 use validator::Validate;
 
@@ -289,15 +295,15 @@ where
             .unwrap_or_default();
 
         let new_email = NewEmail {
-            message: sanitized_message.clone(),
-            subject: subject.clone(),
+            message: EmailBody::new(&sanitized_message)?,
+            subject: subject.as_ref().map(EmailSubject::new).transpose()?,
             attachment: None,
             attachment_name: None,
             attachment_mime: None,
-            hub_id: user.hub_id,
+            hub_id: HubId::new(user.hub_id)?,
             recipients: vec![NewEmailRecipient {
-                address: client_email.clone().into_inner(),
-                name: client.name.as_str().to_string(),
+                address: RecipientEmail::new(client_email.clone().into_inner())?,
+                name: RecipientName::new(client.name.as_str())?,
                 fields,
             }],
         };
