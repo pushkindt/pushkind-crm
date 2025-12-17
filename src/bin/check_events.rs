@@ -5,13 +5,11 @@ use std::{collections::BTreeMap, env};
 use chrono::Utc;
 use config::Config;
 use dotenvy::dotenv;
-use pushkind_common::models::emailer::zmq::{
-    ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage,
-};
 use pushkind_common::{
     db::establish_connection_pool,
     repository::errors::{RepositoryError, RepositoryResult},
 };
+use pushkind_emailer::models::zmq::{ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -46,13 +44,14 @@ where
             let manager = repo.create_or_update_manager(&manager_payload)?;
 
             for recipient in &new_email.recipients {
-                let client =
-                    match repo.get_client_by_email(&recipient.address, manager.hub_id.get())? {
-                        Some(client) => client,
-                        None => {
-                            continue;
-                        }
-                    };
+                let client = match repo
+                    .get_client_by_email(recipient.address.as_str(), manager.hub_id.get())?
+                {
+                    Some(client) => client,
+                    None => {
+                        continue;
+                    }
+                };
 
                 let new_event = NewClientEvent {
                     client_id: client.id,
@@ -60,7 +59,7 @@ where
                     manager_id: manager.id,
                     created_at: Utc::now().naive_utc(),
                     event_data: json!({
-                        "text": new_email.subject.as_deref().unwrap_or_default(),
+                        "text": new_email.subject.as_ref().map(|s| s.as_str()),
                     }),
                 };
 
