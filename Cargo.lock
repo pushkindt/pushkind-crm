@@ -2289,7 +2289,7 @@ dependencies = [
 [[package]]
 name = "pushkind-common"
 version = "0.1.0"
-source = "git+https://github.com/pushkindt/pushkind-common.git?branch=main#5af3d948f97639ce9ffe678cb5734922917693e7"
+source = "git+https://github.com/pushkindt/pushkind-common.git?branch=main#9e31744db966278e2622cc786c71132347cbfac8"
 dependencies = [
  "actix-identity",
  "actix-web",
@@ -2345,7 +2345,7 @@ dependencies = [
 [[package]]
 name = "pushkind-emailer"
 version = "0.1.0"
-source = "git+https://github.com/pushkindt/pushkind-emailer.git#d3f58e21d550bc0abf025f3204d84bf8d0473547"
+source = "git+https://github.com/pushkindt/pushkind-emailer.git#38ff985b886b09946ce7d37ccfb78a91bec62ecd"
 dependencies = [
  "chrono",
  "diesel",

@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::routes::check_role;
+use pushkind_common::routes::ensure_role;
 
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::important_field::ImportantField;
@@ -11,7 +11,7 @@ use crate::domain::types::{HubId, ImportantFieldName, TypeConstraintError};
 use crate::dto::important_fields::ImportantFieldsPageData;
 use crate::forms::important_fields::ImportantFieldsForm;
 use crate::repository::{ImportantFieldReader, ImportantFieldWriter};
-use crate::services::{ServiceError, ServiceResult};
+use crate::services::ServiceResult;
 
 /// Loads the existing important field names for the admin interface.
 pub fn load_important_fields<R>(
@@ -21,9 +21,7 @@ pub fn load_important_fields<R>(
 where
     R: ImportantFieldReader + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let hub_id = HubId::new(user.hub_id)?;
 
@@ -76,9 +74,7 @@ pub fn save_important_fields<R>(
 where
     R: ImportantFieldWriter + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let hub_id = HubId::new(user.hub_id)?;
     let fields = normalize_fields(hub_id, &form.fields)?;
@@ -98,7 +94,7 @@ mod tests {
 
     use super::*;
     use crate::domain::types::{HubId, ImportantFieldName};
-    use pushkind_common::repository::errors::RepositoryResult;
+    use pushkind_common::{repository::errors::RepositoryResult, services::errors::ServiceError};
 
     #[derive(Default)]
     struct MockRepo {

@@ -2,9 +2,9 @@
 
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
-use pushkind_common::routes::check_role;
+use pushkind_common::routes::ensure_role;
 
-use crate::SERVICE_ACCESS_ROLE;
+use crate::SERVICE_MANAGER_ROLE;
 pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
@@ -18,15 +18,9 @@ pub fn list_clients<R>(
 where
     R: ClientReader + ?Sized,
 {
-    if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_MANAGER_ROLE)?;
 
     let mut query = ClientListQuery::new(user.hub_id);
-
-    if check_role("crm_manager", &user.roles) {
-        query = query.manager_email(&user.email);
-    }
 
     if let Some(page) = params.page {
         query = query.paginate(page, DEFAULT_ITEMS_PER_PAGE);

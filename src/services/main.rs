@@ -2,7 +2,7 @@
 
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::{DEFAULT_ITEMS_PER_PAGE, Paginated};
-use pushkind_common::routes::check_role;
+use pushkind_common::routes::{check_role, ensure_role};
 use validator::Validate;
 
 use crate::domain::manager::NewManager;
@@ -12,7 +12,7 @@ use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
-use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE};
+use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE, SERVICE_MANAGER_ROLE};
 
 /// Loads the clients list for the main index page.
 pub fn load_index_page<R>(
@@ -23,9 +23,7 @@ pub fn load_index_page<R>(
 where
     R: ClientReader + ManagerWriter + ?Sized,
 {
-    if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     let page = query.page.unwrap_or(1);
     let mut list_query = ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE);
@@ -41,7 +39,7 @@ where
 
     let (total, clients) = if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
         repo.list_clients(list_query).map_err(ServiceError::from)?
-    } else if check_role("crm_manager", &user.roles) {
+    } else if check_role(SERVICE_MANAGER_ROLE, &user.roles) {
         let manager_payload = NewManager::try_from(user).map_err(|err| {
             log::error!("Failed to build manager from user: {err}");
             ServiceError::Internal
@@ -71,9 +69,7 @@ pub fn add_client<R>(repo: &R, user: &AuthenticatedUser, form: AddClientForm) ->
 where
     R: ClientWriter + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     if let Err(err) = form.validate() {
         log::error!("Failed to validate form: {err}");
@@ -102,9 +98,7 @@ pub fn upload_clients<R>(
 where
     R: ClientWriter + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let clients = form.parse(user.hub_id).map_err(|err| {
         log::error!("Failed to parse clients: {err}");
