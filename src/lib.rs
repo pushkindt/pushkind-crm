@@ -66,6 +66,7 @@ pub mod services;
 
 pub const SERVICE_ACCESS_ROLE: &str = "crm";
 pub const SERVICE_ADMIN_ROLE: &str = "crm_admin";
+pub const SERVICE_MANAGER_ROLE: &str = "crm_manager";
 
 /// Builds and runs the Actix-Web HTTP server using the provided configuration.
 #[cfg(feature = "server")]

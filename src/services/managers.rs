@@ -1,7 +1,7 @@
 //! Services handling manager administration workflows.
 
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::routes::check_role;
+use pushkind_common::routes::ensure_role;
 use validator::Validate;
 
 use crate::SERVICE_ADMIN_ROLE;
@@ -17,9 +17,7 @@ pub fn list_managers<R>(repo: &R, user: &AuthenticatedUser) -> ServiceResult<Man
 where
     R: ManagerReader + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let managers =
         client_service::list_managers_with_clients(repo, user.hub_id).map_err(|err| {
@@ -35,9 +33,7 @@ pub fn add_manager<R>(repo: &R, user: &AuthenticatedUser, form: AddManagerForm) 
 where
     R: ManagerWriter + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     if let Err(err) = form.validate() {
         log::error!("Failed to validate form: {err}");
@@ -67,9 +63,7 @@ pub fn load_manager_modal<R>(
 where
     R: ManagerReader + ClientReader + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let manager = repo
         .get_manager_by_id(manager_id, user.hub_id)
@@ -94,9 +88,7 @@ pub fn assign_manager<R>(repo: &R, user: &AuthenticatedUser, payload: &[u8]) -> 
 where
     R: ManagerReader + ManagerWriter + ?Sized,
 {
-    if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return Err(ServiceError::Unauthorized);
-    }
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let form: AssignManagerForm = serde_html_form::from_bytes(payload).map_err(|err| {
         log::error!("Failed to process form: {err}");

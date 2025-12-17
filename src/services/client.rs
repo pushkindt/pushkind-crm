@@ -1,10 +1,10 @@
 //! Domain services orchestrating client operations.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::routes::check_role;
+use pushkind_common::routes::ensure_role;
 use pushkind_common::zmq::ZmqSender;
 use pushkind_common::zmq::ZmqSenderExt;
 use pushkind_emailer::domain::email::{NewEmail, NewEmailRecipient};
@@ -18,6 +18,7 @@ use serde_json::json;
 use validator::Validate;
 
 use crate::SERVICE_ACCESS_ROLE;
+use crate::SERVICE_MANAGER_ROLE;
 use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, ClientEventType, NewClientEvent};
 use crate::domain::important_field::ImportantField;
@@ -90,40 +91,24 @@ fn ensure_client_access<R>(repo: &R, user: &AuthenticatedUser, client_id: i32) -
 where
     R: ClientReader + ?Sized,
 {
-    if check_role("crm_manager", &user.roles) {
-        match is_client_assigned_to_manager(repo, client_id, &user.email) {
-            Ok(true) => Ok(()),
-            Ok(false) => {
-                log::warn!(
-                    "Manager {email} attempted to access forbidden client {client_id}",
-                    email = user.email
-                );
-                Err(ServiceError::Unauthorized)
-            }
-            Err(err) => {
-                log::error!(
-                    "Failed to verify access for manager {email} to client {client_id}: {err}",
-                    email = user.email
-                );
-                Err(err)
-            }
-        }
-    } else {
-        Ok(())
-    }
-}
+    ensure_role(user, SERVICE_MANAGER_ROLE)?;
 
-/// Returns [`ServiceError::Unauthorized`] when the user lacks the CRM role.
-fn ensure_service_access(user: &AuthenticatedUser) -> ServiceResult<()> {
-    if check_role(SERVICE_ACCESS_ROLE, &user.roles) {
-        Ok(())
-    } else {
-        log::warn!(
-            "User {email} does not have required role {role}",
-            email = user.email,
-            role = SERVICE_ACCESS_ROLE
-        );
-        Err(ServiceError::Unauthorized)
+    match is_client_assigned_to_manager(repo, client_id, &user.email) {
+        Ok(true) => Ok(()),
+        Ok(false) => {
+            log::warn!(
+                "Manager {email} attempted to access forbidden client {client_id}",
+                email = user.email
+            );
+            Err(ServiceError::Unauthorized)
+        }
+        Err(err) => {
+            log::error!(
+                "Failed to verify access for manager {email} to client {client_id}: {err}",
+                email = user.email
+            );
+            Err(err)
+        }
     }
 }
 
@@ -156,7 +141,7 @@ pub fn load_client_details<R>(
 where
     R: ClientReader + ClientEventReader + ImportantFieldReader + ?Sized,
 {
-    ensure_service_access(user)?;
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
     ensure_client_access(repo, user, client_id)?;
 
     let client = load_client_or_not_found(repo, user.hub_id, client_id)?;
@@ -217,7 +202,7 @@ pub fn save_client<R>(
 where
     R: ClientReader + ClientWriter + ?Sized,
 {
-    ensure_service_access(user)?;
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     if let Err(err) = form.validate() {
         log::error!("Failed to validate save client form: {err}");
@@ -254,7 +239,7 @@ pub async fn add_comment<R>(
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
 {
-    ensure_service_access(user)?;
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     if let Err(err) = form.validate() {
         log::error!("Failed to validate comment form: {err}");
@@ -288,11 +273,7 @@ where
             ServiceError::Form("Клиент не имеет email".to_string())
         })?;
 
-        let fields: HashMap<String, String> = client
-            .fields
-            .clone()
-            .map(|map| map.into_iter().collect())
-            .unwrap_or_default();
+        let fields: BTreeMap<String, String> = client.fields.clone().unwrap_or_default();
 
         let new_email = NewEmail {
             message: EmailBody::new(&sanitized_message)?,
@@ -348,7 +329,7 @@ pub fn add_attachment<R>(
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
 {
-    ensure_service_access(user)?;
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     if let Err(err) = form.validate() {
         log::error!("Failed to validate attachment form: {err}");

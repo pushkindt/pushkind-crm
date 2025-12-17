@@ -93,7 +93,7 @@ cargo fmt --all -- --check
   for flash messaging and redirects.
 - Render templates with Tera contexts that only expose sanitized data. Use the
   existing component templates under `templates/` for shared UI.
-- Respect the authorization checks via `pushkind_common::routes::check_role` and
+- Respect the authorization checks via `pushkind_common::routes::ensure_role` and
   the `SERVICE_ACCESS_ROLE` constant.
 
 ## Testing Expectations
