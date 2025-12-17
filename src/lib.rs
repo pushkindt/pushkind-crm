@@ -1,42 +1,74 @@
 //! CRM application module wiring domain, repository, and HTTP services.
 
+#[cfg(feature = "server")]
 use std::sync::Arc;
 
+#[cfg(feature = "server")]
 use actix_cors::Cors;
+#[cfg(feature = "server")]
 use actix_files::Files;
+#[cfg(feature = "server")]
 use actix_identity::IdentityMiddleware;
+#[cfg(feature = "server")]
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
+#[cfg(feature = "server")]
 use actix_web::cookie::Key;
+#[cfg(feature = "server")]
 use actix_web::{App, HttpServer, middleware, web};
+#[cfg(feature = "server")]
 use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
+#[cfg(feature = "server")]
 use pushkind_common::db::establish_connection_pool;
+#[cfg(feature = "server")]
 use pushkind_common::middleware::RedirectUnauthorized;
+#[cfg(feature = "server")]
 use pushkind_common::models::config::CommonServerConfig;
+#[cfg(feature = "server")]
 use pushkind_common::routes::{logout, not_assigned};
+#[cfg(feature = "server")]
 use pushkind_common::zmq::{ZmqSender, ZmqSenderOptions};
+#[cfg(feature = "server")]
 use tera::Tera;
 
+#[cfg(feature = "server")]
 use crate::models::config::ServerConfig;
+#[cfg(feature = "server")]
 use crate::repository::DieselRepository;
+#[cfg(feature = "server")]
 use crate::routes::api::api_v1_clients;
+#[cfg(feature = "server")]
 use crate::routes::client::{attachment_client, comment_client, save_client, show_client};
+#[cfg(feature = "server")]
 use crate::routes::important_fields::{save_important_fields, show_important_fields};
+#[cfg(feature = "server")]
 use crate::routes::main::{add_client, clients_upload, show_index};
+#[cfg(feature = "server")]
 use crate::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 
+#[cfg(feature = "data")]
 pub mod domain;
+#[cfg(feature = "server")]
 pub mod dto;
+#[cfg(feature = "data")]
+mod error_conversions;
+#[cfg(feature = "server")]
 pub mod forms;
+#[cfg(feature = "data")]
 pub mod models;
+#[cfg(feature = "server")]
 pub mod repository;
+#[cfg(feature = "server")]
 pub mod routes;
+#[cfg(feature = "data")]
 pub mod schema;
+#[cfg(feature = "server")]
 pub mod services;
 
 pub const SERVICE_ACCESS_ROLE: &str = "crm";
 pub const SERVICE_ADMIN_ROLE: &str = "crm_admin";
 
 /// Builds and runs the Actix-Web HTTP server using the provided configuration.
+#[cfg(feature = "server")]
 pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
     let common_config = CommonServerConfig {
         auth_service_url: server_config.auth_service_url.to_string(),

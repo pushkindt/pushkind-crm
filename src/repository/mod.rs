@@ -2,14 +2,13 @@
 
 use pushkind_common::db::{DbConnection, DbPool};
 use pushkind_common::pagination::Pagination;
-use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
+use pushkind_common::repository::errors::RepositoryResult;
 
 use crate::domain::{
     client::{Client, NewClient, UpdateClient},
     client_event::{ClientEvent, ClientEventType, NewClientEvent},
     important_field::ImportantField as DomainImportantField,
     manager::{Manager, NewManager},
-    types::TypeConstraintError,
 };
 
 pub mod client;
@@ -150,10 +149,4 @@ pub trait ClientEventReader {
 
 pub trait ClientEventWriter {
     fn create_client_event(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
-}
-
-impl From<TypeConstraintError> for RepositoryError {
-    fn from(err: TypeConstraintError) -> Self {
-        RepositoryError::ValidationError(err.to_string())
-    }
 }

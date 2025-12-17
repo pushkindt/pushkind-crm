@@ -4,48 +4,85 @@ version = "0.1.0"
 edition = "2024"
 default-run = "pushkind-crm"
 
+[features]
+default = ["server"]
+# Compile only the reusable persistence/domain layer (`domain`, `models`, `schema`).
+data = [
+    "dep:chrono",
+    "dep:diesel",
+    "dep:phonenumber",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:thiserror",
+    "dep:validator",
+    "pushkind-common/db",
+]
+# Build the full Actix-web application (HTTP routes, services, templates, etc).
+server = [
+    "data",
+    "dep:actix-cors",
+    "dep:actix-files",
+    "dep:actix-identity",
+    "dep:actix-multipart",
+    "dep:actix-session",
+    "dep:actix-web",
+    "dep:actix-web-flash-messages",
+    "dep:ammonia",
+    "dep:config",
+    "dep:csv",
+    "dep:dotenvy",
+    "dep:env_logger",
+    "dep:log",
+    "dep:serde_html_form",
+    "dep:tera",
+    "dep:zmq",
+    "dep:pushkind-emailer",
+    "pushkind-common/actix",
+    "pushkind-common/zeromq",
+]
+
 [dependencies]
-actix-files = "0.6.9"
-actix-identity = "0.9.0"
-actix-multipart = "0.7.2"
-actix-session = { version = "0.11.0", features = ["cookie-session"] }
-actix-web = "4.12.1"
-actix-web-flash-messages = { version = "0.5.0", features = ["cookies"] }
-chrono = { version = "0.4.41", features = ["serde"] }
-csv = "1.4.0"
-diesel = { version = "2.3.4", features = [
+actix-cors = { version = "0.7.1", optional = true }
+actix-files = { version = "0.6.9", optional = true }
+actix-identity = { version = "0.9.0", optional = true }
+actix-multipart = { version = "0.7.2", optional = true }
+actix-session = { version = "0.11.0", features = ["cookie-session"], optional = true }
+actix-web = { version = "4.12.1", optional = true }
+actix-web-flash-messages = { version = "0.5.0", features = ["cookies"], optional = true }
+ammonia = { version = "4.1.2", optional = true }
+chrono = { version = "0.4.41", features = ["serde"], optional = true }
+config = { version = "0.15.19", default-features = false, features = ["yaml"], optional = true }
+csv = { version = "1.4.0", optional = true }
+diesel = { version = "2.3.4", optional = true, features = [
     "sqlite",
     "r2d2",
     "chrono",
     "returning_clauses_for_sqlite_3_35",
 ] }
-dotenvy = "0.15.7"
-env_logger = "0.11.8"
-lazy_static = "1.5.0"
-log = "0.4.29"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_html_form = "0.2.8"
-serde_json = "1.0.143"
-tera = { version = "1.20.1", features = ["builtins"] }
-thiserror = "2.0.17"
-ammonia = "4.1.2"
-pushkind-common = { git = "https://github.com/pushkindt/pushkind-common.git", branch = "main", features = [
-    "db",
-    "actix",
-    "zeromq",
-] }
-validator = { version = "0.20.0", features = ["derive"] }
-zmq = "0.10.0"
-tokio = { version = "1.48.0", features = ["full"] }
-phonenumber = "0.3.7"
-actix-cors = "0.7.1"
-config = { version = "0.15.19", default-features = false, features = ["yaml"] }
+dotenvy = { version = "0.15.7", optional = true }
+env_logger = { version = "0.11.8", optional = true }
+log = { version = "0.4.29", optional = true }
+phonenumber = { version = "0.3.7", optional = true }
+pushkind-common = { git = "https://github.com/pushkindt/pushkind-common.git", branch = "main" }
 pushkind-emailer = { git = "https://github.com/pushkindt/pushkind-emailer.git", version = "0.1.0", features = [
     "data",
-], default-features = false }
+], default-features = false, optional = true }
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde_html_form = { version = "0.2.8", optional = true }
+serde_json = { version = "1.0.143", optional = true }
+tera = { version = "1.20.1", features = ["builtins"], optional = true }
+thiserror = { version = "2.0.17", optional = true }
+validator = { version = "0.20.0", features = ["derive"], optional = true }
+zmq = { version = "0.10.0", optional = true }
+
+[[bin]]
+name = "pushkind-crm"
+path = "src/main.rs"
+required-features = ["server"]
 
 [[bin]]
 name = "check_events"
+required-features = ["server"]
 
 [dev-dependencies]
 diesel_migrations = "2.3.1"
