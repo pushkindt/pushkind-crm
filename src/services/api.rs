@@ -4,7 +4,7 @@ use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::ensure_role;
 
-use crate::SERVICE_MANAGER_ROLE;
+use crate::SERVICE_ACCESS_ROLE;
 pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
@@ -18,7 +18,7 @@ pub fn list_clients<R>(
 where
     R: ClientReader + ?Sized,
 {
-    ensure_role(user, SERVICE_MANAGER_ROLE)?;
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     let mut query = ClientListQuery::new(user.hub_id);
 
