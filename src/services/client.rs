@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::routes::check_role;
 use pushkind_common::routes::ensure_role;
 use pushkind_common::zmq::ZmqSender;
 use pushkind_common::zmq::ZmqSenderExt;
@@ -91,7 +92,9 @@ fn ensure_client_access<R>(repo: &R, user: &AuthenticatedUser, client_id: i32) -
 where
     R: ClientReader + ?Sized,
 {
-    ensure_role(user, SERVICE_MANAGER_ROLE)?;
+    if !check_role(SERVICE_MANAGER_ROLE, &user.roles) {
+        return Ok(());
+    }
 
     match is_client_assigned_to_manager(repo, client_id, &user.email) {
         Ok(true) => Ok(()),
