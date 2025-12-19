@@ -2,14 +2,14 @@
 
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::ensure_role;
-use validator::Validate;
 
 use crate::SERVICE_ADMIN_ROLE;
-use crate::domain::manager::NewManager;
+use crate::domain::types::{HubId, ManagerId};
 use crate::dto::managers::{ManagerModalData, ManagersPageData};
-use crate::forms::managers::{AddManagerForm, AssignManagerForm};
+use crate::forms::managers::{
+    AddManagerForm, AddManagerPayload, AssignManagerForm, AssignManagerPayload,
+};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
-use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
 
 /// Loads all managers with the clients assigned to them.
@@ -19,11 +19,9 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    let managers =
-        client_service::list_managers_with_clients(repo, user.hub_id).map_err(|err| {
-            log::error!("Failed to list managers: {err}");
-            err
-        })?;
+    let hub_id = HubId::new(user.hub_id)?;
+
+    let managers = repo.list_managers_with_clients(hub_id)?;
 
     Ok(ManagersPageData { managers })
 }
@@ -35,21 +33,13 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    if let Err(err) = form.validate() {
-        log::error!("Failed to validate form: {err}");
-        return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
-    }
+    let payload = AddManagerPayload::try_from(form)?;
 
-    let new_manager = NewManager::try_from_parts(user.hub_id, form.name, form.email, true)
-        .map_err(|err| {
-            log::error!("Invalid manager payload: {err}");
-            ServiceError::Form("Ошибка валидации формы".to_string())
-        })?;
+    let hub_id = HubId::new(user.hub_id)?;
 
-    client_service::create_or_update_manager(repo, &new_manager).map_err(|err| {
-        log::error!("Failed to save the manager: {err}");
-        err
-    })?;
+    let new_manager = payload.into_domain(hub_id);
+
+    repo.create_or_update_manager(&new_manager)?;
 
     Ok(())
 }
@@ -65,54 +55,37 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
+    let hub_id = HubId::new(user.hub_id)?;
+
     let manager = repo
-        .get_manager_by_id(manager_id, user.hub_id)
-        .map_err(ServiceError::from)?
-        .ok_or_else(|| {
-            log::error!(
-                "Manager {manager_id} not found for hub {hub_id}",
-                hub_id = user.hub_id
-            );
-            ServiceError::NotFound
-        })?;
+        .get_manager_by_id(ManagerId::new(manager_id)?, hub_id)?
+        .ok_or(ServiceError::NotFound)?;
 
     let (_, clients) = repo
-        .list_clients(ClientListQuery::new(user.hub_id).manager_email(manager.email.as_str()))
+        .list_clients(ClientListQuery::new(hub_id).manager_email(manager.email.clone()))
         .map_err(ServiceError::from)?;
 
     Ok(ManagerModalData { manager, clients })
 }
 
 /// Assigns the provided client identifiers to the given manager.
-pub fn assign_manager<R>(repo: &R, user: &AuthenticatedUser, payload: &[u8]) -> ServiceResult<()>
+pub fn assign_manager<R>(
+    repo: &R,
+    user: &AuthenticatedUser,
+    form: AssignManagerForm,
+) -> ServiceResult<()>
 where
     R: ManagerReader + ManagerWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    let form: AssignManagerForm = serde_html_form::from_bytes(payload).map_err(|err| {
-        log::error!("Failed to process form: {err}");
-        ServiceError::Form("Ошибка при обработке формы".to_string())
-    })?;
+    let payload = AssignManagerPayload::try_from(form)?;
 
     let manager = repo
-        .get_manager_by_id(form.manager_id, user.hub_id)
-        .map_err(ServiceError::from)?
-        .ok_or_else(|| {
-            log::error!(
-                "Manager {manager_id} not found for hub {hub_id}",
-                manager_id = form.manager_id,
-                hub_id = user.hub_id
-            );
-            ServiceError::NotFound
-        })?;
+        .get_manager_by_id(payload.manager_id, HubId::new(user.hub_id)?)?
+        .ok_or(ServiceError::NotFound)?;
 
-    client_service::assign_clients_to_manager(repo, manager.id.get(), &form.client_ids).map_err(
-        |err| {
-            log::error!("Failed to assign clients to the manager: {err}");
-            err
-        },
-    )?;
+    repo.assign_clients_to_manager(manager.id, &payload.client_ids)?;
 
     Ok(())
 }

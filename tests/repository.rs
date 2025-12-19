@@ -4,7 +4,7 @@ use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
-use pushkind_crm::domain::types::{ClientEmail, ClientName, HubId, PhoneNumber};
+use pushkind_crm::domain::types::{ClientEmail, ClientName, HubId, ManagerEmail, PhoneNumber};
 use pushkind_crm::repository::{ClientEventListQuery, ClientEventReader, ClientEventWriter};
 use pushkind_crm::repository::{ClientListQuery, ClientReader, ClientWriter};
 use pushkind_crm::repository::{DieselRepository, ManagerReader, ManagerWriter};
@@ -36,7 +36,9 @@ fn test_client_repository_crud() {
         2
     );
 
-    let (total, mut items) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
+    let (total, mut items) = client_repo
+        .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
+        .unwrap();
     assert_eq!(total, 2);
     assert_eq!(items.len(), 2);
     items.sort_by(|a, b| a.name.cmp(&b.name));
@@ -44,14 +46,14 @@ fn test_client_repository_crud() {
     let mut bob = items[1].clone();
 
     let (search_total, search_items) = client_repo
-        .list_clients(ClientListQuery::new(1).search("Bob"))
+        .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")).search("Bob"))
         .unwrap();
     assert_eq!(search_total, 1);
     assert_eq!(search_items[0].name.as_str(), "Bob");
 
     alice = client_repo
         .update_client(
-            alice.id.get(),
+            alice.id,
             &UpdateClient::new(
                 alice.name.clone(),
                 alice.email.clone(),
@@ -67,7 +69,7 @@ fn test_client_repository_crud() {
 
     bob = client_repo
         .update_client(
-            bob.id.get(),
+            bob.id,
             &UpdateClient::new(
                 ClientName::new("Bobby").expect("valid name"),
                 bob.email.clone(),
@@ -78,15 +80,17 @@ fn test_client_repository_crud() {
         .unwrap();
     assert_eq!(bob.name.as_str(), "Bobby");
 
-    client_repo.delete_client(alice.id.get()).unwrap();
+    client_repo.delete_client(alice.id).unwrap();
     assert!(
         client_repo
-            .get_client_by_id(alice.id.get(), 1)
+            .get_client_by_id(alice.id, HubId::new(1).expect("valid hub id"))
             .unwrap()
             .is_none()
     );
 
-    let (total_after, items_after) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
+    let (total_after, items_after) = client_repo
+        .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
+        .unwrap();
     assert_eq!(total_after, 1);
     assert_eq!(items_after[0].name.as_str(), "Bobby");
 }
@@ -101,7 +105,7 @@ fn test_client_event_repository_crud() {
             new_client_record("Alice", Some("alice@example.com"), Some("+14155550111"));
         client_repo.create_clients(&[new_client]).unwrap();
         client_repo
-            .list_clients(ClientListQuery::new(1))
+            .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
             .unwrap()
             .1
             .remove(0)
@@ -135,7 +139,7 @@ fn test_client_event_repository_crud() {
     assert_ne!(duplicate.id, created.id);
 
     let (total_after_duplicate, events_after_duplicate) = client_event_repo
-        .list_client_events(ClientEventListQuery::new(client.id.get()))
+        .list_client_events(ClientEventListQuery::new(client.id))
         .unwrap();
     assert_eq!(total_after_duplicate, 2);
     assert_eq!(events_after_duplicate.len(), 2);
@@ -151,7 +155,7 @@ fn test_client_event_repository_crud() {
         .unwrap();
 
     let (total, events) = client_event_repo
-        .list_client_events(ClientEventListQuery::new(client.id.get()))
+        .list_client_events(ClientEventListQuery::new(client.id))
         .unwrap();
     assert_eq!(total, 3);
     assert_eq!(events.len(), 3);
@@ -159,7 +163,7 @@ fn test_client_event_repository_crud() {
 
     let (total_comment, comments) = client_event_repo
         .list_client_events(
-            ClientEventListQuery::new(client.id.get()).event_type(ClientEventType::Comment),
+            ClientEventListQuery::new(client.id).event_type(ClientEventType::Comment),
         )
         .unwrap();
     assert_eq!(total_comment, 2);
@@ -182,8 +186,10 @@ fn test_manager_repository_crud() {
         new_client_record("Bob", Some("bob@example.com"), Some("+14155550222")),
     ];
     client_repo.create_clients(&clients).unwrap();
-    let (_, stored_clients) = client_repo.list_clients(ClientListQuery::new(1)).unwrap();
-    let client_ids: Vec<i32> = stored_clients.iter().map(|c| c.id.get()).collect();
+    let (_, stored_clients) = client_repo
+        .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
+        .unwrap();
+    let client_ids = stored_clients.iter().map(|c| c.id).collect::<Vec<_>>();
 
     // create or update manager
     let manager_payload =
@@ -212,23 +218,28 @@ fn test_manager_repository_crud() {
     assert!(preserved.is_user);
 
     let by_id = manager_repo
-        .get_manager_by_id(manager.id.get(), 1)
+        .get_manager_by_id(manager.id, HubId::new(1).expect("valid hub id"))
         .unwrap()
         .unwrap();
     assert_eq!(by_id.name.as_str(), "Updated");
 
     let by_email = manager_repo
-        .get_manager_by_email("m@example.com", 1)
+        .get_manager_by_email(
+            &ManagerEmail::new("m@example.com").expect("valid manager email"),
+            HubId::new(1).expect("valid hub id"),
+        )
         .unwrap()
         .unwrap();
     assert_eq!(by_email.id, manager.id);
 
     // assign clients to manager
     manager_repo
-        .assign_clients_to_manager(manager.id.get(), &client_ids)
+        .assign_clients_to_manager(manager.id, &client_ids)
         .unwrap();
 
-    let managers_with_clients = manager_repo.list_managers_with_clients(1).unwrap();
+    let managers_with_clients = manager_repo
+        .list_managers_with_clients(HubId::new(1).expect("valid hub id"))
+        .unwrap();
     assert_eq!(managers_with_clients.len(), 1);
     assert_eq!(managers_with_clients[0].0.id, manager.id);
     assert_eq!(managers_with_clients[0].1.len(), client_ids.len());
@@ -239,7 +250,10 @@ fn test_manager_repository_crud() {
     assert_eq!(managers[0].id, manager.id);
     assert!(
         client_repo
-            .check_client_assigned_to_manager(client_id, "m@example.com")
+            .check_client_assigned_to_manager(
+                client_id,
+                &ManagerEmail::new("m@example.com").expect("valid manager email"),
+            )
             .unwrap()
     );
 }

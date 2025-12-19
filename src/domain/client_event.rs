@@ -54,13 +54,13 @@ impl Display for ClientEventType {
 
 impl From<&str> for ClientEventType {
     fn from(s: &str) -> Self {
-        match s {
-            "Comment" => ClientEventType::Comment,
-            "DocumentLink" => ClientEventType::DocumentLink,
-            "Call" => ClientEventType::Call,
-            "Email" => ClientEventType::Email,
-            "Reply" => ClientEventType::Reply,
-            "Unsubscribed" => ClientEventType::Unsubscribed,
+        match s.trim().to_lowercase().as_str() {
+            "comment" => ClientEventType::Comment,
+            "documentlink" => ClientEventType::DocumentLink,
+            "call" => ClientEventType::Call,
+            "email" => ClientEventType::Email,
+            "reply" => ClientEventType::Reply,
+            "unsubscribed" => ClientEventType::Unsubscribed,
             _ => ClientEventType::Other(s.to_string()),
         }
     }
