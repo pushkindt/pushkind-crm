@@ -12,7 +12,7 @@ use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::domain::important_field::ImportantField as DomainImportantField;
-use crate::domain::types::TypeConstraintError;
+use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, TypeConstraintError};
 use crate::models::client::ClientField;
 use crate::models::important_field::{
     ImportantField as DbImportantField, NewImportantField as DbNewImportantField,
@@ -31,20 +31,20 @@ use crate::{
 };
 
 impl ClientReader for DieselRepository {
-    fn list_available_fields(&self, hub_id: i32) -> RepositoryResult<Vec<String>> {
+    fn list_available_fields(&self, hub_id: HubId) -> RepositoryResult<Vec<String>> {
         use crate::schema::{client_fields, clients, important_fields};
 
         let mut conn = self.conn()?;
 
         let mut fields = client_fields::table
             .inner_join(clients::table)
-            .filter(clients::hub_id.eq(hub_id))
+            .filter(clients::hub_id.eq(hub_id.get()))
             .select(client_fields::field)
             .distinct()
             .load::<String>(&mut conn)?;
 
         let important = important_fields::table
-            .filter(important_fields::hub_id.eq(hub_id))
+            .filter(important_fields::hub_id.eq(hub_id.get()))
             .select(important_fields::field)
             .load::<String>(&mut conn)?;
 
@@ -55,13 +55,13 @@ impl ClientReader for DieselRepository {
         Ok(fields)
     }
 
-    fn get_client_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Client>> {
+    fn get_client_by_id(&self, id: ClientId, hub_id: HubId) -> RepositoryResult<Option<Client>> {
         use crate::schema::clients;
 
         let mut conn = self.conn()?;
         let client = clients::table
-            .find(id)
-            .filter(clients::hub_id.eq(hub_id))
+            .find(id.get())
+            .filter(clients::hub_id.eq(hub_id.get()))
             .first::<DbClient>(&mut conn)
             .optional()?;
         let client = match client {
@@ -81,13 +81,17 @@ impl ClientReader for DieselRepository {
         Ok(Some(result))
     }
 
-    fn get_client_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Client>> {
+    fn get_client_by_email(
+        &self,
+        email: &ClientEmail,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Client>> {
         use crate::schema::clients;
 
         let mut conn = self.conn()?;
         let client = clients::table
-            .filter(clients::email.eq(email))
-            .filter(clients::hub_id.eq(hub_id))
+            .filter(clients::email.eq(email.as_str()))
+            .filter(clients::hub_id.eq(hub_id.get()))
             .first::<DbClient>(&mut conn)
             .optional()?;
 
@@ -107,7 +111,7 @@ impl ClientReader for DieselRepository {
         let query_builder = || {
             // Start with boxed query on clients
             let mut items = clients::table
-                .filter(clients::hub_id.eq(query.hub_id))
+                .filter(clients::hub_id.eq(query.hub_id.get()))
                 .into_boxed::<diesel::sqlite::Sqlite>();
 
             if let Some(manager_email) = &query.manager_email {
@@ -116,8 +120,8 @@ impl ClientReader for DieselRepository {
                         client_manager::table
                             .filter(
                                 client_manager::manager_id.nullable().eq(managers::table
-                                    .filter(managers::email.eq(manager_email))
-                                    .filter(managers::hub_id.eq(query.hub_id))
+                                    .filter(managers::email.eq(manager_email.as_str()))
+                                    .filter(managers::hub_id.eq(query.hub_id.get()))
                                     .select(managers::id)
                                     .single_value()),
                             )
@@ -182,11 +186,11 @@ impl ClientReader for DieselRepository {
         Ok((total, clients))
     }
 
-    fn list_managers(&self, id: i32) -> RepositoryResult<Vec<Manager>> {
+    fn list_managers(&self, id: ClientId) -> RepositoryResult<Vec<Manager>> {
         use crate::schema::{client_manager, managers};
         let mut conn = self.conn()?;
         let managers = client_manager::table
-            .filter(client_manager::client_id.eq(id))
+            .filter(client_manager::client_id.eq(id.get()))
             .inner_join(managers::table)
             .select(managers::all_columns)
             .load::<DbManager>(&mut conn)?
@@ -198,18 +202,18 @@ impl ClientReader for DieselRepository {
 
     fn check_client_assigned_to_manager(
         &self,
-        client_id: i32,
-        manager_email: &str,
+        client_id: ClientId,
+        manager_email: &ManagerEmail,
     ) -> RepositoryResult<bool> {
         use crate::schema::{client_manager, clients, managers};
         let mut conn = self.conn()?;
 
         let assigned = client_manager::table
-            .filter(client_manager::client_id.eq(client_id))
+            .filter(client_manager::client_id.eq(client_id.get()))
             .inner_join(managers::table)
-            .filter(managers::email.eq(manager_email))
+            .filter(managers::email.eq(manager_email.as_str()))
             .inner_join(clients::table)
-            .filter(clients::id.eq(client_id))
+            .filter(clients::id.eq(client_id.get()))
             .filter(clients::hub_id.eq(managers::hub_id))
             .select(client_manager::client_id)
             .first::<i32>(&mut conn)
@@ -327,7 +331,11 @@ impl ClientWriter for DieselRepository {
         })
     }
 
-    fn update_client(&self, client_id: i32, updates: &UpdateClient) -> RepositoryResult<Client> {
+    fn update_client(
+        &self,
+        client_id: ClientId,
+        updates: &UpdateClient,
+    ) -> RepositoryResult<Client> {
         use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
@@ -336,20 +344,20 @@ impl ClientWriter for DieselRepository {
             .transaction::<(DbClient, BTreeMap<String, String>), diesel::result::Error, _>(
                 |conn| {
                     let db_updates: DbUpdateClient = updates.into();
-                    diesel::update(clients::table.find(client_id))
+                    diesel::update(clients::table.find(client_id.get()))
                         .set(&db_updates)
                         .execute(conn)?;
 
                     // Update fields (delete all → insert new)
                     diesel::delete(
-                        client_fields::table.filter(client_fields::client_id.eq(client_id)),
+                        client_fields::table.filter(client_fields::client_id.eq(client_id.get())),
                     )
                     .execute(conn)?;
 
                     if let Some(fields) = &updates.fields {
                         for (field, value) in fields {
                             let new_field = ClientField {
-                                client_id,
+                                client_id: client_id.get(),
                                 field: field.to_string(),
                                 value: value.to_string(),
                             };
@@ -360,10 +368,10 @@ impl ClientWriter for DieselRepository {
                     }
 
                     // Update denormalized `clients.fields` using a Diesel subselect
-                    diesel::update(clients::table.find(client_id))
+                    diesel::update(clients::table.find(client_id.get()))
                         .set(
                             clients::fields.eq(client_fields::table
-                                .filter(client_fields::client_id.eq(client_id))
+                                .filter(client_fields::client_id.eq(client_id.get()))
                                 .select(diesel::dsl::sql::<Nullable<Text>>(
                                     "trim(COALESCE(group_concat(value, ' '), ''))",
                                 ))
@@ -372,10 +380,12 @@ impl ClientWriter for DieselRepository {
                         .execute(conn)?;
 
                     // Reload the client row with its fields.
-                    let updated_client = clients::table.find(client_id).first::<DbClient>(conn)?;
+                    let updated_client = clients::table
+                        .find(client_id.get())
+                        .first::<DbClient>(conn)?;
 
                     let fields_vec = client_fields::table
-                        .filter(client_fields::client_id.eq(client_id))
+                        .filter(client_fields::client_id.eq(client_id.get()))
                         .select(ClientField::as_select())
                         .load::<ClientField>(conn)?;
 
@@ -394,17 +404,21 @@ impl ClientWriter for DieselRepository {
         Ok(updated)
     }
 
-    fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {
+    fn delete_client(&self, client_id: ClientId) -> RepositoryResult<()> {
         use crate::schema::{client_fields, client_manager, clients};
 
         let mut conn = self.conn()?;
 
         conn.transaction::<(), diesel::result::Error, _>(|conn| {
-            diesel::delete(client_manager::table.filter(client_manager::client_id.eq(client_id)))
-                .execute(conn)?;
-            diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
-                .execute(conn)?;
-            diesel::delete(clients::table.find(client_id)).execute(conn)?;
+            diesel::delete(
+                client_manager::table.filter(client_manager::client_id.eq(client_id.get())),
+            )
+            .execute(conn)?;
+            diesel::delete(
+                client_fields::table.filter(client_fields::client_id.eq(client_id.get())),
+            )
+            .execute(conn)?;
+            diesel::delete(clients::table.find(client_id.get())).execute(conn)?;
             Ok(())
         })
         .map_err(RepositoryError::from)
@@ -412,13 +426,13 @@ impl ClientWriter for DieselRepository {
 }
 
 impl ImportantFieldReader for DieselRepository {
-    fn list_important_fields(&self, hub: i32) -> RepositoryResult<Vec<DomainImportantField>> {
+    fn list_important_fields(&self, hub: HubId) -> RepositoryResult<Vec<DomainImportantField>> {
         use crate::schema::important_fields;
 
         let mut conn = self.conn()?;
 
         let rows: Vec<DbImportantField> = important_fields::table
-            .filter(important_fields::hub_id.eq(hub))
+            .filter(important_fields::hub_id.eq(hub.get()))
             .order(important_fields::field.asc())
             .load(&mut conn)?;
 
@@ -435,7 +449,7 @@ impl ImportantFieldReader for DieselRepository {
 impl ImportantFieldWriter for DieselRepository {
     fn replace_important_fields(
         &self,
-        hub: i32,
+        hub: HubId,
         fields: &[DomainImportantField],
     ) -> RepositoryResult<()> {
         use crate::schema::important_fields;
@@ -443,7 +457,7 @@ impl ImportantFieldWriter for DieselRepository {
         let mut conn = self.conn()?;
 
         conn.transaction::<_, diesel::result::Error, _>(|conn| {
-            diesel::delete(important_fields::table.filter(important_fields::hub_id.eq(hub)))
+            diesel::delete(important_fields::table.filter(important_fields::hub_id.eq(hub.get())))
                 .execute(conn)?;
 
             if fields.is_empty() {

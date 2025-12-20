@@ -64,9 +64,10 @@ pub async fn show_client(
     }
 }
 
-#[post("/client/save")]
+#[post("/client/{client_id}/save")]
 /// Persist updates to a client's profile submitted from the client form.
 pub async fn save_client(
+    client_id: web::Path<i32>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     form: web::Bytes,
@@ -82,9 +83,9 @@ pub async fn save_client(
         }
     };
 
-    let client_id = form.id;
+    let client_id = client_id.into_inner();
 
-    match client_service::save_client(repo, &user, form) {
+    match client_service::save_client(client_id, repo, &user, form) {
         Ok(result) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))
@@ -98,7 +99,7 @@ pub async fn save_client(
             redirect("/")
         }
         Err(ServiceError::Form(message)) => {
-            FlashMessage::error(message).send();
+            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
             redirect(&format!("/client/{}", client_id))
         }
         Err(err) => {
@@ -109,19 +110,20 @@ pub async fn save_client(
     }
 }
 
-#[post("/client/comment")]
+#[post("/client/{client_id}/comment")]
 /// Queue a new comment event for the client via the ZMQ sender.
 pub async fn comment_client(
+    client_id: web::Path<i32>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     zmq_sender: web::Data<Arc<ZmqSender>>,
     web::Form(form): web::Form<AddCommentForm>,
 ) -> impl Responder {
     let repo = repo.get_ref();
-    let client_id = form.id;
+    let client_id = client_id.into_inner();
     let sender = zmq_sender.get_ref().as_ref();
 
-    match client_service::add_comment(repo, &user, sender, form).await {
+    match client_service::add_comment(client_id, repo, &user, sender, form).await {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))
@@ -135,7 +137,7 @@ pub async fn comment_client(
             redirect("/")
         }
         Err(ServiceError::Form(message)) => {
-            FlashMessage::error(message).send();
+            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
             redirect(&format!("/client/{}", client_id))
         }
         Err(ServiceError::Internal) => {
@@ -150,17 +152,18 @@ pub async fn comment_client(
     }
 }
 
-#[post("/client/attachment")]
+#[post("/client/{client_id}/attachment")]
 /// Upload and associate an attachment with the given client.
 pub async fn attachment_client(
+    client_id: web::Path<i32>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     web::Form(form): web::Form<AddAttachmentForm>,
 ) -> impl Responder {
     let repo = repo.get_ref();
-    let client_id = form.id;
+    let client_id = client_id.into_inner();
 
-    match client_service::add_attachment(repo, &user, form) {
+    match client_service::add_attachment(client_id, repo, &user, form) {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))
@@ -174,7 +177,7 @@ pub async fn attachment_client(
             redirect("/")
         }
         Err(ServiceError::Form(message)) => {
-            FlashMessage::error(message).send();
+            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
             redirect(&format!("/client/{}", client_id))
         }
         Err(err) => {

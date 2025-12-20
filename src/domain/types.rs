@@ -3,12 +3,14 @@
 //! These wrappers enforce basic invariants (e.g., positive identifiers,
 //! normalized/validated email) so that once a value reaches the domain layer it
 //! can be treated as trusted.
+use std::ops::Deref;
 
+use ammonia;
 use phonenumber::{Mode, parse};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
-use validator::ValidateEmail;
+use validator::{ValidateEmail, ValidateUrl};
 
 /// Errors produced when attempting to construct a constrained value object.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -28,6 +30,9 @@ pub enum TypeConstraintError {
     /// Phone number did not meet expected format.
     #[error("invalid phone number")]
     InvalidPhone,
+    /// Provided url failed format validation.
+    #[error("invalid url address")]
+    InvalidUrl,
 }
 
 /// Normalizes and validates an email string.
@@ -267,6 +272,14 @@ macro_rules! non_empty_string_newtype {
             }
         }
 
+        impl Deref for $name {
+            type Target = str;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
         impl Display for $name {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.0)
@@ -310,6 +323,67 @@ non_empty_string_newtype!(
 non_empty_string_newtype!(
     ImportantFieldName,
     "Configured important field label enforcing trimmed, non-empty values."
+);
+
+non_empty_string_newtype!(
+    CommentSubject,
+    "Event subject wrapper enforcing trimmed, non-empty values."
+);
+
+/// Event message wrapper enforcing trimmed, non-empty values.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CommentMessage(String);
+
+impl CommentMessage {
+    /// Constructs a sanitized, trimmed, non-empty value.
+    pub fn new<S: Into<String>>(value: S) -> Result<Self, TypeConstraintError> {
+        let sanitized = ammonia::clean(&value.into());
+        let inner = NonEmptyString::new(sanitized)?;
+        Ok(Self(inner.into_inner()))
+    }
+
+    /// Borrow the value as a string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Consume the wrapper and return the owned string.
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl Display for CommentMessage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl TryFrom<String> for CommentMessage {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for CommentMessage {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<CommentMessage> for String {
+    fn from(value: CommentMessage) -> Self {
+        value.0
+    }
+}
+
+non_empty_string_newtype!(
+    AttachmentName,
+    "Attachment name wrapper enforcing trimmed, non-empty values."
 );
 
 /// Normalizes a phone number string to E.164 format.
@@ -366,6 +440,61 @@ impl TryFrom<&str> for PhoneNumber {
 
 impl From<PhoneNumber> for String {
     fn from(value: PhoneNumber) -> Self {
+        value.0
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Non-empty, trimmed menu URL.
+pub struct AttachmentUrl(String);
+
+impl AttachmentUrl {
+    /// Ensures a trimmed menu URL is non-empty before wrapping.
+    pub fn new<S: Into<String>>(value: S) -> Result<Self, TypeConstraintError> {
+        let url = NonEmptyString::new(value)?;
+
+        if !url.as_str().validate_url() {
+            Err(TypeConstraintError::InvalidUrl)
+        } else {
+            Ok(Self(url.into_inner()))
+        }
+    }
+
+    /// Borrow the menu URL.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Extract the owned menu URL.
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl Display for AttachmentUrl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl TryFrom<String> for AttachmentUrl {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for AttachmentUrl {
+    type Error = TypeConstraintError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<AttachmentUrl> for String {
+    fn from(value: AttachmentUrl) -> Self {
         value.0
     }
 }

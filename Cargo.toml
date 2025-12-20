@@ -10,6 +10,7 @@ default = ["server"]
 data = [
     "dep:chrono",
     "dep:diesel",
+    "dep:ammonia",
     "dep:phonenumber",
     "dep:serde",
     "dep:serde_json",

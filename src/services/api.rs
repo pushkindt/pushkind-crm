@@ -5,6 +5,7 @@ use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::ensure_role;
 
 use crate::SERVICE_ACCESS_ROLE;
+use crate::domain::types::HubId;
 pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
@@ -20,7 +21,7 @@ where
 {
     ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
-    let mut query = ClientListQuery::new(user.hub_id);
+    let mut query = ClientListQuery::new(HubId::new(user.hub_id)?);
 
     if let Some(page) = params.page {
         query = query.paginate(page, DEFAULT_ITEMS_PER_PAGE);

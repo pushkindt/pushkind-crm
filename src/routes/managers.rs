@@ -7,7 +7,7 @@ use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{base_context, redirect, render_template};
 use tera::{Context, Tera};
 
-use crate::forms::managers::AddManagerForm;
+use crate::forms::managers::{AddManagerForm, AssignManagerForm};
 use crate::repository::DieselRepository;
 use crate::services::{ServiceError, managers as managers_service};
 
@@ -103,9 +103,18 @@ pub async fn managers_modal(
 pub async fn assign_manager(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    form: web::Bytes,
+    payload: web::Bytes,
 ) -> impl Responder {
-    match managers_service::assign_manager(repo.get_ref(), &user, form.as_ref()) {
+    let form: AssignManagerForm = match serde_html_form::from_bytes(&payload) {
+        Ok(form) => form,
+        Err(err) => {
+            log::error!("Failed to process form: {err}");
+            FlashMessage::error("Ошибка при обработке формы").send();
+            return redirect("/managers");
+        }
+    };
+
+    match managers_service::assign_manager(repo.get_ref(), &user, form) {
         Ok(()) => {
             FlashMessage::success("Менеджер назначен клиентам.").send();
             redirect("/managers")

@@ -10,6 +10,7 @@ use validator::Validate;
 
 use crate::domain::client::NewClient;
 use crate::domain::types::{ClientEmail, ClientName, HubId, PhoneNumber, TypeConstraintError};
+use crate::forms::FormError;
 
 #[derive(Deserialize, Validate)]
 /// Form data used to add a new client.
@@ -26,17 +27,42 @@ pub struct AddClientForm {
     pub phone: Option<String>,
 }
 
-impl AddClientForm {
-    pub fn to_new_client(self, hub_id: i32) -> Result<NewClient, TypeConstraintError> {
-        let hub_id = HubId::new(hub_id)?;
-        let name = ClientName::new(self.name)?;
-        let email = self.email.map(ClientEmail::try_from).transpose()?;
-        let phone = match self.phone {
-            Some(value) => Some(PhoneNumber::try_from(value)?),
+pub struct AddClientPayload {
+    pub name: ClientName,
+    pub email: Option<ClientEmail>,
+    pub phone: Option<PhoneNumber>,
+}
+
+impl TryFrom<AddClientForm> for AddClientPayload {
+    type Error = FormError;
+
+    fn try_from(form: AddClientForm) -> Result<Self, Self::Error> {
+        form.validate().map_err(FormError::Validation)?;
+
+        let name = ClientName::new(form.name).map_err(|_| FormError::InvalidName)?;
+        let email = form
+            .email
+            .map(ClientEmail::try_from)
+            .transpose()
+            .map_err(|_| FormError::InvalidEmail)?;
+        let phone = match form.phone {
+            Some(value) => {
+                Some(PhoneNumber::try_from(value).map_err(|_| FormError::InvalidPhoneNumber)?)
+            }
             None => None,
         };
 
-        Ok(NewClient::new(hub_id, name, email, phone, None))
+        if email.is_none() && phone.is_none() {
+            Err(FormError::InvalidEmail)
+        } else {
+            Ok(Self { name, email, phone })
+        }
+    }
+}
+
+impl AddClientPayload {
+    pub fn into_domain(self, hub_id: HubId) -> NewClient {
+        NewClient::new(hub_id, self.name, self.email, self.phone, None)
     }
 }
 
@@ -73,7 +99,7 @@ impl From<csv::Error> for UploadClientsFormError {
 
 impl UploadClientsForm {
     /// Parse the uploaded CSV file into a list of [`NewClient`] records.
-    pub fn parse(&mut self, hub_id: i32) -> Result<Vec<NewClient>, UploadClientsFormError> {
+    pub fn parse(&mut self, hub_id: HubId) -> Result<Vec<NewClient>, UploadClientsFormError> {
         let mut csv_content = String::new();
         self.csv.file.read_to_string(&mut csv_content)?;
 
@@ -82,8 +108,6 @@ impl UploadClientsForm {
         let mut clients = Vec::new();
 
         let headers = rdr.headers()?.clone();
-
-        let hub_id = HubId::new(hub_id)?;
 
         for result in rdr.records() {
             let record = result?;
@@ -140,6 +164,10 @@ impl UploadClientsForm {
                 None => None,
             };
 
+            if email.is_none() && phone.is_none() {
+                continue;
+            }
+
             clients.push(NewClient::new(
                 hub_id,
                 name,
@@ -165,7 +193,11 @@ mod tests {
             phone: Some("+1 (415) 555-2671".to_string()),
         };
 
-        let new_client = form.to_new_client(42).expect("valid client");
+        let payload = AddClientPayload::try_from(form).expect("expected valid payload");
+
+        let hub_id = HubId::new(42).expect("valid hub id");
+
+        let new_client = payload.into_domain(hub_id);
 
         assert_eq!(new_client.hub_id.get(), 42);
         assert_eq!(
@@ -186,10 +218,8 @@ mod tests {
             phone: None,
         };
 
-        let new_client = form.to_new_client(7).expect("valid client");
+        let payload = AddClientPayload::try_from(form);
 
-        assert_eq!(new_client.hub_id.get(), 7);
-        assert!(new_client.email.is_none());
-        assert!(new_client.phone.is_none());
+        assert!(payload.is_err())
     }
 }

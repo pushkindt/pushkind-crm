@@ -3,14 +3,13 @@
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::{DEFAULT_ITEMS_PER_PAGE, Paginated};
 use pushkind_common::routes::{check_role, ensure_role};
-use validator::Validate;
 
 use crate::domain::manager::NewManager;
+use crate::domain::types::HubId;
 use crate::dto::main::IndexPageData;
 pub use crate::dto::main::IndexQuery;
-use crate::forms::main::{AddClientForm, UploadClientsForm};
+use crate::forms::main::{AddClientForm, AddClientPayload, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
-use crate::services::client as client_service;
 use crate::services::{ServiceError, ServiceResult};
 use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE, SERVICE_MANAGER_ROLE};
 
@@ -26,7 +25,10 @@ where
     ensure_role(user, SERVICE_ACCESS_ROLE)?;
 
     let page = query.page.unwrap_or(1);
-    let mut list_query = ClientListQuery::new(user.hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE);
+
+    let hub_id = HubId::new(user.hub_id)?;
+
+    let mut list_query = ClientListQuery::new(hub_id).paginate(page, DEFAULT_ITEMS_PER_PAGE);
 
     let search_query = query
         .search
@@ -44,12 +46,8 @@ where
             log::error!("Failed to build manager from user: {err}");
             ServiceError::Internal
         })?;
-        let manager =
-            client_service::create_or_update_manager(repo, &manager_payload).map_err(|err| {
-                log::error!("Failed to update manager: {err}");
-                err
-            })?;
-        repo.list_clients(list_query.manager_email(manager.email.as_str()))
+        let manager = repo.create_or_update_manager(&manager_payload)?;
+        repo.list_clients(list_query.manager_email(manager.email))
             .map_err(ServiceError::from)?
     } else {
         (0, Vec::new())
@@ -71,20 +69,13 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    if let Err(err) = form.validate() {
-        log::error!("Failed to validate form: {err}");
-        return Err(ServiceError::Form("Ошибка валидации формы".to_string()));
-    }
+    let payload = AddClientPayload::try_from(form)?;
 
-    let new_client = form.to_new_client(user.hub_id).map_err(|err| {
-        log::error!("Failed to build client from form: {err}");
-        ServiceError::Form("Ошибка при подготовке данных клиента".to_string())
-    })?;
+    let hub_id = HubId::new(user.hub_id)?;
 
-    client_service::create_clients(repo, &[new_client]).map_err(|err| {
-        log::error!("Failed to add a client: {err}");
-        err
-    })?;
+    let new_client = payload.into_domain(hub_id);
+
+    repo.create_clients(&[new_client])?;
 
     Ok(())
 }
@@ -100,15 +91,14 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    let clients = form.parse(user.hub_id).map_err(|err| {
+    let hub_id = HubId::new(user.hub_id)?;
+
+    let clients = form.parse(hub_id).map_err(|err| {
         log::error!("Failed to parse clients: {err}");
         ServiceError::Form("Ошибка при парсинге клиентов".to_string())
     })?;
 
-    client_service::create_clients(repo, &clients).map_err(|err| {
-        log::error!("Failed to add clients: {err}");
-        err
-    })?;
+    repo.create_clients(&clients)?;
 
     Ok(())
 }

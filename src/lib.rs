@@ -49,7 +49,7 @@ use crate::routes::managers::{add_manager, assign_manager, managers, managers_mo
 pub mod domain;
 #[cfg(feature = "server")]
 pub mod dto;
-#[cfg(feature = "data")]
+
 mod error_conversions;
 #[cfg(feature = "server")]
 pub mod forms;

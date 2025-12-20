@@ -1,15 +1,12 @@
 //! Services coordinating important field workflows.
 
-use std::collections::HashSet;
-
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::ensure_role;
 
 use crate::SERVICE_ADMIN_ROLE;
-use crate::domain::important_field::ImportantField;
-use crate::domain::types::{HubId, ImportantFieldName, TypeConstraintError};
+use crate::domain::types::HubId;
 use crate::dto::important_fields::ImportantFieldsPageData;
-use crate::forms::important_fields::ImportantFieldsForm;
+use crate::forms::important_fields::{ImportantFieldsForm, ImportantFieldsPayload};
 use crate::repository::{ImportantFieldReader, ImportantFieldWriter};
 use crate::services::ServiceResult;
 
@@ -26,7 +23,7 @@ where
     let hub_id = HubId::new(user.hub_id)?;
 
     let fields = repo
-        .list_important_fields(hub_id.get())
+        .list_important_fields(hub_id)
         .map_err(|err| {
             log::error!("Failed to load important fields: {err}");
             err
@@ -36,33 +33,6 @@ where
         .collect();
 
     Ok(ImportantFieldsPageData { fields })
-}
-
-/// Normalizes the textarea payload, sanitizing and deduplicating field names.
-fn normalize_fields(hub_id: HubId, raw: &str) -> Result<Vec<ImportantField>, TypeConstraintError> {
-    let mut seen = HashSet::new();
-    let mut result = Vec::new();
-
-    for line in raw.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let sanitized = ammonia::clean(trimmed);
-        let normalized = sanitized.trim();
-        if normalized.is_empty() {
-            continue;
-        }
-
-        let normalized = normalized.to_string();
-        if seen.insert(normalized.clone()) {
-            let field_name = ImportantFieldName::new(normalized)?;
-            result.push(ImportantField::new(hub_id, field_name));
-        }
-    }
-
-    Ok(result)
 }
 
 /// Persists the sanitized list of important field names for the hub.
@@ -76,10 +46,12 @@ where
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
-    let hub_id = HubId::new(user.hub_id)?;
-    let fields = normalize_fields(hub_id, &form.fields)?;
+    let payload = ImportantFieldsPayload::try_from(form)?;
 
-    repo.replace_important_fields(hub_id.get(), &fields)
+    let hub_id = HubId::new(user.hub_id)?;
+    let fields = payload.into_domain(hub_id);
+
+    repo.replace_important_fields(hub_id, &fields)
         .map_err(|err| {
             log::error!("Failed to save important fields: {err}");
             err
@@ -93,7 +65,10 @@ mod tests {
     use std::cell::RefCell;
 
     use super::*;
-    use crate::domain::types::{HubId, ImportantFieldName};
+    use crate::domain::{
+        important_field::ImportantField,
+        types::{HubId, ImportantFieldName},
+    };
     use pushkind_common::{repository::errors::RepositoryResult, services::errors::ServiceError};
 
     #[derive(Default)]
@@ -103,7 +78,7 @@ mod tests {
 
     impl ImportantFieldReader for MockRepo {
         /// Returns the fields currently stored in the mock repository.
-        fn list_important_fields(&self, _hub_id: i32) -> RepositoryResult<Vec<ImportantField>> {
+        fn list_important_fields(&self, _hub_id: HubId) -> RepositoryResult<Vec<ImportantField>> {
             Ok(self.stored.borrow().clone())
         }
     }
@@ -112,7 +87,7 @@ mod tests {
         /// Replaces the stored fields in the mock repository.
         fn replace_important_fields(
             &self,
-            _hub_id: i32,
+            _hub_id: HubId,
             fields: &[ImportantField],
         ) -> RepositoryResult<()> {
             self.stored.replace(fields.to_vec());
@@ -179,19 +154,21 @@ mod tests {
     /// Verifies that normalization trims, sanitizes, and deduplicates input.
     #[test]
     fn normalize_fields_trims_sanitizes_and_deduplicates() {
+        let form = ImportantFieldsForm {
+            fields: "  Name  \n\nName\n\n Company ".to_string(),
+        };
+
+        let payload = ImportantFieldsPayload::try_from(form).expect("should normalize fields");
+
         let hub_id = HubId::new(7).expect("valid hub id");
-        let fields = normalize_fields(
-            hub_id,
-            "  Name  \n<script>alert('x')</script>\nName\n\n Company ",
-        )
-        .expect("should normalize fields");
+        let fields = payload.into_domain(hub_id);
 
         let names: Vec<_> = fields
             .into_iter()
             .map(|f| f.field.as_str().to_string())
             .collect();
 
-        assert_eq!(names, vec!["Name", "Company"]);
+        assert_eq!(names, vec!["Company", "Name"]);
     }
 
     /// Confirms saving replaces the stored important fields.

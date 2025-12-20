@@ -7,6 +7,7 @@ use crate::{
     domain::{
         client::Client,
         manager::{Manager, NewManager},
+        types::{ClientId, HubId, ManagerEmail, ManagerId},
     },
     models::{
         client::Client as DbClient,
@@ -42,8 +43,8 @@ impl ManagerWriter for DieselRepository {
 
     fn assign_clients_to_manager(
         &self,
-        manager_id: i32,
-        client_ids: &[i32],
+        manager_id: ManagerId,
+        client_ids: &[ClientId],
     ) -> RepositoryResult<usize> {
         use crate::schema::client_manager;
 
@@ -52,14 +53,16 @@ impl ManagerWriter for DieselRepository {
         let db_client_manager = client_ids
             .iter()
             .map(|client_id| DbNewClientManager {
-                client_id: *client_id,
-                manager_id,
+                client_id: client_id.get(),
+                manager_id: manager_id.get(),
             })
             .collect::<Vec<_>>();
 
         conn.transaction::<usize, diesel::result::Error, _>(move |conn| {
-            diesel::delete(client_manager::table.filter(client_manager::manager_id.eq(manager_id)))
-                .execute(conn)?;
+            diesel::delete(
+                client_manager::table.filter(client_manager::manager_id.eq(manager_id.get())),
+            )
+            .execute(conn)?;
 
             let result = diesel::insert_into(client_manager::table)
                 .values(db_client_manager)
@@ -72,13 +75,13 @@ impl ManagerWriter for DieselRepository {
 }
 
 impl ManagerReader for DieselRepository {
-    fn get_manager_by_id(&self, id: i32, hub_id: i32) -> RepositoryResult<Option<Manager>> {
+    fn get_manager_by_id(&self, id: ManagerId, hub_id: HubId) -> RepositoryResult<Option<Manager>> {
         use crate::schema::managers;
 
         let mut conn = self.conn()?;
         let db_manager = managers::table
-            .filter(managers::id.eq(id))
-            .filter(managers::hub_id.eq(hub_id))
+            .filter(managers::id.eq(id.get()))
+            .filter(managers::hub_id.eq(hub_id.get()))
             .first::<DbManager>(&mut conn)
             .optional()?;
 
@@ -90,13 +93,17 @@ impl ManagerReader for DieselRepository {
         }
     }
 
-    fn get_manager_by_email(&self, email: &str, hub_id: i32) -> RepositoryResult<Option<Manager>> {
+    fn get_manager_by_email(
+        &self,
+        email: &ManagerEmail,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Manager>> {
         use crate::schema::managers;
 
         let mut conn = self.conn()?;
         let db_manager = managers::table
-            .filter(managers::email.eq(email))
-            .filter(managers::hub_id.eq(hub_id))
+            .filter(managers::email.eq(email.as_str()))
+            .filter(managers::hub_id.eq(hub_id.get()))
             .first::<DbManager>(&mut conn)
             .optional()?;
 
@@ -110,7 +117,7 @@ impl ManagerReader for DieselRepository {
 
     fn list_managers_with_clients(
         &self,
-        hub_id: i32,
+        hub_id: HubId,
     ) -> RepositoryResult<Vec<(Manager, Vec<Client>)>> {
         use crate::schema::client_manager;
         use crate::schema::clients;
@@ -118,7 +125,7 @@ impl ManagerReader for DieselRepository {
 
         let mut conn = self.conn()?;
         let managers = managers::table
-            .filter(managers::hub_id.eq(hub_id))
+            .filter(managers::hub_id.eq(hub_id.get()))
             .filter(managers::is_user.eq(true))
             .load::<DbManager>(&mut conn)?;
 

@@ -31,7 +31,7 @@ impl ClientEventReader for DieselRepository {
         let query_builder = || {
             // Start with boxed query on clients
             let mut items = client_events::table
-                .filter(client_events::client_id.eq(query.client_id))
+                .filter(client_events::client_id.eq(query.client_id.get()))
                 .into_boxed::<diesel::sqlite::Sqlite>();
 
             if let Some(event_type) = &query.event_type {

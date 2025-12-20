@@ -46,9 +46,9 @@ where
             let manager = repo.create_or_update_manager(&manager_payload)?;
 
             for recipient in &new_email.recipients {
-                let client = match repo
-                    .get_client_by_email(recipient.address.as_str(), manager.hub_id.get())?
-                {
+                let recipient_email =
+                    ClientEmail::new(recipient.address.as_str()).map_err(RepositoryError::from)?;
+                let client = match repo.get_client_by_email(&recipient_email, manager.hub_id)? {
                     Some(client) => client,
                     None => {
                         continue;
@@ -97,7 +97,9 @@ where
 {
     log::info!("Reply from {} in hub#{}", reply.email, reply.hub_id);
 
-    match repo.get_client_by_email(&reply.email, reply.hub_id)? {
+    let hub_id = HubId::new(reply.hub_id).map_err(RepositoryError::from)?;
+    let reply_email = ClientEmail::new(&reply.email).map_err(RepositoryError::from)?;
+    match repo.get_client_by_email(&reply_email, hub_id)? {
         Some(client) => {
             let new_manager = NewManager::try_from_parts(
                 client.hub_id.get(),
@@ -142,7 +144,9 @@ where
         message.hub_id
     );
 
-    match repo.get_client_by_email(&message.email, message.hub_id)? {
+    let hub_id = HubId::new(message.hub_id).map_err(RepositoryError::from)?;
+    let message_email = ClientEmail::new(&message.email).map_err(RepositoryError::from)?;
+    match repo.get_client_by_email(&message_email, hub_id)? {
         Some(client) => {
             let new_manager = NewManager::try_from_parts(
                 client.hub_id.get(),
@@ -333,14 +337,14 @@ mod tests {
     use pushkind_common::repository::errors::RepositoryError;
     use pushkind_crm::domain::client::{Client, UpdateClient};
     use pushkind_crm::domain::manager::Manager;
-    use pushkind_crm::domain::types::ClientId;
+    use pushkind_crm::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail};
     use pushkind_crm::repository::ClientListQuery;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone)]
     struct TestRepo {
-        clients: Arc<Mutex<HashMap<i32, Client>>>,
+        clients: Arc<Mutex<HashMap<ClientId, Client>>>,
         next_id: Arc<Mutex<i32>>,
     }
 
@@ -358,32 +362,33 @@ mod tests {
             Self::default()
         }
 
-        fn snapshot(&self) -> HashMap<i32, Client> {
+        fn snapshot(&self) -> HashMap<ClientId, Client> {
             self.clients.lock().expect("lock poisoned").clone()
         }
     }
 
     impl ClientReader for TestRepo {
-        fn list_available_fields(&self, _hub_id: i32) -> RepositoryResult<Vec<String>> {
+        fn list_available_fields(&self, _hub_id: HubId) -> RepositoryResult<Vec<String>> {
             Ok(Vec::new())
         }
 
-        fn get_client_by_id(&self, id: i32, _hub_id: i32) -> RepositoryResult<Option<Client>> {
+        fn get_client_by_id(
+            &self,
+            id: ClientId,
+            _hub_id: HubId,
+        ) -> RepositoryResult<Option<Client>> {
             Ok(self.snapshot().get(&id).cloned())
         }
 
         fn get_client_by_email(
             &self,
-            email: &str,
-            hub_id: i32,
+            email: &ClientEmail,
+            hub_id: HubId,
         ) -> RepositoryResult<Option<Client>> {
             Ok(self
                 .snapshot()
                 .values()
-                .find(|c| {
-                    c.hub_id.get() == hub_id
-                        && c.email.as_ref().map(|client_email| client_email.as_str()) == Some(email)
-                })
+                .find(|c| c.hub_id == hub_id && c.email.as_ref() == Some(email))
                 .cloned())
         }
 
@@ -391,14 +396,14 @@ mod tests {
             Ok((0, Vec::new()))
         }
 
-        fn list_managers(&self, _id: i32) -> RepositoryResult<Vec<Manager>> {
+        fn list_managers(&self, _id: ClientId) -> RepositoryResult<Vec<Manager>> {
             Ok(Vec::new())
         }
 
         fn check_client_assigned_to_manager(
             &self,
-            _client_id: i32,
-            _manager_email: &str,
+            _client_id: ClientId,
+            _manager_email: &ManagerEmail,
         ) -> RepositoryResult<bool> {
             Ok(false)
         }
@@ -431,10 +436,10 @@ mod tests {
                     continue;
                 }
 
-                let id = *next_id;
+                let id = ClientId::new(*next_id).expect("valid client id");
                 *next_id += 1;
                 let client = Client {
-                    id: ClientId::new(id).expect("valid client id"),
+                    id,
                     hub_id: new.hub_id,
                     name: new.name.clone(),
                     email: new.email.clone(),
@@ -452,7 +457,7 @@ mod tests {
 
         fn update_client(
             &self,
-            client_id: i32,
+            client_id: ClientId,
             updates: &UpdateClient,
         ) -> RepositoryResult<Client> {
             let mut clients = self.clients.lock().expect("lock poisoned");
@@ -469,7 +474,7 @@ mod tests {
             Ok(existing.clone())
         }
 
-        fn delete_client(&self, client_id: i32) -> RepositoryResult<()> {
+        fn delete_client(&self, client_id: ClientId) -> RepositoryResult<()> {
             self.clients
                 .lock()
                 .expect("lock poisoned")
@@ -517,13 +522,7 @@ mod tests {
         };
         process_client_message(create_message, repo.clone()).expect("insert failed");
 
-        let inserted_id = repo
-            .snapshot()
-            .values()
-            .next()
-            .expect("client missing")
-            .id
-            .get();
+        let inserted_id = repo.snapshot().values().next().expect("client missing").id;
 
         let update_message = ZmqClientMessage {
             hub_id: 1,
