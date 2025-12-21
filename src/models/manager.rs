@@ -33,6 +33,7 @@ pub struct NewManager<'a> {
 
 #[derive(AsChangeset)]
 #[diesel(table_name = crate::schema::managers)]
+#[diesel(treat_none_as_null = true)]
 /// Data used when updating a [`Manager`] record.
 pub struct UpdateManager<'a> {
     pub name: &'a str,

@@ -44,6 +44,7 @@ pub struct NewClient<'a> {
 
 #[derive(AsChangeset)]
 #[diesel(table_name = crate::schema::clients)]
+#[diesel(treat_none_as_null = true)]
 /// Data used when updating a [`Client`] record.
 pub struct UpdateClient<'a> {
     pub name: &'a str,
