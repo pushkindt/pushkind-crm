@@ -2,7 +2,6 @@
 
 use std::env;
 
-use chrono::Utc;
 use config::Config;
 use dotenvy::dotenv;
 use pushkind_common::{
@@ -55,15 +54,14 @@ where
                     }
                 };
 
-                let new_event = NewClientEvent {
-                    client_id: client.id,
-                    event_type: ClientEventType::Email,
-                    manager_id: manager.id,
-                    created_at: Utc::now().naive_utc(),
-                    event_data: json!({
+                let new_event = NewClientEvent::new(
+                    client.id,
+                    manager.id,
+                    ClientEventType::Email,
+                    json!({
                         "text": new_email.subject.as_ref().map(|s| s.as_str()),
                     }),
-                };
+                );
 
                 if is_duplicate_event(&repo, &new_event)? {
                     log::info!(
@@ -101,7 +99,7 @@ where
     let reply_email = ClientEmail::new(&reply.email).map_err(RepositoryError::from)?;
     match repo.get_client_by_email(&reply_email, hub_id)? {
         Some(client) => {
-            let new_manager = NewManager::try_from_parts(
+            let new_manager = NewManager::try_new(
                 client.hub_id.get(),
                 client.name.as_str().to_string(),
                 reply.email.clone(),
@@ -109,16 +107,15 @@ where
             )
             .map_err(RepositoryError::from)?;
             let manager = repo.create_or_update_manager(&new_manager)?;
-            let event = NewClientEvent {
-                client_id: client.id,
-                manager_id: manager.id,
-                event_type: ClientEventType::Reply,
-                event_data: json!({
+            let event = NewClientEvent::new(
+                client.id,
+                manager.id,
+                ClientEventType::Reply,
+                json!({
                     "subject": &reply.subject,
                     "text": ammonia::clean(&reply.message),
                 }),
-                created_at: Utc::now().naive_utc(),
-            };
+            );
             if is_duplicate_event(&repo, &event)? {
                 log::info!(
                     "Skipping duplicate reply event for client {} and manager {}",
@@ -148,7 +145,7 @@ where
     let message_email = ClientEmail::new(&message.email).map_err(RepositoryError::from)?;
     match repo.get_client_by_email(&message_email, hub_id)? {
         Some(client) => {
-            let new_manager = NewManager::try_from_parts(
+            let new_manager = NewManager::try_new(
                 client.hub_id.get(),
                 client.name.as_str().to_string(),
                 message.email.clone(),
@@ -156,15 +153,14 @@ where
             )
             .map_err(RepositoryError::from)?;
             let manager = repo.create_or_update_manager(&new_manager)?;
-            let event = NewClientEvent {
-                client_id: client.id,
-                manager_id: manager.id,
-                event_type: ClientEventType::Unsubscribed,
-                event_data: json!({
+            let event = NewClientEvent::new(
+                client.id,
+                manager.id,
+                ClientEventType::Unsubscribed,
+                json!({
                     "text": &message.reason,
                 }),
-                created_at: Utc::now().naive_utc(),
-            };
+            );
 
             if is_duplicate_event(&repo, &event)? {
                 log::info!(

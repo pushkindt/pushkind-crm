@@ -1,62 +1,8 @@
 # pushkind-crm
 
 `pushkind-crm` is the customer relationship management service used by Pushkind
-hubs. It centralises client records, manager assignments, and conversation
-history while leveraging Actix Web, Diesel, Tera, and the shared
-`pushkind-common` crate for authentication, configuration, and reusable UI
-helpers. The app delivers browser-based workflows for operations teams and
-exposes lightweight APIs for downstream integrations.
-
-## Features
-
-- **Role-scoped client directory** – Hub members with `SERVICE_ACCESS_ROLE` can
-  browse clients with pagination and free-text search while respecting manager
-  visibility rules.
-- **Rich client profiles** – Each profile aggregates core fields, optional custom
-  metadata, assigned managers, and a chronological event timeline for comments,
-  emails, document links, and other touchpoints.
-- **Manager assignment workflow** – Administrators can invite managers, review
-  their portfolios, and assign clients directly from the web UI.
-- **Bulk client import** – CSV uploads (up to 10 MB) create multiple clients at
-  once, mapping extra columns into structured custom fields.
-- **Conversation logging & outreach** – Sanitised comments become timeline
-  events, and outbound email is queued over ZeroMQ so the Pushkind mailer can
-  deliver updates while keeping history intact.
-- **Automated email ingestion** – The `check_events` worker listens on ZeroMQ
-  channels to record replies and unsubscribe notices as structured client events.
-- **JSON client API** – `/api/v1/clients` exposes the filtered client list for
-  partner systems that need machine-readable access.
-
-## Architecture at a Glance
-
-The codebase follows a clean, layered structure so that business logic can be
-exercised and tested without going through the web framework:
-
-- **Domain (`src/domain`)** – Type-safe models for clients, client events, and
-  managers. Builder-style helpers make it easy to construct new payloads while
-  capturing timestamps, normalising contact data (phone numbers stored in E164
-  format), and sanitising inputs early.
-- **Repository (`src/repository`)** – Traits that describe the persistence
-  contract and a Diesel-backed implementation (`DieselRepository`) that speaks to
-  a SQLite database. Each module translates between Diesel models and domain
-  types and exposes strongly typed query builders.
-- **Services (`src/services`)** – Application use-cases that orchestrate domain
-  logic, repository traits, and Pushkind authentication helpers. Services return
-  `ServiceResult<T>` and map infrastructure errors into well-defined service
-  errors.
-- **DTOs (`src/dto`)** – Data transfer objects for rendering templates and API
-  responses. Services convert domain types to DTOs before handing data to routes,
-  keeping handlers thin and domain models focused.
-- **Forms (`src/forms`)** – `serde`/`validator` powered structs that handle
-  request payload validation, CSV parsing, and transformation into domain types.
-- **Routes (`src/routes`)** – Actix Web handlers that wire HTTP requests into the
-  service layer and render Tera templates or redirect with flash messages.
-- **Templates (`templates/`)** – Server-rendered UI built with Tera and
-  Bootstrap 5, backed by sanitized HTML rendered via `ammonia` when necessary.
-
-Because the repository traits live in `src/repository/mod.rs`, service functions
-accept generic parameters that implement those traits. This makes unit tests easy
-by swapping in the `mockall`-based fakes from `src/repository/mock.rs`.
+hubs. For the authoritative behavior contract (invariants, auth rules, and HTTP
+semantics), see `SPEC.md`.
 
 ## Technology Stack
 
@@ -132,9 +78,7 @@ cargo run
 ```
 
 The server listens on `http://127.0.0.1:8080` by default and serves static
-assets from `./assets` in addition to the Tera-powered HTML pages. Authentication
-and authorization are enforced via the Pushkind auth service and the
-`SERVICE_ACCESS_ROLE` constant.
+assets from `./assets` in addition to the Tera-powered HTML pages.
 
 ## Quality Gates
 
@@ -157,21 +101,3 @@ Unit tests exercise the service and form layers directly, while integration
 tests live under `tests/`. Repository tests rely on Diesel’s query builders and
 should avoid raw SQL strings whenever possible. Use the mock repository module to
 isolate services from the database when writing new tests.
-
-## Project Principles
-
-- **Domain-driven**: keep business rules in the domain and service layers and
-  translate to/from external representations at the boundaries.
-- **Explicit errors**: use `thiserror` to define granular error types and convert
-  them into `ServiceError`/`RepositoryError` variants instead of relying on
-  `anyhow`.
-- **No panics in production paths**: avoid `unwrap`/`expect` in request handlers,
-  services, and repositories—propagate errors instead.
-- **Security aware**: sanitize any user-supplied HTML using `ammonia`, validate
-  inputs with `validator`, and always enforce role checks with
-  `pushkind_common::routes::ensure_role`.
-- **Testable**: accept traits rather than concrete types in services and prefer
-  dependency injection so the mock repositories can be used in tests.
-
-Following these guidelines will help new functionality slot seamlessly into the
-existing architecture and keep the service reliable in production.

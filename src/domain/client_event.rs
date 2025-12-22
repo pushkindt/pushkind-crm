@@ -6,7 +6,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::types::{ClientEventId, ClientId, ManagerId};
+use crate::domain::types::{ClientEventId, ClientId, ManagerId, TypeConstraintError};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ClientEvent {
@@ -35,7 +35,85 @@ pub struct NewClientEvent {
     pub manager_id: ManagerId,
     pub event_type: ClientEventType,
     pub event_data: Value,
-    pub created_at: NaiveDateTime,
+}
+
+impl NewClientEvent {
+    /// Create a new client event from already validated domain values.
+    #[must_use]
+    pub fn new(
+        client_id: ClientId,
+        manager_id: ManagerId,
+        event_type: ClientEventType,
+        event_data: Value,
+    ) -> Self {
+        Self {
+            client_id,
+            manager_id,
+            event_type,
+            event_data,
+        }
+    }
+
+    /// Create a new client event from raw identifiers, validating the IDs.
+    pub fn try_new<E>(
+        client_id: i32,
+        manager_id: i32,
+        event_type: E,
+        event_data: Value,
+    ) -> Result<Self, TypeConstraintError>
+    where
+        E: Into<ClientEventType>,
+    {
+        Ok(Self::new(
+            ClientId::try_from(client_id)?,
+            ManagerId::try_from(manager_id)?,
+            event_type.into(),
+            event_data,
+        ))
+    }
+}
+
+impl ClientEvent {
+    /// Create a trusted client event from already validated domain values.
+    pub fn new(
+        id: ClientEventId,
+        client_id: ClientId,
+        manager_id: ManagerId,
+        event_type: ClientEventType,
+        event_data: Value,
+        created_at: NaiveDateTime,
+    ) -> Self {
+        Self {
+            id,
+            client_id,
+            manager_id,
+            event_type,
+            event_data,
+            created_at,
+        }
+    }
+
+    /// Create a client event from raw identifiers, validating the IDs.
+    pub fn try_new<E>(
+        id: i32,
+        client_id: i32,
+        manager_id: i32,
+        event_type: E,
+        event_data: Value,
+        created_at: NaiveDateTime,
+    ) -> Result<Self, TypeConstraintError>
+    where
+        E: Into<ClientEventType>,
+    {
+        Ok(Self::new(
+            ClientEventId::try_from(id)?,
+            ClientId::try_from(client_id)?,
+            ManagerId::try_from(manager_id)?,
+            event_type.into(),
+            event_data,
+            created_at,
+        ))
+    }
 }
 
 impl Display for ClientEventType {

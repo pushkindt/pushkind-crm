@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use serde::Serialize;
 
 use crate::domain::important_field::ImportantField as DomainImportantField;
-use crate::domain::types::{HubId, ImportantFieldName, TypeConstraintError};
+use crate::domain::types::TypeConstraintError;
 
 #[derive(Debug, Clone, Identifiable, Queryable, Selectable, Insertable, Serialize)]
 #[diesel(table_name = crate::schema::important_fields)]
@@ -25,10 +25,7 @@ impl TryFrom<ImportantField> for DomainImportantField {
     type Error = TypeConstraintError;
 
     fn try_from(value: ImportantField) -> Result<Self, Self::Error> {
-        let hub_id = HubId::try_from(value.hub_id)?;
-        let field = ImportantFieldName::new(value.field)?;
-
-        Ok(DomainImportantField::new(hub_id, field))
+        DomainImportantField::try_new(value.hub_id, value.field)
     }
 }
 

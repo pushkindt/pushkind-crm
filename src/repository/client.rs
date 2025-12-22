@@ -187,11 +187,16 @@ impl ClientReader for DieselRepository {
     }
 
     fn list_managers(&self, id: ClientId) -> RepositoryResult<Vec<Manager>> {
-        use crate::schema::{client_manager, managers};
+        use crate::schema::{client_manager, clients, managers};
         let mut conn = self.conn()?;
+        let client_hub_id = clients::table
+            .filter(clients::id.eq(id.get()))
+            .select(clients::hub_id)
+            .single_value();
         let managers = client_manager::table
             .filter(client_manager::client_id.eq(id.get()))
             .inner_join(managers::table)
+            .filter(managers::hub_id.nullable().eq(client_hub_id))
             .select(managers::all_columns)
             .load::<DbManager>(&mut conn)?
             .into_iter()
@@ -405,11 +410,15 @@ impl ClientWriter for DieselRepository {
     }
 
     fn delete_client(&self, client_id: ClientId) -> RepositoryResult<()> {
-        use crate::schema::{client_fields, client_manager, clients};
+        use crate::schema::{client_events, client_fields, client_manager, clients};
 
         let mut conn = self.conn()?;
 
         conn.transaction::<(), diesel::result::Error, _>(|conn| {
+            diesel::delete(
+                client_events::table.filter(client_events::client_id.eq(client_id.get())),
+            )
+            .execute(conn)?;
             diesel::delete(
                 client_manager::table.filter(client_manager::client_id.eq(client_id.get())),
             )
