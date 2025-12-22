@@ -136,6 +136,7 @@ impl ManagerReader for DieselRepository {
         let clients = clients::table
             .inner_join(client_manager::table)
             .filter(client_manager::manager_id.eq_any(managers_ids))
+            .filter(clients::hub_id.eq(hub_id.get()))
             .select((client_manager::manager_id, clients::all_columns))
             .load::<(i32, DbClient)>(&mut conn)?;
 

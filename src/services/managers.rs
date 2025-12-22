@@ -75,15 +75,25 @@ pub fn assign_manager<R>(
     form: AssignManagerForm,
 ) -> ServiceResult<()>
 where
-    R: ManagerReader + ManagerWriter + ?Sized,
+    R: ClientReader + ManagerReader + ManagerWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
 
     let payload = AssignManagerPayload::try_from(form)?;
 
+    let hub_id = HubId::new(user.hub_id)?;
+
     let manager = repo
-        .get_manager_by_id(payload.manager_id, HubId::new(user.hub_id)?)?
+        .get_manager_by_id(payload.manager_id, hub_id)?
         .ok_or(ServiceError::NotFound)?;
+
+    for client_id in &payload.client_ids {
+        if repo.get_client_by_id(*client_id, hub_id)?.is_none() {
+            return Err(ServiceError::Form(
+                "Некорректный список клиентов".to_string(),
+            ));
+        }
+    }
 
     repo.assign_clients_to_manager(manager.id, &payload.client_ids)?;
 
