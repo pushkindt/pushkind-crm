@@ -65,10 +65,7 @@ mod tests {
     use std::cell::RefCell;
 
     use super::*;
-    use crate::domain::{
-        important_field::ImportantField,
-        types::{HubId, ImportantFieldName},
-    };
+    use crate::domain::{important_field::ImportantField, types::HubId};
     use pushkind_common::{repository::errors::RepositoryResult, services::errors::ServiceError};
 
     #[derive(Default)]
@@ -120,10 +117,7 @@ mod tests {
     }
 
     fn build_field(hub: i32, name: &str) -> ImportantField {
-        ImportantField::new(
-            HubId::new(hub).expect("valid hub id"),
-            ImportantFieldName::new(name).expect("valid field name"),
-        )
+        ImportantField::try_new(hub, name.to_string()).expect("valid important field")
     }
 
     /// Ensures loading fails for users lacking the admin role.

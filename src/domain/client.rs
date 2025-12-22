@@ -5,7 +5,9 @@ use std::collections::BTreeMap;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::types::{ClientEmail, ClientId, ClientName, HubId, PhoneNumber};
+use crate::domain::types::{
+    ClientEmail, ClientId, ClientName, HubId, PhoneNumber, TypeConstraintError,
+};
 
 /// Represent a trusted CRM client stored in the system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -21,6 +23,56 @@ pub struct Client {
     pub fields: Option<BTreeMap<String, String>>,
 }
 
+impl Client {
+    /// Create a trusted client from already validated domain values.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: ClientId,
+        hub_id: HubId,
+        name: ClientName,
+        email: Option<ClientEmail>,
+        phone: Option<PhoneNumber>,
+        created_at: NaiveDateTime,
+        updated_at: NaiveDateTime,
+        fields: Option<BTreeMap<String, String>>,
+    ) -> Self {
+        Self {
+            id,
+            hub_id,
+            name,
+            email,
+            phone,
+            created_at,
+            updated_at,
+            fields: normalize_fields(fields),
+        }
+    }
+
+    /// Create a client from raw values, validating identifiers and inputs.
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_new(
+        id: i32,
+        hub_id: i32,
+        name: String,
+        email: Option<String>,
+        phone: Option<String>,
+        created_at: NaiveDateTime,
+        updated_at: NaiveDateTime,
+        fields: Option<BTreeMap<String, String>>,
+    ) -> Result<Self, TypeConstraintError> {
+        Ok(Self::new(
+            ClientId::try_from(id)?,
+            HubId::try_from(hub_id)?,
+            ClientName::new(name)?,
+            email.map(ClientEmail::try_from).transpose()?,
+            phone.map(PhoneNumber::try_from).transpose()?,
+            created_at,
+            updated_at,
+            fields,
+        ))
+    }
+}
+
 /// Data required to persist a new client record.
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewClient {
@@ -33,6 +85,7 @@ pub struct NewClient {
 }
 
 impl NewClient {
+    /// Create a new client from already validated domain values.
     #[must_use]
     pub fn new(
         hub_id: HubId,
@@ -46,8 +99,25 @@ impl NewClient {
             name,
             email,
             phone,
-            fields: fields.filter(|m| !m.is_empty()),
+            fields: normalize_fields(fields),
         }
+    }
+
+    /// Create a new client from raw inputs, validating identifiers and values.
+    pub fn try_new(
+        hub_id: i32,
+        name: String,
+        email: Option<String>,
+        phone: Option<String>,
+        fields: Option<BTreeMap<String, String>>,
+    ) -> Result<Self, TypeConstraintError> {
+        Ok(Self::new(
+            HubId::try_from(hub_id)?,
+            ClientName::new(name)?,
+            email.map(ClientEmail::try_from).transpose()?,
+            phone.map(PhoneNumber::try_from).transpose()?,
+            fields,
+        ))
     }
 }
 
@@ -62,6 +132,7 @@ pub struct UpdateClient {
 }
 
 impl UpdateClient {
+    /// Create an update payload from already validated domain values.
     #[must_use]
     pub fn new(
         name: ClientName,
@@ -73,9 +144,28 @@ impl UpdateClient {
             name,
             email,
             phone,
-            fields: fields.filter(|m| !m.is_empty()),
+            fields: normalize_fields(fields),
         }
     }
+
+    /// Create an update payload from raw inputs, validating values.
+    pub fn try_new(
+        name: String,
+        email: Option<String>,
+        phone: Option<String>,
+        fields: Option<BTreeMap<String, String>>,
+    ) -> Result<Self, TypeConstraintError> {
+        Ok(Self::new(
+            ClientName::new(name)?,
+            email.map(ClientEmail::try_from).transpose()?,
+            phone.map(PhoneNumber::try_from).transpose()?,
+            fields,
+        ))
+    }
+}
+
+fn normalize_fields(fields: Option<BTreeMap<String, String>>) -> Option<BTreeMap<String, String>> {
+    fields.filter(|map| !map.is_empty())
 }
 
 #[cfg(test)]

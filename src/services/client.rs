@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 
-use chrono::Utc;
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::routes::check_role;
 use pushkind_common::routes::ensure_role;
@@ -263,13 +262,7 @@ where
         event_data["subject"] = json!(subject.as_str());
     }
 
-    let new_event = NewClientEvent {
-        client_id: client.id,
-        event_type: payload.event_type,
-        manager_id: manager.id,
-        created_at: Utc::now().naive_utc(),
-        event_data,
-    };
+    let new_event = NewClientEvent::new(client.id, manager.id, payload.event_type, event_data);
 
     repo.create_client_event(&new_event)?;
 
@@ -307,16 +300,15 @@ where
         .get_client_by_id(client_id, hub_id)?
         .ok_or(ServiceError::NotFound)?;
 
-    let event = NewClientEvent {
-        client_id: client.id,
-        event_type: ClientEventType::DocumentLink,
-        manager_id: manager.id,
-        created_at: Utc::now().naive_utc(),
-        event_data: json!({
+    let event = NewClientEvent::new(
+        client.id,
+        manager.id,
+        ClientEventType::DocumentLink,
+        json!({
             "text": payload.text.as_str(),
             "url": payload.url.as_str(),
         }),
-    };
+    );
 
     repo.create_client_event(&event)?;
 
@@ -328,7 +320,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::types::{ClientId, ClientName, HubId, ImportantFieldName};
+    use crate::domain::types::{ClientId, ClientName, HubId};
     use chrono::Utc;
     use std::collections::BTreeMap;
 
@@ -352,10 +344,7 @@ mod tests {
     }
 
     fn configured_field(hub: i32, name: &str) -> ImportantField {
-        ImportantField::new(
-            HubId::new(hub).expect("valid hub id"),
-            ImportantFieldName::new(name).expect("valid field name"),
-        )
+        ImportantField::try_new(hub, name.to_string()).expect("valid important field")
     }
 
     /// Verifies that configured names are extracted and normalized correctly.

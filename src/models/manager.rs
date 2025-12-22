@@ -7,7 +7,7 @@ use crate::domain::manager::{
     NewClientManager as DomainNewClientManager, NewManager as DomainNewManager,
     UpdateManager as DomainUpdateManager,
 };
-use crate::domain::types::{HubId, ManagerEmail, ManagerId, ManagerName, TypeConstraintError};
+use crate::domain::types::TypeConstraintError;
 use crate::models::client::Client;
 
 #[derive(Debug, Clone, Identifiable, Queryable)]
@@ -63,13 +63,13 @@ impl TryFrom<Manager> for DomainManager {
     type Error = TypeConstraintError;
 
     fn try_from(manager: Manager) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: ManagerId::try_from(manager.id)?,
-            hub_id: HubId::try_from(manager.hub_id)?,
-            name: ManagerName::new(manager.name)?,
-            email: ManagerEmail::new(manager.email)?,
-            is_user: manager.is_user,
-        })
+        DomainManager::try_new(
+            manager.id,
+            manager.hub_id,
+            manager.name,
+            manager.email,
+            manager.is_user,
+        )
     }
 }
 
@@ -132,6 +132,7 @@ impl From<DomainNewClientManager> for NewClientManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::types::{ClientId, HubId, ManagerEmail, ManagerId, ManagerName};
 
     #[test]
     fn from_domain_newmanager() {
@@ -149,6 +150,34 @@ mod tests {
 
         let update_from_new: UpdateManager = (&new).into();
         assert_eq!(update_from_new.name, domain.name.as_str());
+    }
+
+    #[test]
+    fn from_domain_update_manager() {
+        let name = ManagerName::new("Reed").expect("valid manager name");
+        let domain =
+            DomainUpdateManager::try_new("Reed".to_string(), false).expect("valid update manager");
+        let update: UpdateManager = (&domain).into();
+        assert_eq!(update.name, name.as_str());
+        assert!(!update.is_user);
+    }
+
+    #[test]
+    fn from_domain_client_manager() {
+        let client_id = ClientId::new(5).expect("valid client id");
+        let manager_id = ManagerId::new(7).expect("valid manager id");
+        let domain_client = DomainClientManager::try_new(5, 7).expect("valid client manager");
+        let db_client: ClientManager = domain_client.into();
+        assert_eq!(db_client.client_id, client_id.get());
+        assert_eq!(db_client.manager_id, manager_id.get());
+    }
+
+    #[test]
+    fn from_domain_new_client_manager() {
+        let domain_new = DomainNewClientManager::try_new(9, 11).expect("valid new client manager");
+        let db_new: NewClientManager = domain_new.into();
+        assert_eq!(db_new.client_id, 9);
+        assert_eq!(db_new.manager_id, 11);
     }
 
     #[test]

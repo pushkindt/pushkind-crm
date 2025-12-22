@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use chrono::Utc;
 use pushkind_crm::domain::client::{NewClient, UpdateClient};
 use pushkind_crm::domain::client_event::{ClientEventType, NewClientEvent};
 use pushkind_crm::domain::manager::NewManager;
@@ -111,28 +110,23 @@ fn test_client_event_repository_crud() {
             .remove(0)
     };
     let manager_payload =
-        NewManager::try_from_parts(1, "Manager".to_string(), "m@example.com".to_string(), true)
-            .unwrap();
+        NewManager::try_new(1, "Manager".to_string(), "m@example.com".to_string(), true).unwrap();
     let manager = manager_repo
         .create_or_update_manager(&manager_payload)
         .unwrap();
 
     let client_event_repo = DieselRepository::new(test_db.pool());
 
-    let new_event = NewClientEvent {
-        client_id: client.id,
-        manager_id: manager.id,
-        event_type: ClientEventType::Comment,
-        event_data: json!({"text": "hello"}),
-        created_at: Utc::now().naive_utc(),
-    };
+    let new_event = NewClientEvent::new(
+        client.id,
+        manager.id,
+        ClientEventType::Comment,
+        json!({"text": "hello"}),
+    );
     let created = client_event_repo.create_client_event(&new_event).unwrap();
     assert_eq!(created.event_type, ClientEventType::Comment);
 
-    let duplicate_attempt = NewClientEvent {
-        created_at: Utc::now().naive_utc(),
-        ..new_event.clone()
-    };
+    let duplicate_attempt = new_event.clone();
     let duplicate = client_event_repo
         .create_client_event(&duplicate_attempt)
         .unwrap();
@@ -145,13 +139,12 @@ fn test_client_event_repository_crud() {
     assert_eq!(events_after_duplicate.len(), 2);
 
     let _ = client_event_repo
-        .create_client_event(&NewClientEvent {
-            client_id: client.id,
-            manager_id: manager.id,
-            event_type: ClientEventType::Call,
-            event_data: json!({}),
-            created_at: Utc::now().naive_utc(),
-        })
+        .create_client_event(&NewClientEvent::new(
+            client.id,
+            manager.id,
+            ClientEventType::Call,
+            json!({}),
+        ))
         .unwrap();
 
     let (total, events) = client_event_repo
@@ -193,16 +186,14 @@ fn test_manager_repository_crud() {
 
     // create or update manager
     let manager_payload =
-        NewManager::try_from_parts(1, "Manager".to_string(), "m@example.com".to_string(), true)
-            .unwrap();
+        NewManager::try_new(1, "Manager".to_string(), "m@example.com".to_string(), true).unwrap();
     let manager = manager_repo
         .create_or_update_manager(&manager_payload)
         .unwrap();
     assert!(manager.id.get() > 0);
 
     let updated_payload =
-        NewManager::try_from_parts(1, "Updated".to_string(), "m@example.com".to_string(), true)
-            .unwrap();
+        NewManager::try_new(1, "Updated".to_string(), "m@example.com".to_string(), true).unwrap();
     let updated = manager_repo
         .create_or_update_manager(&updated_payload)
         .unwrap();
@@ -210,8 +201,7 @@ fn test_manager_repository_crud() {
     assert_eq!(updated.name.as_str(), "Updated");
 
     let preserved_payload =
-        NewManager::try_from_parts(1, "Updated".to_string(), "m@example.com".to_string(), false)
-            .unwrap();
+        NewManager::try_new(1, "Updated".to_string(), "m@example.com".to_string(), false).unwrap();
     let preserved = manager_repo
         .create_or_update_manager(&preserved_payload)
         .unwrap();

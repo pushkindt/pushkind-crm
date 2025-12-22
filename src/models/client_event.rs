@@ -4,10 +4,8 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 
 use crate::domain::{
-    client_event::{
-        ClientEvent as DomainClientEvent, ClientEventType, NewClientEvent as DomainNewClientEvent,
-    },
-    types::{ClientEventId, ClientId, ManagerId, TypeConstraintError},
+    client_event::{ClientEvent as DomainClientEvent, NewClientEvent as DomainNewClientEvent},
+    types::TypeConstraintError,
 };
 use crate::models::client::Client;
 use crate::models::manager::Manager;
@@ -38,14 +36,16 @@ impl TryFrom<ClientEvent> for DomainClientEvent {
     type Error = TypeConstraintError;
 
     fn try_from(event: ClientEvent) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: ClientEventId::try_from(event.id)?,
-            client_id: ClientId::try_from(event.client_id)?,
-            manager_id: ManagerId::try_from(event.manager_id)?,
-            event_type: ClientEventType::from(event.event_type.as_str()),
-            event_data: serde_json::from_str(&event.event_data).unwrap_or_default(),
-            created_at: event.created_at,
-        })
+        let event_data = serde_json::from_str(&event.event_data).unwrap_or_default();
+
+        DomainClientEvent::try_new(
+            event.id,
+            event.client_id,
+            event.manager_id,
+            event.event_type,
+            event_data,
+            event.created_at,
+        )
     }
 }
 

@@ -6,7 +6,7 @@ use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 use crate::{
     domain::{
         client::Client,
-        manager::{Manager, NewManager},
+        manager::{Manager, NewClientManager, NewManager},
         types::{ClientId, HubId, ManagerEmail, ManagerId},
     },
     models::{
@@ -52,9 +52,8 @@ impl ManagerWriter for DieselRepository {
 
         let db_client_manager = client_ids
             .iter()
-            .map(|client_id| DbNewClientManager {
-                client_id: client_id.get(),
-                manager_id: manager_id.get(),
+            .map(|client_id| {
+                DbNewClientManager::from(NewClientManager::new(*client_id, manager_id))
             })
             .collect::<Vec<_>>();
 
