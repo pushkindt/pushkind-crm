@@ -206,10 +206,7 @@ mod tests {
         repo.expect_list_clients()
             .withf(|query| {
                 query.hub_id == HubId::new(22).expect("valid hub id")
-                    && query
-                        .manager_email
-                        .as_ref()
-                        .map(|email| email.as_str())
+                    && query.manager_email.as_ref().map(|email| email.as_str())
                         == Some("manager@example.com")
             })
             .times(1)
@@ -263,8 +260,7 @@ mod tests {
             .returning(move |client_id, _| Ok(Some(sample_client(client_id.get(), 22))));
         repo.expect_assign_clients_to_manager()
             .withf(|manager_id, client_ids| {
-                manager_id == &ManagerId::new(2).expect("manager id")
-                    && client_ids.len() == 2
+                manager_id == &ManagerId::new(2).expect("manager id") && client_ids.len() == 2
             })
             .times(1)
             .returning(|_, _| Ok(2));

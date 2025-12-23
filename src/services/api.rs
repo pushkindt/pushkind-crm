@@ -97,13 +97,9 @@ mod tests {
                 query.hub_id == HubId::new(7).expect("valid hub id")
                     && query.manager_email.is_none()
                     && query.search.as_deref() == Some("Alice")
-                    && query
-                        .pagination
-                        .as_ref()
-                        .is_some_and(|pagination| {
-                            pagination.page == 2
-                                && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
-                        })
+                    && query.pagination.as_ref().is_some_and(|pagination| {
+                        pagination.page == 2 && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
+                    })
             })
             .times(1)
             .returning(move |_| Ok((1, vec![response_client.clone()])));

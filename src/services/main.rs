@@ -184,13 +184,9 @@ mod tests {
                 query.hub_id == HubId::new(11).expect("valid hub id")
                     && query.manager_email.is_none()
                     && query.search.as_deref() == Some("Delta")
-                    && query
-                        .pagination
-                        .as_ref()
-                        .is_some_and(|pagination| {
-                            pagination.page == 2
-                                && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
-                        })
+                    && query.pagination.as_ref().is_some_and(|pagination| {
+                        pagination.page == 2 && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
+                    })
             })
             .times(1)
             .returning(move |_| Ok((1, vec![expected_client.clone()])));
@@ -227,13 +223,9 @@ mod tests {
                 query.hub_id == HubId::new(11).expect("valid hub id")
                     && query.manager_email.as_ref() == Some(&manager_email)
                     && query.search.is_none()
-                    && query
-                        .pagination
-                        .as_ref()
-                        .is_some_and(|pagination| {
-                            pagination.page == 1
-                                && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
-                        })
+                    && query.pagination.as_ref().is_some_and(|pagination| {
+                        pagination.page == 1 && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
+                    })
             })
             .times(1)
             .returning(move |_| Ok((1, vec![expected_client.clone()])));
