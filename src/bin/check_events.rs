@@ -326,25 +326,23 @@ fn main() {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "test-mocks"))]
 mod tests {
     use super::*;
     use chrono::Utc;
-    use pushkind_common::repository::errors::RepositoryError;
-    use pushkind_crm::domain::client::{Client, UpdateClient};
-    use pushkind_crm::domain::manager::Manager;
-    use pushkind_crm::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail};
-    use pushkind_crm::repository::ClientListQuery;
+    use pushkind_crm::domain::client::Client;
+    use pushkind_crm::domain::types::ClientId;
+    use pushkind_crm::repository::mock::MockRepository;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone)]
-    struct TestRepo {
+    struct TestState {
         clients: Arc<Mutex<HashMap<ClientId, Client>>>,
         next_id: Arc<Mutex<i32>>,
     }
 
-    impl Default for TestRepo {
+    impl Default for TestState {
         fn default() -> Self {
             Self {
                 clients: Arc::new(Mutex::new(HashMap::new())),
@@ -353,135 +351,70 @@ mod tests {
         }
     }
 
-    impl TestRepo {
-        fn new() -> Self {
-            Self::default()
-        }
-
+    impl TestState {
         fn snapshot(&self) -> HashMap<ClientId, Client> {
             self.clients.lock().expect("lock poisoned").clone()
         }
     }
 
-    impl ClientReader for TestRepo {
-        fn list_available_fields(&self, _hub_id: HubId) -> RepositoryResult<Vec<String>> {
-            Ok(Vec::new())
-        }
+    fn build_repo(state: TestState) -> MockRepository {
+        let mut repo = MockRepository::new();
+        let clients = state.clients.clone();
+        let next_id = state.next_id.clone();
 
-        fn get_client_by_id(
-            &self,
-            id: ClientId,
-            _hub_id: HubId,
-        ) -> RepositoryResult<Option<Client>> {
-            Ok(self.snapshot().get(&id).cloned())
-        }
+        repo.expect_create_clients()
+            .times(1)
+            .returning(move |new_clients| {
+                let mut count = 0;
+                let mut clients = clients.lock().expect("lock poisoned");
+                let mut next_id = next_id.lock().expect("lock poisoned");
 
-        fn get_client_by_email(
-            &self,
-            email: &ClientEmail,
-            hub_id: HubId,
-        ) -> RepositoryResult<Option<Client>> {
-            Ok(self
-                .snapshot()
-                .values()
-                .find(|c| c.hub_id == hub_id && c.email.as_ref() == Some(email))
-                .cloned())
-        }
+                for new in new_clients {
+                    let now = Utc::now().naive_utc();
 
-        fn list_clients(&self, _query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)> {
-            Ok((0, Vec::new()))
-        }
+                    let mut updated_existing = false;
+                    if let Some(email) = new.email.as_ref()
+                        && let Some(existing) = clients.values_mut().find(|client| {
+                            client.hub_id == new.hub_id && client.email.as_ref() == Some(email)
+                        })
+                    {
+                        existing.name = new.name.clone();
+                        existing.phone = new.phone.clone();
+                        existing.fields = new.fields.clone();
+                        existing.updated_at = now;
+                        updated_existing = true;
+                    }
 
-        fn list_managers(&self, _id: ClientId) -> RepositoryResult<Vec<Manager>> {
-            Ok(Vec::new())
-        }
+                    if updated_existing {
+                        count += 1;
+                        continue;
+                    }
 
-        fn check_client_assigned_to_manager(
-            &self,
-            _client_id: ClientId,
-            _manager_email: &ManagerEmail,
-        ) -> RepositoryResult<bool> {
-            Ok(false)
-        }
-    }
-
-    impl ClientWriter for TestRepo {
-        fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
-            let mut count = 0;
-            let mut clients = self.clients.lock().expect("lock poisoned");
-            let mut next_id = self.next_id.lock().expect("lock poisoned");
-
-            for new in new_clients {
-                let now = Utc::now().naive_utc();
-
-                let mut updated_existing = false;
-                if let Some(email) = new.email.as_ref()
-                    && let Some(existing) = clients.values_mut().find(|client| {
-                        client.hub_id == new.hub_id && client.email.as_ref() == Some(email)
-                    })
-                {
-                    existing.name = new.name.clone();
-                    existing.phone = new.phone.clone();
-                    existing.fields = new.fields.clone();
-                    existing.updated_at = now;
-                    updated_existing = true;
-                }
-
-                if updated_existing {
+                    let id = ClientId::new(*next_id).expect("valid client id");
+                    *next_id += 1;
+                    let client = Client {
+                        id,
+                        hub_id: new.hub_id,
+                        name: new.name.clone(),
+                        email: new.email.clone(),
+                        phone: new.phone.clone(),
+                        created_at: now,
+                        updated_at: now,
+                        fields: new.fields.clone(),
+                    };
+                    clients.insert(id, client);
                     count += 1;
-                    continue;
                 }
 
-                let id = ClientId::new(*next_id).expect("valid client id");
-                *next_id += 1;
-                let client = Client {
-                    id,
-                    hub_id: new.hub_id,
-                    name: new.name.clone(),
-                    email: new.email.clone(),
-                    phone: new.phone.clone(),
-                    created_at: now,
-                    updated_at: now,
-                    fields: new.fields.clone(),
-                };
-                clients.insert(id, client);
-                count += 1;
-            }
+                Ok(count)
+            });
 
-            Ok(count)
-        }
-
-        fn update_client(
-            &self,
-            client_id: ClientId,
-            updates: &UpdateClient,
-        ) -> RepositoryResult<Client> {
-            let mut clients = self.clients.lock().expect("lock poisoned");
-            let Some(existing) = clients.get_mut(&client_id) else {
-                return Err(RepositoryError::NotFound);
-            };
-
-            existing.name = updates.name.clone();
-            existing.email = updates.email.clone();
-            existing.phone = updates.phone.clone();
-            existing.fields = updates.fields.clone();
-            existing.updated_at = Utc::now().naive_utc();
-
-            Ok(existing.clone())
-        }
-
-        fn delete_client(&self, client_id: ClientId) -> RepositoryResult<()> {
-            self.clients
-                .lock()
-                .expect("lock poisoned")
-                .remove(&client_id);
-            Ok(())
-        }
+        repo
     }
 
     #[test]
     fn processes_new_client_payloads() {
-        let repo = TestRepo::new();
+        let state = TestState::default();
         let message_alice = ZmqClientMessage {
             hub_id: 1,
             name: "Alice".to_string(),
@@ -489,7 +422,8 @@ mod tests {
             phone: None,
             fields: None,
         };
-        process_client_message(message_alice, repo.clone()).expect("processing failed");
+        process_client_message(message_alice, build_repo(state.clone()))
+            .expect("processing failed");
 
         let message_bob = ZmqClientMessage {
             hub_id: 2,
@@ -498,9 +432,9 @@ mod tests {
             phone: Some("+1 (415) 555-2671".to_string()),
             fields: None,
         };
-        process_client_message(message_bob, repo.clone()).expect("processing failed");
+        process_client_message(message_bob, build_repo(state.clone())).expect("processing failed");
 
-        let snapshot = repo.snapshot();
+        let snapshot = state.snapshot();
         assert_eq!(snapshot.len(), 2);
         assert!(snapshot.values().any(|c| c.name.as_str() == "Alice"));
         assert!(snapshot.values().any(|c| c.name.as_str() == "Bob"));
@@ -508,7 +442,7 @@ mod tests {
 
     #[test]
     fn updates_existing_clients_by_email() {
-        let repo = TestRepo::new();
+        let state = TestState::default();
         let create_message = ZmqClientMessage {
             hub_id: 1,
             name: "Initial".to_string(),
@@ -516,9 +450,9 @@ mod tests {
             phone: None,
             fields: None,
         };
-        process_client_message(create_message, repo.clone()).expect("insert failed");
+        process_client_message(create_message, build_repo(state.clone())).expect("insert failed");
 
-        let inserted_id = repo.snapshot().values().next().expect("client missing").id;
+        let inserted_id = state.snapshot().values().next().expect("client missing").id;
 
         let update_message = ZmqClientMessage {
             hub_id: 1,
@@ -528,9 +462,9 @@ mod tests {
             fields: None,
         };
 
-        process_client_message(update_message, repo.clone()).expect("update failed");
+        process_client_message(update_message, build_repo(state.clone())).expect("update failed");
 
-        let snapshot = repo.snapshot();
+        let snapshot = state.snapshot();
         assert_eq!(snapshot.len(), 1);
         let updated = snapshot.get(&inserted_id).expect("client missing");
         assert_eq!(updated.name.as_str(), "Updated");
@@ -542,7 +476,7 @@ mod tests {
 
     #[test]
     fn creates_new_when_email_not_found() {
-        let repo = TestRepo::new();
+        let state = TestState::default();
         let message = ZmqClientMessage {
             hub_id: 9,
             name: "Fallback".to_string(),
@@ -551,16 +485,16 @@ mod tests {
             fields: None,
         };
 
-        process_client_message(message, repo.clone()).expect("processing failed");
+        process_client_message(message, build_repo(state.clone())).expect("processing failed");
 
-        let snapshot = repo.snapshot();
+        let snapshot = state.snapshot();
         assert_eq!(snapshot.len(), 1);
         assert_eq!(snapshot.values().next().unwrap().hub_id.get(), 9);
     }
 
     #[test]
     fn creates_new_when_email_missing() {
-        let repo = TestRepo::new();
+        let state = TestState::default();
         let message = ZmqClientMessage {
             hub_id: 3,
             name: "No Email".to_string(),
@@ -569,9 +503,9 @@ mod tests {
             fields: None,
         };
 
-        process_client_message(message, repo.clone()).expect("processing failed");
+        process_client_message(message, build_repo(state.clone())).expect("processing failed");
 
-        let snapshot = repo.snapshot();
+        let snapshot = state.snapshot();
         assert_eq!(snapshot.len(), 1);
         let client = snapshot.values().next().unwrap();
         assert_eq!(client.name.as_str(), "No Email");

@@ -15,7 +15,7 @@ use crate::domain::{
 pub mod client;
 pub mod client_event;
 pub mod manager;
-#[cfg(test)]
+#[cfg(feature = "test-mocks")]
 pub mod mock;
 
 #[derive(Clone)]

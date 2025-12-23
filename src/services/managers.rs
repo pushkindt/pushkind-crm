@@ -99,3 +99,181 @@ where
 
     Ok(())
 }
+
+#[cfg(all(test, feature = "test-mocks"))]
+mod tests {
+    use super::*;
+    use crate::domain::client::Client;
+    use crate::domain::manager::Manager;
+    use crate::domain::types::{ClientId, HubId, ManagerEmail, ManagerId, ManagerName};
+    use crate::repository::mock::MockRepository;
+    use chrono::Utc;
+    use pushkind_common::services::errors::ServiceError;
+
+    fn admin_user() -> AuthenticatedUser {
+        AuthenticatedUser {
+            sub: "1".to_string(),
+            email: "admin@example.com".to_string(),
+            hub_id: 22,
+            name: "Admin".to_string(),
+            roles: vec![SERVICE_ADMIN_ROLE.to_string()],
+            exp: 0,
+        }
+    }
+
+    fn viewer_user() -> AuthenticatedUser {
+        AuthenticatedUser {
+            sub: "2".to_string(),
+            email: "viewer@example.com".to_string(),
+            hub_id: 22,
+            name: "Viewer".to_string(),
+            roles: vec!["crm".to_string()],
+            exp: 0,
+        }
+    }
+
+    fn sample_manager(id: i32, hub_id: i32) -> Manager {
+        Manager::try_new(
+            id,
+            hub_id,
+            "Manager".to_string(),
+            "manager@example.com".to_string(),
+            true,
+        )
+        .expect("valid manager")
+    }
+
+    fn sample_client(id: i32, hub_id: i32) -> Client {
+        Client::try_new(
+            id,
+            hub_id,
+            "Client".to_string(),
+            Some("client@example.com".to_string()),
+            None,
+            Utc::now().naive_utc(),
+            Utc::now().naive_utc(),
+            None,
+        )
+        .expect("valid client")
+    }
+
+    #[test]
+    fn list_managers_requires_admin_role() {
+        let mut repo = MockRepository::new();
+        repo.expect_list_managers_with_clients().times(0);
+        let user = viewer_user();
+
+        let result = list_managers(&repo, &user);
+
+        assert!(matches!(result, Err(ServiceError::Unauthorized)));
+    }
+
+    #[test]
+    fn add_manager_creates_manager() {
+        let mut repo = MockRepository::new();
+        let manager = sample_manager(1, 22);
+        repo.expect_create_or_update_manager()
+            .withf(|payload| {
+                payload.hub_id == HubId::new(22).expect("valid hub id")
+                    && payload.is_user
+                    && payload.email == ManagerEmail::new("manager@example.com").expect("email")
+                    && payload.name == ManagerName::new("Manager").expect("name")
+            })
+            .times(1)
+            .returning(move |_| Ok(manager.clone()));
+        let user = admin_user();
+        let form = AddManagerForm {
+            name: "Manager".to_string(),
+            email: "manager@example.com".to_string(),
+        };
+
+        add_manager(&repo, &user, form).expect("manager created");
+    }
+
+    #[test]
+    fn load_manager_modal_returns_data() {
+        let mut repo = MockRepository::new();
+        let manager = sample_manager(5, 22);
+        let client = sample_client(7, 22);
+        let expected_client = client.clone();
+        repo.expect_get_manager_by_id()
+            .withf(|manager_id, hub_id| {
+                manager_id == &ManagerId::new(5).expect("manager id")
+                    && hub_id == &HubId::new(22).expect("hub id")
+            })
+            .times(1)
+            .returning(move |_, _| Ok(Some(manager.clone())));
+        repo.expect_list_clients()
+            .withf(|query| {
+                query.hub_id == HubId::new(22).expect("valid hub id")
+                    && query
+                        .manager_email
+                        .as_ref()
+                        .map(|email| email.as_str())
+                        == Some("manager@example.com")
+            })
+            .times(1)
+            .returning(move |_| Ok((1, vec![expected_client.clone()])));
+
+        let user = admin_user();
+        let data = load_manager_modal(&repo, &user, 5).expect("modal data");
+
+        assert_eq!(data.manager.email.as_str(), "manager@example.com");
+        assert_eq!(data.clients, vec![client]);
+    }
+
+    #[test]
+    fn assign_manager_rejects_unknown_clients() {
+        let mut repo = MockRepository::new();
+        let manager = sample_manager(1, 22);
+        repo.expect_get_manager_by_id()
+            .times(1)
+            .returning(move |_, _| Ok(Some(manager.clone())));
+        let valid_client_id = ClientId::new(1).expect("client id");
+        repo.expect_get_client_by_id()
+            .times(2)
+            .returning(move |client_id, _| {
+                if client_id == valid_client_id {
+                    Ok(Some(sample_client(1, 22)))
+                } else {
+                    Ok(None)
+                }
+            });
+        repo.expect_assign_clients_to_manager().times(0);
+        let user = admin_user();
+        let form = AssignManagerForm {
+            manager_id: 1,
+            client_ids: vec![1, 2],
+        };
+
+        let result = assign_manager(&repo, &user, form);
+
+        assert!(matches!(result, Err(ServiceError::Form(_))));
+    }
+
+    #[test]
+    fn assign_manager_assigns_clients() {
+        let mut repo = MockRepository::new();
+        let manager = sample_manager(2, 22);
+        repo.expect_get_manager_by_id()
+            .times(1)
+            .returning(move |_, _| Ok(Some(manager.clone())));
+        repo.expect_get_client_by_id()
+            .times(2)
+            .returning(move |client_id, _| Ok(Some(sample_client(client_id.get(), 22))));
+        repo.expect_assign_clients_to_manager()
+            .withf(|manager_id, client_ids| {
+                manager_id == &ManagerId::new(2).expect("manager id")
+                    && client_ids.len() == 2
+            })
+            .times(1)
+            .returning(|_, _| Ok(2));
+        let user = admin_user();
+        let form = AssignManagerForm {
+            manager_id: 2,
+            client_ids: vec![3, 4],
+        };
+
+        assign_manager(&repo, &user, form).expect("assignment ok");
+    }
+}

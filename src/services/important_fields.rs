@@ -60,37 +60,12 @@ where
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "test-mocks"))]
 mod tests {
-    use std::cell::RefCell;
-
     use super::*;
     use crate::domain::{important_field::ImportantField, types::HubId};
-    use pushkind_common::{repository::errors::RepositoryResult, services::errors::ServiceError};
-
-    #[derive(Default)]
-    struct MockRepo {
-        stored: RefCell<Vec<ImportantField>>,
-    }
-
-    impl ImportantFieldReader for MockRepo {
-        /// Returns the fields currently stored in the mock repository.
-        fn list_important_fields(&self, _hub_id: HubId) -> RepositoryResult<Vec<ImportantField>> {
-            Ok(self.stored.borrow().clone())
-        }
-    }
-
-    impl ImportantFieldWriter for MockRepo {
-        /// Replaces the stored fields in the mock repository.
-        fn replace_important_fields(
-            &self,
-            _hub_id: HubId,
-            fields: &[ImportantField],
-        ) -> RepositoryResult<()> {
-            self.stored.replace(fields.to_vec());
-            Ok(())
-        }
-    }
+    use crate::repository::mock::MockRepository;
+    use pushkind_common::services::errors::ServiceError;
 
     /// Builds an admin user for test scenarios.
     fn admin_user() -> AuthenticatedUser {
@@ -123,7 +98,8 @@ mod tests {
     /// Ensures loading fails for users lacking the admin role.
     #[test]
     fn load_requires_admin_role() {
-        let repo = MockRepo::default();
+        let mut repo = MockRepository::new();
+        repo.expect_list_important_fields().times(0);
         let user = viewer_user();
 
         let result = load_important_fields(&repo, &user);
@@ -134,7 +110,8 @@ mod tests {
     /// Ensures saving fails for users lacking the admin role.
     #[test]
     fn save_requires_admin_role() {
-        let repo = MockRepo::default();
+        let mut repo = MockRepository::new();
+        repo.expect_replace_important_fields().times(0);
         let user = viewer_user();
         let form = ImportantFieldsForm {
             fields: "Field".to_string(),
@@ -168,26 +145,34 @@ mod tests {
     /// Confirms saving replaces the stored important fields.
     #[test]
     fn save_replaces_existing_fields() {
-        let repo = MockRepo::default();
+        let mut repo = MockRepository::new();
+        repo.expect_replace_important_fields()
+            .withf(|hub_id, fields| {
+                let expected_hub = HubId::new(42).expect("valid hub id");
+                hub_id == &expected_hub
+                    && fields.len() == 2
+                    && fields[0].field.as_str() == "Name"
+                    && fields[1].field.as_str() == "Phone"
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
         let user = admin_user();
         let form = ImportantFieldsForm {
             fields: "Name\nPhone".to_string(),
         };
 
         save_important_fields(&repo, &user, form).expect("should save fields");
-
-        let stored = repo.stored.borrow().clone();
-        assert_eq!(stored.len(), 2);
-        assert_eq!(stored[0].field.as_str(), "Name");
-        assert_eq!(stored[1].field.as_str(), "Phone");
     }
 
     /// Checks that loading returns already saved field names.
     #[test]
     fn load_returns_existing_fields() {
-        let repo = MockRepo::default();
-        repo.stored
-            .replace(vec![build_field(42, "Name"), build_field(42, "Email")]);
+        let mut repo = MockRepository::new();
+        let expected_fields = vec![build_field(42, "Name"), build_field(42, "Email")];
+        repo.expect_list_important_fields()
+            .withf(|hub_id| hub_id == &HubId::new(42).expect("valid hub id"))
+            .times(1)
+            .returning(move |_| Ok(expected_fields.clone()));
 
         let user = admin_user();
         let data = load_important_fields(&repo, &user).expect("should load fields");

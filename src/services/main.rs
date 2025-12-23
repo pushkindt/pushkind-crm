@@ -102,3 +102,179 @@ where
 
     Ok(())
 }
+
+#[cfg(all(test, feature = "test-mocks"))]
+mod tests {
+    use super::*;
+    use crate::domain::client::Client;
+    use crate::domain::manager::Manager;
+    use crate::domain::types::{ClientName, HubId, ManagerEmail, ManagerName};
+    use crate::repository::mock::MockRepository;
+    use chrono::Utc;
+    use pushkind_common::services::errors::ServiceError;
+
+    fn access_user() -> AuthenticatedUser {
+        AuthenticatedUser {
+            sub: "1".to_string(),
+            email: "viewer@example.com".to_string(),
+            hub_id: 11,
+            name: "Viewer".to_string(),
+            roles: vec![SERVICE_ACCESS_ROLE.to_string()],
+            exp: 0,
+        }
+    }
+
+    fn admin_user() -> AuthenticatedUser {
+        let mut user = access_user();
+        user.roles.push(SERVICE_ADMIN_ROLE.to_string());
+        user
+    }
+
+    fn manager_user() -> AuthenticatedUser {
+        let mut user = access_user();
+        user.roles.push(SERVICE_MANAGER_ROLE.to_string());
+        user
+    }
+
+    fn sample_client(id: i32, hub_id: i32) -> Client {
+        Client::try_new(
+            id,
+            hub_id,
+            "Client".to_string(),
+            Some("client@example.com".to_string()),
+            None,
+            Utc::now().naive_utc(),
+            Utc::now().naive_utc(),
+            None,
+        )
+        .expect("valid client")
+    }
+
+    fn sample_manager(id: i32, hub_id: i32) -> Manager {
+        Manager::try_new(
+            id,
+            hub_id,
+            "Manager".to_string(),
+            "manager@example.com".to_string(),
+            true,
+        )
+        .expect("valid manager")
+    }
+
+    #[test]
+    fn load_index_page_requires_access_role() {
+        let mut repo = MockRepository::new();
+        repo.expect_list_clients().times(0);
+        repo.expect_create_or_update_manager().times(0);
+        let mut user = access_user();
+        user.roles.clear();
+
+        let result = load_index_page(&repo, &user, IndexQuery::default());
+
+        assert!(matches!(result, Err(ServiceError::Unauthorized)));
+    }
+
+    #[test]
+    fn load_index_page_for_admin_applies_search() {
+        let mut repo = MockRepository::new();
+        repo.expect_create_or_update_manager().times(0);
+        let expected_client = sample_client(1, 11);
+        repo.expect_list_clients()
+            .withf(|query| {
+                query.hub_id == HubId::new(11).expect("valid hub id")
+                    && query.manager_email.is_none()
+                    && query.search.as_deref() == Some("Delta")
+                    && query
+                        .pagination
+                        .as_ref()
+                        .is_some_and(|pagination| {
+                            pagination.page == 2
+                                && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
+                        })
+            })
+            .times(1)
+            .returning(move |_| Ok((1, vec![expected_client.clone()])));
+
+        let user = admin_user();
+        let query = IndexQuery {
+            search: Some("  Delta  ".to_string()),
+            page: Some(2),
+        };
+
+        let data = load_index_page(&repo, &user, query).expect("page data");
+
+        assert_eq!(data.search_query, Some("Delta".to_string()));
+    }
+
+    #[test]
+    fn load_index_page_for_manager_scopes_clients() {
+        let mut repo = MockRepository::new();
+        let manager = sample_manager(3, 11);
+        let manager_email = manager.email.clone();
+        repo.expect_create_or_update_manager()
+            .withf(|payload| {
+                payload.hub_id == HubId::new(11).expect("valid hub id")
+                    && payload.is_user
+                    && payload.email == ManagerEmail::new("viewer@example.com").expect("email")
+                    && payload.name == ManagerName::new("Viewer").expect("name")
+            })
+            .times(1)
+            .returning(move |_| Ok(manager.clone()));
+
+        let expected_client = sample_client(2, 11);
+        repo.expect_list_clients()
+            .withf(move |query| {
+                query.hub_id == HubId::new(11).expect("valid hub id")
+                    && query.manager_email.as_ref() == Some(&manager_email)
+                    && query.search.is_none()
+                    && query
+                        .pagination
+                        .as_ref()
+                        .is_some_and(|pagination| {
+                            pagination.page == 1
+                                && pagination.per_page == DEFAULT_ITEMS_PER_PAGE
+                        })
+            })
+            .times(1)
+            .returning(move |_| Ok((1, vec![expected_client.clone()])));
+
+        let user = manager_user();
+        let data = load_index_page(&repo, &user, IndexQuery::default()).expect("page data");
+
+        assert_eq!(data.search_query, None);
+    }
+
+    #[test]
+    fn load_index_page_for_viewer_returns_empty() {
+        let mut repo = MockRepository::new();
+        repo.expect_list_clients().times(0);
+        repo.expect_create_or_update_manager().times(0);
+        let user = access_user();
+
+        let data = load_index_page(&repo, &user, IndexQuery::default()).expect("page data");
+
+        assert_eq!(data.search_query, None);
+    }
+
+    #[test]
+    fn add_client_persists_new_client() {
+        let mut repo = MockRepository::new();
+        repo.expect_create_clients()
+            .withf(|clients| {
+                clients.len() == 1
+                    && clients[0].hub_id == HubId::new(11).expect("valid hub id")
+                    && clients[0].name == ClientName::new("Alice").expect("name")
+            })
+            .times(1)
+            .returning(|_| Ok(1));
+
+        let user = admin_user();
+        let form = AddClientForm {
+            name: "Alice".to_string(),
+            email: Some("alice@example.com".to_string()),
+            phone: None,
+        };
+
+        add_client(&repo, &user, form).expect("client created");
+    }
+}
