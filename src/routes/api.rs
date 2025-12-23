@@ -30,7 +30,7 @@ pub async fn api_v1_clients(
         page: params.page,
     };
 
-    match api_service::list_clients(repo.get_ref(), &user, query) {
+    match api_service::list_clients(query, &user, repo.get_ref()) {
         Ok(response) => HttpResponse::Ok().json(response.clients),
         Err(ServiceError::Unauthorized) => HttpResponse::Unauthorized().finish(),
         Err(err) => {

@@ -20,7 +20,7 @@ pub async fn show_important_fields(
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    match important_fields_service::load_important_fields(repo.get_ref(), &user) {
+    match important_fields_service::load_important_fields(&user, repo.get_ref()) {
         Ok(data) => {
             let mut context = base_context(
                 &flash_messages,
@@ -47,11 +47,11 @@ pub async fn show_important_fields(
 #[post("/important-fields")]
 /// Save the posted list of important field names for the user.
 pub async fn save_important_fields(
+    form: web::Form<ImportantFieldsForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    form: web::Form<ImportantFieldsForm>,
 ) -> impl Responder {
-    match important_fields_service::save_important_fields(repo.get_ref(), &user, form.into_inner())
+    match important_fields_service::save_important_fields(form.into_inner(), &user, repo.get_ref())
     {
         Ok(()) => {
             FlashMessage::success("Список полей обновлён.").send();
