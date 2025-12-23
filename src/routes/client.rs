@@ -29,7 +29,7 @@ pub async fn show_client(
     let client_id = client_id.into_inner();
     let repo = repo.get_ref();
 
-    match client_service::load_client_details(repo, &user, client_id) {
+    match client_service::load_client_details(client_id, &user, repo) {
         Ok(data) => {
             let mut context = base_context(
                 &flash_messages,
@@ -68,9 +68,9 @@ pub async fn show_client(
 /// Persist updates to a client's profile submitted from the client form.
 pub async fn save_client(
     client_id: web::Path<i32>,
+    form: web::Bytes,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    form: web::Bytes,
 ) -> impl Responder {
     let repo = repo.get_ref();
 
@@ -85,7 +85,7 @@ pub async fn save_client(
 
     let client_id = client_id.into_inner();
 
-    match client_service::save_client(client_id, repo, &user, form) {
+    match client_service::save_client(client_id, form, &user, repo) {
         Ok(result) => {
             FlashMessage::success("Клиент обновлен.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))
@@ -114,16 +114,16 @@ pub async fn save_client(
 /// Queue a new comment event for the client via the ZMQ sender.
 pub async fn comment_client(
     client_id: web::Path<i32>,
+    web::Form(form): web::Form<AddCommentForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     zmq_sender: web::Data<Arc<ZmqSender>>,
-    web::Form(form): web::Form<AddCommentForm>,
 ) -> impl Responder {
     let repo = repo.get_ref();
     let client_id = client_id.into_inner();
     let sender = zmq_sender.get_ref().as_ref();
 
-    match client_service::add_comment(client_id, repo, &user, sender, form).await {
+    match client_service::add_comment(client_id, form, &user, repo, sender).await {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))
@@ -156,14 +156,14 @@ pub async fn comment_client(
 /// Upload and associate an attachment with the given client.
 pub async fn attachment_client(
     client_id: web::Path<i32>,
+    web::Form(form): web::Form<AddAttachmentForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    web::Form(form): web::Form<AddAttachmentForm>,
 ) -> impl Responder {
     let repo = repo.get_ref();
     let client_id = client_id.into_inner();
 
-    match client_service::add_attachment(client_id, repo, &user, form) {
+    match client_service::add_attachment(client_id, form, &user, repo) {
         Ok(result) => {
             FlashMessage::success("Событие добавлено.".to_string()).send();
             redirect(&format!("/client/{}", result.client_id.get()))

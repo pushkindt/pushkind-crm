@@ -33,7 +33,7 @@ pub async fn show_index(
         page: params.page,
     };
 
-    match main_service::load_index_page(repo.get_ref(), &user, query) {
+    match main_service::load_index_page(query, &user, repo.get_ref()) {
         Ok(data) => {
             let mut context = base_context(
                 &flash_messages,
@@ -61,11 +61,11 @@ pub async fn show_index(
 #[post("/client/add")]
 /// Handle client creation requests submitted from the dashboard.
 pub async fn add_client(
+    web::Form(form): web::Form<AddClientForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    web::Form(form): web::Form<AddClientForm>,
 ) -> impl Responder {
-    match main_service::add_client(repo.get_ref(), &user, form) {
+    match main_service::add_client(form, &user, repo.get_ref()) {
         Ok(()) => {
             FlashMessage::success("Клиент добавлен.").send();
             redirect("/")
@@ -89,11 +89,11 @@ pub async fn add_client(
 #[post("/clients/upload")]
 /// Accept a multipart upload of clients and delegate bulk import logic.
 pub async fn clients_upload(
+    MultipartForm(mut form): MultipartForm<UploadClientsForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
-    match main_service::upload_clients(repo.get_ref(), &user, &mut form) {
+    match main_service::upload_clients(&mut form, &user, repo.get_ref()) {
         Ok(()) => {
             FlashMessage::success("Клиенты добавлены.").send();
             redirect("/")

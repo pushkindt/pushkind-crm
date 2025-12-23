@@ -12,8 +12,8 @@ use crate::services::ServiceResult;
 
 /// Loads the existing important field names for the admin interface.
 pub fn load_important_fields<R>(
-    repo: &R,
     user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ImportantFieldsPageData>
 where
     R: ImportantFieldReader + ?Sized,
@@ -37,9 +37,9 @@ where
 
 /// Persists the sanitized list of important field names for the hub.
 pub fn save_important_fields<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     form: ImportantFieldsForm,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<()>
 where
     R: ImportantFieldWriter + ?Sized,
@@ -102,7 +102,7 @@ mod tests {
         repo.expect_list_important_fields().times(0);
         let user = viewer_user();
 
-        let result = load_important_fields(&repo, &user);
+        let result = load_important_fields(&user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -117,7 +117,7 @@ mod tests {
             fields: "Field".to_string(),
         };
 
-        let result = save_important_fields(&repo, &user, form);
+        let result = save_important_fields(form, &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -161,7 +161,7 @@ mod tests {
             fields: "Name\nPhone".to_string(),
         };
 
-        save_important_fields(&repo, &user, form).expect("should save fields");
+        save_important_fields(form, &user, &repo).expect("should save fields");
     }
 
     /// Checks that loading returns already saved field names.
@@ -175,7 +175,7 @@ mod tests {
             .returning(move |_| Ok(expected_fields.clone()));
 
         let user = admin_user();
-        let data = load_important_fields(&repo, &user).expect("should load fields");
+        let data = load_important_fields(&user, &repo).expect("should load fields");
 
         assert_eq!(data.fields, vec!["Name", "Email"]);
     }

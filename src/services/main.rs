@@ -15,9 +15,9 @@ use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE, SERVICE_MANAGER_ROLE};
 
 /// Loads the clients list for the main index page.
 pub fn load_index_page<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     query: IndexQuery,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<IndexPageData>
 where
     R: ClientReader + ManagerWriter + ?Sized,
@@ -63,7 +63,7 @@ where
 }
 
 /// Validates the add-client form and persists a new client record.
-pub fn add_client<R>(repo: &R, user: &AuthenticatedUser, form: AddClientForm) -> ServiceResult<()>
+pub fn add_client<R>(form: AddClientForm, user: &AuthenticatedUser, repo: &R) -> ServiceResult<()>
 where
     R: ClientWriter + ?Sized,
 {
@@ -82,9 +82,9 @@ where
 
 /// Parses the uploaded CSV file and creates client records in bulk.
 pub fn upload_clients<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     form: &mut UploadClientsForm,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<()>
 where
     R: ClientWriter + ?Sized,
@@ -169,7 +169,7 @@ mod tests {
         let mut user = access_user();
         user.roles.clear();
 
-        let result = load_index_page(&repo, &user, IndexQuery::default());
+        let result = load_index_page(IndexQuery::default(), &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -201,7 +201,7 @@ mod tests {
             page: Some(2),
         };
 
-        let data = load_index_page(&repo, &user, query).expect("page data");
+        let data = load_index_page(query, &user, &repo).expect("page data");
 
         assert_eq!(data.search_query, Some("Delta".to_string()));
     }
@@ -239,7 +239,7 @@ mod tests {
             .returning(move |_| Ok((1, vec![expected_client.clone()])));
 
         let user = manager_user();
-        let data = load_index_page(&repo, &user, IndexQuery::default()).expect("page data");
+        let data = load_index_page(IndexQuery::default(), &user, &repo).expect("page data");
 
         assert_eq!(data.search_query, None);
     }
@@ -251,7 +251,7 @@ mod tests {
         repo.expect_create_or_update_manager().times(0);
         let user = access_user();
 
-        let data = load_index_page(&repo, &user, IndexQuery::default()).expect("page data");
+        let data = load_index_page(IndexQuery::default(), &user, &repo).expect("page data");
 
         assert_eq!(data.search_query, None);
     }
@@ -275,6 +275,6 @@ mod tests {
             phone: None,
         };
 
-        add_client(&repo, &user, form).expect("client created");
+        add_client(form, &user, &repo).expect("client created");
     }
 }

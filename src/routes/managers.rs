@@ -20,7 +20,7 @@ pub async fn managers(
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    match managers_service::list_managers(repo.get_ref(), &user) {
+    match managers_service::list_managers(&user, repo.get_ref()) {
         Ok(data) => {
             let mut context = base_context(
                 &flash_messages,
@@ -46,11 +46,11 @@ pub async fn managers(
 #[post("/managers/add")]
 /// Add a new manager record from the provided form data.
 pub async fn add_manager(
+    web::Form(form): web::Form<AddManagerForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    web::Form(form): web::Form<AddManagerForm>,
 ) -> impl Responder {
-    match managers_service::add_manager(repo.get_ref(), &user, form) {
+    match managers_service::add_manager(form, &user, repo.get_ref()) {
         Ok(()) => {
             FlashMessage::success("Менеджер добавлен.").send();
             redirect("/managers")
@@ -79,7 +79,7 @@ pub async fn managers_modal(
     repo: web::Data<DieselRepository>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    match managers_service::load_manager_modal(repo.get_ref(), &user, manager_id.into_inner()) {
+    match managers_service::load_manager_modal(manager_id.into_inner(), &user, repo.get_ref()) {
         Ok(data) => {
             let mut context = Context::new();
             context.insert("manager", &data.manager);
@@ -101,9 +101,9 @@ pub async fn managers_modal(
 #[post("/managers/assign")]
 /// Assign a manager to multiple clients based on submitted payload.
 pub async fn assign_manager(
+    payload: web::Bytes,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    payload: web::Bytes,
 ) -> impl Responder {
     let form: AssignManagerForm = match serde_html_form::from_bytes(&payload) {
         Ok(form) => form,
@@ -114,7 +114,7 @@ pub async fn assign_manager(
         }
     };
 
-    match managers_service::assign_manager(repo.get_ref(), &user, form) {
+    match managers_service::assign_manager(form, &user, repo.get_ref()) {
         Ok(()) => {
             FlashMessage::success("Менеджер назначен клиентам.").send();
             redirect("/managers")

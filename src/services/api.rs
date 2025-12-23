@@ -12,9 +12,9 @@ use crate::services::{ServiceError, ServiceResult};
 
 /// Returns the filtered list of clients visible to the authenticated user.
 pub fn list_clients<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     params: ClientsQuery,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ClientsResponse>
 where
     R: ClientReader + ?Sized,
@@ -82,7 +82,7 @@ mod tests {
         let mut user = access_user();
         user.roles.clear();
 
-        let result = list_clients(&repo, &user, ClientsQuery::default());
+        let result = list_clients(ClientsQuery::default(), &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -114,7 +114,7 @@ mod tests {
             page: Some(2),
         };
 
-        let response = list_clients(&repo, &user, params).expect("response ok");
+        let response = list_clients(params, &user, &repo).expect("response ok");
 
         assert_eq!(response.total, 1);
         assert_eq!(response.clients, vec![expected_client]);

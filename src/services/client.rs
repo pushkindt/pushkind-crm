@@ -93,9 +93,9 @@ fn normalize_field_value(value: String) -> Option<String> {
 
 /// Ensures that the current user has access to the provided client identifier.
 fn ensure_client_access<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     client_id: ClientId,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<()>
 where
     R: ClientReader + ?Sized,
@@ -111,9 +111,9 @@ where
 
 /// Aggregates all data required by the client details page, applying access rules.
 pub fn load_client_details<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     client_id: i32,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ClientPageData>
 where
     R: ClientReader + ClientEventReader + ImportantFieldReader + ?Sized,
@@ -123,7 +123,7 @@ where
     let client_id = ClientId::new(client_id)?;
     let hub_id = HubId::new(user.hub_id)?;
 
-    ensure_client_access(repo, user, client_id)?;
+    ensure_client_access(client_id, user, repo)?;
 
     let client = repo
         .get_client_by_id(client_id, hub_id)?
@@ -161,9 +161,9 @@ where
 /// Applies updates submitted through the save client form.
 pub fn save_client<R>(
     client_id: i32,
-    repo: &R,
-    user: &AuthenticatedUser,
     form: SaveClientForm,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ClientOperationOutcome>
 where
     R: ClientReader + ClientWriter + ?Sized,
@@ -181,7 +181,7 @@ where
         .get_client_by_id(client_id, hub_id)?
         .ok_or(ServiceError::NotFound)?;
 
-    ensure_client_access(repo, user, client.id)?;
+    ensure_client_access(client.id, user, repo)?;
 
     let updated_client = repo.update_client(client_id, &updates)?;
 
@@ -193,10 +193,10 @@ where
 /// Adds a comment or event for a client, sending emails when requested.
 pub async fn add_comment<R>(
     client_id: i32,
-    repo: &R,
-    user: &AuthenticatedUser,
-    zmq_sender: &ZmqSender,
     form: AddCommentForm,
+    user: &AuthenticatedUser,
+    repo: &R,
+    zmq_sender: &ZmqSender,
 ) -> ServiceResult<ClientOperationOutcome>
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
@@ -206,7 +206,7 @@ where
     let client_id = ClientId::new(client_id)?;
     let hub_id = HubId::new(user.hub_id)?;
 
-    ensure_client_access(repo, user, client_id)?;
+    ensure_client_access(client_id, user, repo)?;
 
     let payload = AddCommentPayload::try_from(form)?;
 
@@ -274,9 +274,9 @@ where
 /// Adds an attachment event for the client.
 pub fn add_attachment<R>(
     client_id: i32,
-    repo: &R,
-    user: &AuthenticatedUser,
     form: AddAttachmentForm,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ClientOperationOutcome>
 where
     R: ClientReader + ClientEventWriter + ManagerWriter + ?Sized,
@@ -286,7 +286,7 @@ where
     let client_id = ClientId::new(client_id)?;
     let hub_id = HubId::new(user.hub_id)?;
 
-    ensure_client_access(repo, user, client_id)?;
+    ensure_client_access(client_id, user, repo)?;
 
     let payload = AddAttachmentPayload::try_from(form)?;
 

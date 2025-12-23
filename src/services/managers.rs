@@ -13,7 +13,7 @@ use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWri
 use crate::services::{ServiceError, ServiceResult};
 
 /// Loads all managers with the clients assigned to them.
-pub fn list_managers<R>(repo: &R, user: &AuthenticatedUser) -> ServiceResult<ManagersPageData>
+pub fn list_managers<R>(user: &AuthenticatedUser, repo: &R) -> ServiceResult<ManagersPageData>
 where
     R: ManagerReader + ?Sized,
 {
@@ -27,7 +27,7 @@ where
 }
 
 /// Validates the incoming form and persists the manager entity.
-pub fn add_manager<R>(repo: &R, user: &AuthenticatedUser, form: AddManagerForm) -> ServiceResult<()>
+pub fn add_manager<R>(form: AddManagerForm, user: &AuthenticatedUser, repo: &R) -> ServiceResult<()>
 where
     R: ManagerWriter + ?Sized,
 {
@@ -46,9 +46,9 @@ where
 
 /// Loads data necessary to render the manager modal body.
 pub fn load_manager_modal<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     manager_id: i32,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<ManagerModalData>
 where
     R: ManagerReader + ClientReader + ?Sized,
@@ -70,9 +70,9 @@ where
 
 /// Assigns the provided client identifiers to the given manager.
 pub fn assign_manager<R>(
-    repo: &R,
-    user: &AuthenticatedUser,
     form: AssignManagerForm,
+    user: &AuthenticatedUser,
+    repo: &R,
 ) -> ServiceResult<()>
 where
     R: ClientReader + ManagerReader + ManagerWriter + ?Sized,
@@ -163,7 +163,7 @@ mod tests {
         repo.expect_list_managers_with_clients().times(0);
         let user = viewer_user();
 
-        let result = list_managers(&repo, &user);
+        let result = list_managers(&user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -187,7 +187,7 @@ mod tests {
             email: "manager@example.com".to_string(),
         };
 
-        add_manager(&repo, &user, form).expect("manager created");
+        add_manager(form, &user, &repo).expect("manager created");
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
             .returning(move |_| Ok((1, vec![expected_client.clone()])));
 
         let user = admin_user();
-        let data = load_manager_modal(&repo, &user, 5).expect("modal data");
+        let data = load_manager_modal(5, &user, &repo).expect("modal data");
 
         assert_eq!(data.manager.email.as_str(), "manager@example.com");
         assert_eq!(data.clients, vec![client]);
@@ -246,7 +246,7 @@ mod tests {
             client_ids: vec![1, 2],
         };
 
-        let result = assign_manager(&repo, &user, form);
+        let result = assign_manager(form, &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Form(_))));
     }
@@ -274,6 +274,6 @@ mod tests {
             client_ids: vec![3, 4],
         };
 
-        assign_manager(&repo, &user, form).expect("assignment ok");
+        assign_manager(form, &user, &repo).expect("assignment ok");
     }
 }
