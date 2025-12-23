@@ -47,12 +47,18 @@ actix-cors = { version = "0.7.1", optional = true }
 actix-files = { version = "0.6.9", optional = true }
 actix-identity = { version = "0.9.0", optional = true }
 actix-multipart = { version = "0.7.2", optional = true }
-actix-session = { version = "0.11.0", features = ["cookie-session"], optional = true }
+actix-session = { version = "0.11.0", features = [
+    "cookie-session",
+], optional = true }
 actix-web = { version = "4.12.1", optional = true }
-actix-web-flash-messages = { version = "0.5.0", features = ["cookies"], optional = true }
+actix-web-flash-messages = { version = "0.5.0", features = [
+    "cookies",
+], optional = true }
 ammonia = { version = "4.1.2", optional = true }
 chrono = { version = "0.4.41", features = ["serde"], optional = true }
-config = { version = "0.15.19", default-features = false, features = ["yaml"], optional = true }
+config = { version = "0.15.19", default-features = false, features = [
+    "yaml",
+], optional = true }
 csv = { version = "1.4.0", optional = true }
 diesel = { version = "2.3.4", optional = true, features = [
     "sqlite",
@@ -88,3 +94,4 @@ required-features = ["server"]
 [dev-dependencies]
 diesel_migrations = "2.3.1"
 tempfile = "3.13.0"
+mockall = "0.14.0"

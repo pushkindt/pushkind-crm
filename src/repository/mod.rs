@@ -15,6 +15,8 @@ use crate::domain::{
 pub mod client;
 pub mod client_event;
 pub mod manager;
+#[cfg(test)]
+pub mod mock;
 
 #[derive(Clone)]
 pub struct DieselRepository {
