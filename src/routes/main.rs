@@ -89,9 +89,9 @@ pub async fn add_client(
 #[post("/clients/upload")]
 /// Accept a multipart upload of clients and delegate bulk import logic.
 pub async fn clients_upload(
-    MultipartForm(mut form): MultipartForm<UploadClientsForm>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
+    MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
     match main_service::upload_clients(&mut form, &user, repo.get_ref()) {
         Ok(()) => {
