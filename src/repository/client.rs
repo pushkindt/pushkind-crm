@@ -349,9 +349,12 @@ impl ClientWriter for DieselRepository {
             .transaction::<(DbClient, BTreeMap<String, String>), diesel::result::Error, _>(
                 |conn| {
                     let db_updates: DbUpdateClient = updates.into();
-                    diesel::update(clients::table.find(client_id.get()))
+                    let updated = diesel::update(clients::table.find(client_id.get()))
                         .set(&db_updates)
                         .execute(conn)?;
+                    if updated == 0 {
+                        return Err(diesel::result::Error::NotFound);
+                    }
 
                     // Update fields (delete all → insert new)
                     diesel::delete(
@@ -427,7 +430,10 @@ impl ClientWriter for DieselRepository {
                 client_fields::table.filter(client_fields::client_id.eq(client_id.get())),
             )
             .execute(conn)?;
-            diesel::delete(clients::table.find(client_id.get())).execute(conn)?;
+            let deleted = diesel::delete(clients::table.find(client_id.get())).execute(conn)?;
+            if deleted == 0 {
+                return Err(diesel::result::Error::NotFound);
+            }
             Ok(())
         })
         .map_err(RepositoryError::from)
