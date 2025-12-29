@@ -27,23 +27,36 @@
                         </div>
                     </div>
                     <div id="custom-fields">
-                        {% if client.fields %}
-                            {% for field, value in client.fields %}
-                                <div class="row mb-3">
-                                    <div class="col">
-                                        <input list="available-custom-fields" type="text" class="form-control" value="{{field}}" name="field" required placeholder="Поле">
-                                    </div>
-                                    <div class="col">
-                                        <input type="text" class="form-control" value="{{value}}" name="value" required" placeholder="Значение">
-                                    </div>
-                                    <div class="col-auto">
-                                        <a href="#" class="btn btn-danger btn-sm" onclick="removeCustomField(this)">
-                                            <i class="bi bi-slash-circle"></i>
-                                        </a>
-                                    </div>
+                        {% for field in important_fields %}
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <input list="available-custom-fields" type="text" class="form-control" value="{{field.label}}" name="field" readonly placeholder="Поле">
                                 </div>
-                            {% endfor %}
-                        {% endif %}
+                                <div class="col">
+                                    <input type="text" class="form-control" value="{{field.value | default(value="")}}" name="value" placeholder="Значение">
+                                </div>
+                                <div class="col-auto">
+                                    <a href="#" class="btn btn-danger btn-sm" onclick="removeCustomField(this)">
+                                        <i class="bi bi-slash-circle"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        {% for field in other_fields %}
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <input list="available-custom-fields" type="text" class="form-control" value="{{field.label}}" name="field" required placeholder="Поле">
+                                </div>
+                                <div class="col">
+                                    <input type="text" class="form-control" value="{{field.value | default(value="")}}" name="value" placeholder="Значение">
+                                </div>
+                                <div class="col-auto">
+                                    <a href="#" class="btn btn-danger btn-sm" onclick="removeCustomField(this)">
+                                        <i class="bi bi-slash-circle"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
                     <div class="row mb-3">
                         <div class="col">
