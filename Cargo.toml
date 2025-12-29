@@ -77,8 +77,8 @@ pushkind-emailer = { git = "https://github.com/pushkindt/pushkind-emailer.git", 
     "data",
 ], default-features = false, optional = true }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
-serde_html_form = { version = "0.2.8", optional = true }
-serde_json = { version = "1.0.143", optional = true }
+serde_html_form = { version = "0.3.2", optional = true }
+serde_json = { version = "1.0.148", optional = true }
 tera = { version = "1.20.1", features = ["builtins"], optional = true }
 thiserror = { version = "2.0.17", optional = true }
 validator = { version = "0.20.0", features = ["derive"], optional = true }
@@ -95,4 +95,4 @@ required-features = ["server"]
 
 [dev-dependencies]
 diesel_migrations = "2.3.1"
-tempfile = "3.13.0"
+tempfile = "3.24.0"
