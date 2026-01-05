@@ -331,7 +331,7 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use pushkind_crm::domain::client::Client;
-    use pushkind_crm::domain::types::ClientId;
+    use pushkind_crm::domain::types::{ClientId, PublicId};
     use pushkind_crm::repository::mock::MockRepository;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
@@ -394,6 +394,7 @@ mod tests {
                     *next_id += 1;
                     let client = Client {
                         id,
+                        public_id: Some(PublicId::new()),
                         hub_id: new.hub_id,
                         name: new.name.clone(),
                         email: new.email.clone(),

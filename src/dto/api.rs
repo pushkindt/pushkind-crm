@@ -1,12 +1,15 @@
 //! DTOs exposed by the CRM API endpoints.
 
+use serde::Deserialize;
+
 use crate::domain::client::Client;
 
 /// Query parameters accepted by the `/api/v1/clients` service.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize)]
 pub struct ClientsQuery {
     /// Optional free-form search string applied to the client list.
     pub search: Option<String>,
+    pub public_id: Option<String>,
     /// Optional page number for pagination.
     pub page: Option<usize>,
 }

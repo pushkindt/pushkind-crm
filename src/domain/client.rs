@@ -6,13 +6,14 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::types::{
-    ClientEmail, ClientId, ClientName, HubId, PhoneNumber, TypeConstraintError,
+    ClientEmail, ClientId, ClientName, HubId, PhoneNumber, PublicId, TypeConstraintError,
 };
 
 /// Represent a trusted CRM client stored in the system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Client {
     pub id: ClientId,
+    pub public_id: Option<PublicId>,
     pub hub_id: HubId,
     pub name: ClientName,
     pub email: Option<ClientEmail>,
@@ -28,6 +29,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: ClientId,
+        public_id: Option<PublicId>,
         hub_id: HubId,
         name: ClientName,
         email: Option<ClientEmail>,
@@ -38,6 +40,7 @@ impl Client {
     ) -> Self {
         Self {
             id,
+            public_id,
             hub_id,
             name,
             email,
@@ -52,6 +55,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         id: i32,
+        public_id: Option<&[u8]>,
         hub_id: i32,
         name: String,
         email: Option<String>,
@@ -62,6 +66,7 @@ impl Client {
     ) -> Result<Self, TypeConstraintError> {
         Ok(Self::new(
             ClientId::try_from(id)?,
+            public_id.map(PublicId::from_bytes).transpose()?,
             HubId::try_from(hub_id)?,
             ClientName::new(name)?,
             email.map(ClientEmail::try_from).transpose()?,
@@ -76,6 +81,7 @@ impl Client {
 /// Data required to persist a new client record.
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewClient {
+    pub public_id: PublicId,
     pub hub_id: HubId,
     pub name: ClientName,
     pub email: Option<ClientEmail>,
@@ -95,6 +101,7 @@ impl NewClient {
         fields: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
+            public_id: PublicId::new(),
             hub_id,
             name,
             email,
@@ -171,7 +178,7 @@ fn normalize_fields(fields: Option<BTreeMap<String, String>>) -> Option<BTreeMap
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, str::FromStr};
 
     use crate::domain::types::{ClientEmail, ClientName, HubId, PhoneNumber};
     use chrono::Utc;
@@ -182,6 +189,10 @@ mod tests {
 
     fn sample_hub_id() -> HubId {
         HubId::new(1).expect("valid hub id")
+    }
+
+    fn sample_public_uuid() -> PublicId {
+        PublicId::from_str("67e55044-10b1-426f-9247-bb680e5fe0c8").expect("valid public id")
     }
 
     #[test]
@@ -214,6 +225,7 @@ mod tests {
         let now = Utc::now().naive_utc();
         let client = Client {
             id: sample_client_id(),
+            public_id: Some(sample_public_uuid()),
             hub_id: sample_hub_id(),
             name: ClientName::new("Test").expect("valid name"),
             email: Some(ClientEmail::new("foo@example.com").expect("valid email")),

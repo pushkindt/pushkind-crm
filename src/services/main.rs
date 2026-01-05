@@ -1,11 +1,13 @@
 //! Services for the dashboard and bulk actions.
 
+use std::str::FromStr;
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::{DEFAULT_ITEMS_PER_PAGE, Paginated};
 use pushkind_common::routes::{check_role, ensure_role};
 
 use crate::domain::manager::NewManager;
-use crate::domain::types::HubId;
+use crate::domain::types::{HubId, PublicId};
 use crate::dto::main::IndexPageData;
 pub use crate::dto::main::IndexQuery;
 use crate::forms::main::{AddClientForm, AddClientPayload, UploadClientsForm};
@@ -37,6 +39,24 @@ where
 
     if let Some(search) = &search_query {
         list_query = list_query.search(search);
+    }
+    if let Some(public_id_raw) = query
+        .public_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        match PublicId::from_str(public_id_raw) {
+            Ok(public_id) => {
+                list_query = list_query.public_id(public_id);
+            }
+            Err(_) => {
+                return Ok(IndexPageData {
+                    clients: Paginated::new(Vec::new(), page, 0),
+                    search_query,
+                });
+            }
+        }
     }
 
     let (total, clients) = if check_role(SERVICE_ADMIN_ROLE, &user.roles) {
@@ -108,7 +128,7 @@ mod tests {
     use super::*;
     use crate::domain::client::Client;
     use crate::domain::manager::Manager;
-    use crate::domain::types::{ClientName, HubId, ManagerEmail, ManagerName};
+    use crate::domain::types::{ClientName, HubId, ManagerEmail, ManagerName, PublicId};
     use crate::repository::mock::MockRepository;
     use chrono::Utc;
     use pushkind_common::services::errors::ServiceError;
@@ -139,6 +159,7 @@ mod tests {
     fn sample_client(id: i32, hub_id: i32) -> Client {
         Client::try_new(
             id,
+            Some(PublicId::new().as_bytes()),
             hub_id,
             "Client".to_string(),
             Some("client@example.com".to_string()),
@@ -195,6 +216,7 @@ mod tests {
         let query = IndexQuery {
             search: Some("  Delta  ".to_string()),
             page: Some(2),
+            public_id: None,
         };
 
         let data = load_index_page(query, &user, &repo).expect("page data");
@@ -268,5 +290,27 @@ mod tests {
         };
 
         add_client(form, &user, &repo).expect("client created");
+    }
+
+    #[test]
+    fn load_index_page_with_invalid_public_id_returns_empty_without_repo_query() {
+        let mut repo = MockRepository::new();
+        repo.expect_list_clients().times(0);
+        repo.expect_create_or_update_manager().times(0);
+
+        let user = admin_user();
+        let query = IndexQuery {
+            public_id: Some("not-a-uuid".to_string()),
+            ..Default::default()
+        };
+
+        let data = load_index_page(query, &user, &repo).expect("page data");
+
+        let clients_value = serde_json::to_value(&data.clients).expect("serialize clients");
+        let items = clients_value
+            .get("items")
+            .and_then(|value| value.as_array())
+            .expect("items array");
+        assert!(items.is_empty());
     }
 }

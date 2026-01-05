@@ -1,11 +1,13 @@
 //! Service adaptors serving CRM API data.
 
+use std::str::FromStr;
+
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::ensure_role;
 
 use crate::SERVICE_ACCESS_ROLE;
-use crate::domain::types::HubId;
+use crate::domain::types::{HubId, PublicId};
 pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult};
@@ -35,6 +37,24 @@ where
     if let Some(search) = search {
         query = query.search(search);
     }
+    if let Some(public_id_raw) = params
+        .public_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        match PublicId::from_str(public_id_raw) {
+            Ok(public_id) => {
+                query = query.public_id(public_id);
+            }
+            Err(_) => {
+                return Ok(ClientsResponse {
+                    total: 0,
+                    clients: Vec::new(),
+                });
+            }
+        }
+    }
 
     let (total, clients) = repo.list_clients(query).map_err(ServiceError::from)?;
 
@@ -45,7 +65,7 @@ where
 mod tests {
     use super::*;
     use crate::domain::client::Client;
-    use crate::domain::types::{ClientId, ClientName, HubId};
+    use crate::domain::types::{ClientId, ClientName, HubId, PublicId};
     use crate::repository::mock::MockRepository;
     use chrono::Utc;
     use pushkind_common::services::errors::ServiceError;
@@ -64,6 +84,7 @@ mod tests {
     fn sample_client(id: i32, hub_id: i32) -> Client {
         Client::try_new(
             id,
+            Some(PublicId::new().as_bytes()),
             hub_id,
             "Client".to_string(),
             Some("client@example.com".to_string()),
@@ -108,6 +129,7 @@ mod tests {
         let params = ClientsQuery {
             search: Some("  Alice  ".to_string()),
             page: Some(2),
+            public_id: None,
         };
 
         let response = list_clients(params, &user, &repo).expect("response ok");
@@ -122,5 +144,22 @@ mod tests {
             response.clients[0].name,
             ClientName::new("Client").expect("valid name")
         );
+    }
+
+    #[test]
+    fn list_clients_with_invalid_public_id_returns_empty_without_repo_query() {
+        let mut repo = MockRepository::new();
+        repo.expect_list_clients().times(0);
+
+        let user = access_user();
+        let params = ClientsQuery {
+            public_id: Some("not-a-uuid".to_string()),
+            ..Default::default()
+        };
+
+        let response = list_clients(params, &user, &repo).expect("response ok");
+
+        assert_eq!(response.total, 0);
+        assert!(response.clients.is_empty());
     }
 }

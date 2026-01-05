@@ -105,7 +105,7 @@ mod tests {
     use super::*;
     use crate::domain::client::Client;
     use crate::domain::manager::Manager;
-    use crate::domain::types::{ClientId, HubId, ManagerEmail, ManagerId, ManagerName};
+    use crate::domain::types::{ClientId, HubId, ManagerEmail, ManagerId, ManagerName, PublicId};
     use crate::repository::mock::MockRepository;
     use chrono::Utc;
     use pushkind_common::services::errors::ServiceError;
@@ -146,6 +146,7 @@ mod tests {
     fn sample_client(id: i32, hub_id: i32) -> Client {
         Client::try_new(
             id,
+            Some(PublicId::new().as_bytes()),
             hub_id,
             "Client".to_string(),
             Some("client@example.com".to_string()),

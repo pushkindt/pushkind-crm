@@ -3,13 +3,14 @@
 //! These wrappers enforce basic invariants (e.g., positive identifiers,
 //! normalized/validated email) so that once a value reaches the domain layer it
 //! can be treated as trusted.
-use std::ops::Deref;
+use std::{ops::Deref, str::FromStr};
 
 use ammonia;
 use phonenumber::{Mode, parse};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
+use uuid::Uuid;
 use validator::{ValidateEmail, ValidateUrl};
 
 /// Errors produced when attempting to construct a constrained value object.
@@ -33,6 +34,9 @@ pub enum TypeConstraintError {
     /// Provided url failed format validation.
     #[error("invalid url address")]
     InvalidUrl,
+    /// Provided uuid failed format validation.
+    #[error("invalid uuid value")]
+    InvalidUuid,
 }
 
 /// Normalizes and validates an email string.
@@ -496,5 +500,49 @@ impl TryFrom<&str> for AttachmentUrl {
 impl From<AttachmentUrl> for String {
     fn from(value: AttachmentUrl) -> Self {
         value.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PublicId(Uuid);
+
+impl PublicId {
+    /// Generate a new random public ID
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+
+    /// Parse from raw bytes (DB boundary)
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, TypeConstraintError> {
+        Ok(Self(
+            Uuid::from_slice(bytes).map_err(|_| TypeConstraintError::InvalidUuid)?,
+        ))
+    }
+
+    /// Convert to raw bytes (DB boundary)
+    pub fn as_bytes(&self) -> &[u8; 16] {
+        self.0.as_bytes()
+    }
+}
+
+impl Display for PublicId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for PublicId {
+    type Err = TypeConstraintError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            Uuid::parse_str(s).map_err(|_| TypeConstraintError::InvalidUuid)?,
+        ))
+    }
+}
+
+impl Default for PublicId {
+    fn default() -> Self {
+        Self::new()
     }
 }
