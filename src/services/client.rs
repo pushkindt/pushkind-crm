@@ -320,7 +320,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::types::{ClientId, ClientName, HubId};
+    use crate::domain::types::{ClientId, ClientName, HubId, PublicId};
     use chrono::Utc;
     use std::collections::BTreeMap;
 
@@ -333,6 +333,7 @@ mod tests {
 
         Client {
             id: ClientId::new(1).expect("valid client id"),
+            public_id: Some(PublicId::new()),
             hub_id: HubId::new(1).expect("valid hub id"),
             name: ClientName::new("Test").expect("valid name"),
             email: None,

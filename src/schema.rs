@@ -1,5 +1,3 @@
-//! Diesel schema definitions for CRM tables.
-
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
@@ -80,6 +78,7 @@ diesel::table! {
         created_at -> Timestamp,
         updated_at -> Timestamp,
         fields -> Nullable<Text>,
+        public_id -> Nullable<Binary>,
     }
 }
 

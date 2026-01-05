@@ -4,7 +4,7 @@ use pushkind_common::db::{DbConnection, DbPool};
 use pushkind_common::pagination::Pagination;
 use pushkind_common::repository::errors::RepositoryResult;
 
-use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId};
+use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId, PublicId};
 use crate::domain::{
     client::{Client, NewClient, UpdateClient},
     client_event::{ClientEvent, ClientEventType, NewClientEvent},
@@ -38,6 +38,7 @@ pub struct ClientListQuery {
     pub hub_id: HubId,
     pub manager_email: Option<ManagerEmail>,
     pub search: Option<String>,
+    pub public_id: Option<PublicId>,
     pub pagination: Option<Pagination>,
 }
 
@@ -54,6 +55,7 @@ impl ClientListQuery {
             hub_id,
             manager_email: None,
             search: None,
+            public_id: None,
             pagination: None,
         }
     }
@@ -70,6 +72,11 @@ impl ClientListQuery {
 
     pub fn paginate(mut self, page: usize, per_page: usize) -> Self {
         self.pagination = Some(Pagination { page, per_page });
+        self
+    }
+
+    pub fn public_id(mut self, public_id: PublicId) -> Self {
+        self.public_id = Some(public_id);
         self
     }
 }
@@ -95,6 +102,11 @@ impl ClientEventListQuery {
 }
 
 pub trait ClientReader {
+    fn get_client_by_public_id(
+        &self,
+        public_id: PublicId,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Client>>;
     fn get_client_by_id(&self, id: ClientId, hub_id: HubId) -> RepositoryResult<Option<Client>>;
     fn get_client_by_email(
         &self,

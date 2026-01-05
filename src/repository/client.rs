@@ -12,7 +12,9 @@ use pushkind_common::repository::build_fts_match_query;
 use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::domain::important_field::ImportantField as DomainImportantField;
-use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, TypeConstraintError};
+use crate::domain::types::{
+    ClientEmail, ClientId, HubId, ManagerEmail, PublicId, TypeConstraintError,
+};
 use crate::models::client::ClientField;
 use crate::models::important_field::{
     ImportantField as DbImportantField, NewImportantField as DbNewImportantField,
@@ -31,6 +33,36 @@ use crate::{
 };
 
 impl ClientReader for DieselRepository {
+    fn get_client_by_public_id(
+        &self,
+        public_id: PublicId,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Client>> {
+        use crate::schema::clients;
+
+        let mut conn = self.conn()?;
+        let client = clients::table
+            .filter(clients::public_id.eq(public_id.as_bytes()))
+            .filter(clients::hub_id.eq(hub_id.get()))
+            .first::<DbClient>(&mut conn)
+            .optional()?;
+        let client = match client {
+            Some(client) => client,
+            None => return Ok(None),
+        };
+
+        let fields = ClientField::belonging_to(&client)
+            .select(ClientField::as_select())
+            .load::<ClientField>(&mut conn)?;
+
+        let field_map = fields.into_iter().map(|f| (f.field, f.value)).collect();
+
+        let mut result: Client = Client::try_from(client).map_err(RepositoryError::from)?;
+        result.fields = Some(field_map);
+
+        Ok(Some(result))
+    }
+
     fn list_available_fields(&self, hub_id: HubId) -> RepositoryResult<Vec<String>> {
         use crate::schema::{client_fields, clients, important_fields};
 
@@ -113,6 +145,10 @@ impl ClientReader for DieselRepository {
             let mut items = clients::table
                 .filter(clients::hub_id.eq(query.hub_id.get()))
                 .into_boxed::<diesel::sqlite::Sqlite>();
+
+            if let Some(public_id) = &query.public_id {
+                items = items.filter(clients::public_id.eq(public_id.as_bytes()))
+            }
 
             if let Some(manager_email) = &query.manager_email {
                 items = items.filter(

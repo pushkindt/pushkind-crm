@@ -6,34 +6,24 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::routes::{base_context, redirect, render_template};
-use serde::Deserialize;
 use tera::Tera;
 
+use crate::dto::main::IndexQuery;
 use crate::forms::main::{AddClientForm, UploadClientsForm};
 use crate::repository::DieselRepository;
 use crate::services::{ServiceError, main as main_service};
 
-#[derive(Deserialize)]
-struct IndexQueryParams {
-    q: Option<String>,
-    page: Option<usize>,
-}
 #[get("/")]
 /// Display the dashboard listing clients with optional search/pagination.
 pub async fn show_index(
-    params: web::Query<IndexQueryParams>,
+    params: web::Query<IndexQuery>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
     server_config: web::Data<CommonServerConfig>,
     tera: web::Data<Tera>,
 ) -> impl Responder {
-    let query = main_service::IndexQuery {
-        search: params.q.clone(),
-        page: params.page,
-    };
-
-    match main_service::load_index_page(query, &user, repo.get_ref()) {
+    match main_service::load_index_page(params.into_inner(), &user, repo.get_ref()) {
         Ok(data) => {
             let mut context = base_context(
                 &flash_messages,

@@ -8,7 +8,7 @@ use crate::domain::client::{
     Client as DomainClient, NewClient as DomainNewClient, UpdateClient as DomainUpdateClient,
 };
 use crate::domain::types::{
-    ClientEmail, ClientId, ClientName, HubId, PhoneNumber, TypeConstraintError,
+    ClientEmail, ClientId, ClientName, HubId, PhoneNumber, PublicId, TypeConstraintError,
 };
 
 #[derive(Debug, Clone, Identifiable, Queryable, QueryableByName)]
@@ -24,6 +24,7 @@ pub struct Client {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub fields: Option<String>,
+    pub public_id: Option<Vec<u8>>,
 }
 
 #[derive(QueryableByName)]
@@ -36,6 +37,7 @@ pub struct ClientCount {
 #[diesel(table_name = crate::schema::clients)]
 /// Insertable form of [`Client`].
 pub struct NewClient<'a> {
+    pub public_id: &'a [u8],
     pub hub_id: i32,
     pub name: &'a str,
     pub email: Option<&'a str>,
@@ -68,6 +70,10 @@ impl TryFrom<Client> for DomainClient {
     fn try_from(client: Client) -> Result<Self, Self::Error> {
         Ok(Self {
             id: ClientId::try_from(client.id)?,
+            public_id: client
+                .public_id
+                .map(|val| PublicId::from_bytes(&val))
+                .transpose()?,
             hub_id: HubId::try_from(client.hub_id)?,
             name: ClientName::try_from(client.name)?,
             email: client.email.map(ClientEmail::try_from).transpose()?,
@@ -82,6 +88,7 @@ impl TryFrom<Client> for DomainClient {
 impl<'a> From<&'a DomainNewClient> for NewClient<'a> {
     fn from(client: &'a DomainNewClient) -> Self {
         Self {
+            public_id: client.public_id.as_bytes(),
             hub_id: client.hub_id.get(),
             name: client.name.as_str(),
             email: client.email.as_ref().map(|email| email.as_str()),
@@ -153,6 +160,7 @@ mod tests {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let db_client = Client {
             id: 1,
+            public_id: Some(PublicId::new().as_bytes().to_vec()),
             hub_id: 2,
             name: "n".to_string(),
             email: Some("e@example.com".to_string()),

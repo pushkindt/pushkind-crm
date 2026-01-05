@@ -8,6 +8,7 @@ use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
 use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId};
+use crate::repository::PublicId;
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientListQuery, ClientReader,
     ClientWriter, ImportantFieldReader, ImportantFieldWriter, ManagerReader, ManagerWriter,
@@ -17,6 +18,11 @@ mock! {
     pub Repository {}
 
     impl ClientReader for Repository {
+        fn get_client_by_public_id(
+            &self,
+            public_id: PublicId,
+            hub_id: HubId,
+        ) -> RepositoryResult<Option<Client>>;
         fn get_client_by_id(&self, id: ClientId, hub_id: HubId) -> RepositoryResult<Option<Client>>;
         fn get_client_by_email(
             &self,
