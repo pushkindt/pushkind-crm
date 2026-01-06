@@ -54,6 +54,8 @@ The application is structured into layers with strict responsibilities:
      - Users with `SERVICE_MANAGER_ROLE` (`crm_manager`) see only assigned clients.
      - Other users with `SERVICE_ACCESS_ROLE` see an empty list.
    - Search and pagination MAY be applied via query builders.
+   - Optional filtering by `public_id` MAY be applied; invalid values MUST return an
+     empty list without querying the repository.
 
 2. **Client profile**
    - Aggregates core fields, custom fields, managers, and events.
@@ -84,6 +86,7 @@ The application is structured into layers with strict responsibilities:
 
 - A Client MUST belong to exactly one Hub.
 - Client identity fields (email/phone), when present, MUST be unique per Hub.
+- Client public IDs, when present, MUST be unique per Hub.
 - A Manager MUST belong to exactly one Hub, and manager email MUST be unique per Hub.
 - Client-manager assignments MUST NOT cross hub boundaries.
 - Custom field keys MUST be unique per Client.
@@ -108,7 +111,8 @@ The application is structured into layers with strict responsibilities:
 
 - **Hub**: top-level tenant boundary; all Clients and Managers MUST be scoped to a Hub.
 - **Client**: MUST belong to one Hub; MAY have zero or more Managers; MUST own zero or
-  more ClientEvents; MUST contain core contact fields plus optional custom fields.
+  more ClientEvents; MUST contain core contact fields plus optional custom fields; MAY
+  include an optional public ID used for external lookup.
 - **Manager**: MUST belong to one Hub; MAY manage zero or more Clients; `(hub_id, email)` is
   unique.
 - **ClientEvent**: MUST belong to one Client; MUST be immutable after creation; MUST be
@@ -128,6 +132,8 @@ The application is structured into layers with strict responsibilities:
 - `GET /api/v1/clients`
   - Returns filtered client list in JSON for integrations.
   - Access controlled by `SERVICE_ACCESS_ROLE`.
+  - Query parameters:
+    - `public_id`: optional UUID string for exact match filtering.
 
 ## HTTP Error Semantics
 
