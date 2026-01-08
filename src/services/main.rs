@@ -95,7 +95,7 @@ where
 
     let new_client = payload.into_domain(hub_id);
 
-    repo.create_clients(&[new_client])?;
+    repo.create_or_replace_clients(&[new_client])?;
 
     Ok(())
 }
@@ -118,7 +118,7 @@ where
         ServiceError::Form("Ошибка при парсинге клиентов".to_string())
     })?;
 
-    repo.create_clients(&clients)?;
+    repo.create_or_replace_clients(&clients)?;
 
     Ok(())
 }
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn add_client_persists_new_client() {
         let mut repo = MockRepository::new();
-        repo.expect_create_clients()
+        repo.expect_create_or_replace_clients()
             .withf(|clients| {
                 clients.len() == 1
                     && clients[0].hub_id == HubId::new(11).expect("valid hub id")

@@ -124,6 +124,7 @@ pub trait ClientReader {
 }
 
 pub trait ClientWriter {
+    fn create_or_replace_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
     fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize>;
     fn update_client(
         &self,

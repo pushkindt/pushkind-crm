@@ -30,7 +30,7 @@ fn test_client_repository_crud() {
 
     assert_eq!(
         client_repo
-            .create_clients(&[c1.clone(), c2.clone()])
+            .create_or_replace_clients(&[c1.clone(), c2.clone()])
             .unwrap(),
         2
     );
@@ -102,7 +102,9 @@ fn test_client_event_repository_crud() {
     let client = {
         let new_client =
             new_client_record("Alice", Some("alice@example.com"), Some("+14155550111"));
-        client_repo.create_clients(&[new_client]).unwrap();
+        client_repo
+            .create_or_replace_clients(&[new_client])
+            .unwrap();
         client_repo
             .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
             .unwrap()
@@ -178,7 +180,7 @@ fn test_manager_repository_crud() {
         new_client_record("Alice", Some("alice@example.com"), Some("+14155550111")),
         new_client_record("Bob", Some("bob@example.com"), Some("+14155550222")),
     ];
-    client_repo.create_clients(&clients).unwrap();
+    client_repo.create_or_replace_clients(&clients).unwrap();
     let (_, stored_clients) = client_repo
         .list_clients(ClientListQuery::new(HubId::new(1).expect("valid hub id")))
         .unwrap();

@@ -199,7 +199,7 @@ where
 
     let inserted = repo.create_clients(&[new_client])?;
     log::info!(
-        "Inserted or updated {} client records via ZMQ payload",
+        "Inserted {} client records via ZMQ payload, skipped existing ones",
         inserted
     );
 
@@ -372,21 +372,11 @@ mod tests {
                 for new in new_clients {
                     let now = Utc::now().naive_utc();
 
-                    let mut updated_existing = false;
                     if let Some(email) = new.email.as_ref()
-                        && let Some(existing) = clients.values_mut().find(|client| {
+                        && clients.values().any(|client| {
                             client.hub_id == new.hub_id && client.email.as_ref() == Some(email)
                         })
                     {
-                        existing.name = new.name.clone();
-                        existing.phone = new.phone.clone();
-                        existing.fields = new.fields.clone();
-                        existing.updated_at = now;
-                        updated_existing = true;
-                    }
-
-                    if updated_existing {
-                        count += 1;
                         continue;
                     }
 
