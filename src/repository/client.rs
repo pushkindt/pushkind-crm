@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 
-use diesel::Connection;
 use diesel::dsl::exists;
 use diesel::prelude::*;
 use diesel::result::DatabaseErrorKind;
@@ -264,7 +263,7 @@ impl ClientReader for DieselRepository {
 }
 
 impl ClientWriter for DieselRepository {
-    fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
+    fn create_or_replace_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
         use crate::schema::{client_fields, clients};
 
         let mut conn = self.conn()?;
@@ -325,6 +324,77 @@ impl ClientWriter for DieselRepository {
                             continue;
                         }
                     }
+                };
+
+                // Update fields (delete all → insert new)
+                diesel::delete(client_fields::table.filter(client_fields::client_id.eq(client_id)))
+                    .execute(conn)?;
+
+                // Insert optional fields
+                if let Some(fields) = &new.fields {
+                    let new_fields: Vec<ClientField> = fields
+                        .iter()
+                        .map(|(f, v)| ClientField {
+                            client_id,
+                            field: f.clone(),
+                            value: v.clone(),
+                        })
+                        .collect();
+                    if !new_fields.is_empty() {
+                        for field in new_fields {
+                            diesel::insert_into(client_fields::table)
+                                .values(&field)
+                                .on_conflict((client_fields::client_id, client_fields::field))
+                                .do_update()
+                                .set(client_fields::value.eq(excluded(client_fields::value)))
+                                .execute(conn)?;
+                        }
+                    }
+                }
+
+                // Update denormalized `clients.fields` using a Diesel subselect
+                diesel::update(clients::table.find(client_id))
+                    .set(
+                        clients::fields.eq(client_fields::table
+                            .filter(client_fields::client_id.eq(client_id))
+                            .select(diesel::dsl::sql::<Nullable<Text>>(
+                                "trim(COALESCE(group_concat(value, ' '), ''))",
+                            ))
+                            .single_value()),
+                    )
+                    .execute(conn)?;
+
+                count_inserted += 1;
+            }
+
+            Ok(count_inserted)
+        })
+    }
+
+    fn create_clients(&self, new_clients: &[NewClient]) -> RepositoryResult<usize> {
+        use crate::schema::{client_fields, clients};
+
+        let mut conn = self.conn()?;
+
+        conn.transaction::<usize, RepositoryError, _>(|conn| {
+            let mut count_inserted: usize = 0;
+
+            for new in new_clients {
+                let db_new: DbNewClient = new.into();
+
+                let inserted = diesel::insert_into(clients::table)
+                    .values(&db_new)
+                    .get_result::<DbClient>(conn);
+
+                let client_id = match inserted {
+                    Ok(client) => client.id,
+                    Err(diesel::result::Error::DatabaseError(
+                        DatabaseErrorKind::UniqueViolation,
+                        _,
+                    )) => {
+                        continue;
+                    }
+                    Err(err) => return Err(RepositoryError::from(err)),
                 };
 
                 // Update fields (delete all → insert new)
