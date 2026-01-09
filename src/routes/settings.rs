@@ -9,9 +9,9 @@ use tera::Tera;
 
 use crate::forms::important_fields::ImportantFieldsForm;
 use crate::repository::DieselRepository;
-use crate::services::{ServiceError, important_fields as important_fields_service};
+use crate::services::{ServiceError, settings as important_fields_service};
 
-#[get("/important-fields")]
+#[get("/settings")]
 /// Show the list of configured important fields for the current user.
 pub async fn show_important_fields(
     user: AuthenticatedUser,
@@ -31,7 +31,7 @@ pub async fn show_important_fields(
             let fields_text = data.fields.join("\n");
             context.insert("fields_text", &fields_text);
 
-            render_template(&tera, "important_fields/index.html", &context)
+            render_template(&tera, "settings/index.html", &context)
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();
@@ -55,7 +55,7 @@ pub async fn save_important_fields(
     {
         Ok(()) => {
             FlashMessage::success("Список полей обновлён.").send();
-            redirect("/important-fields")
+            redirect("/settings")
         }
         Err(ServiceError::Unauthorized) => {
             FlashMessage::error("Недостаточно прав.").send();
@@ -63,12 +63,12 @@ pub async fn save_important_fields(
         }
         Err(ServiceError::Form(message)) => {
             FlashMessage::error(message).send();
-            redirect("/important-fields")
+            redirect("/settings")
         }
         Err(err) => {
             log::error!("Failed to save important fields: {err}");
             FlashMessage::error("Не удалось сохранить важные поля.").send();
-            redirect("/important-fields")
+            redirect("/settings")
         }
     }
 }

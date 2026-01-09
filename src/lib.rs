@@ -39,11 +39,11 @@ use crate::routes::api::api_v1_clients;
 #[cfg(feature = "server")]
 use crate::routes::client::{attachment_client, comment_client, save_client, show_client};
 #[cfg(feature = "server")]
-use crate::routes::important_fields::{save_important_fields, show_important_fields};
-#[cfg(feature = "server")]
 use crate::routes::main::{add_client, clients_upload, show_index};
 #[cfg(feature = "server")]
 use crate::routes::managers::{add_manager, assign_manager, managers, managers_modal};
+#[cfg(feature = "server")]
+use crate::routes::settings::{save_important_fields, show_important_fields};
 
 #[cfg(feature = "data")]
 pub mod domain;
