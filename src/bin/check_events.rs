@@ -432,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn updates_existing_clients_by_email() {
+    fn does_not_update_existing_clients_by_email() {
         let state = TestState::default();
         let create_message = ZmqClientMessage {
             hub_id: 1,
@@ -458,11 +458,8 @@ mod tests {
         let snapshot = state.snapshot();
         assert_eq!(snapshot.len(), 1);
         let updated = snapshot.get(&inserted_id).expect("client missing");
-        assert_eq!(updated.name.as_str(), "Updated");
-        assert_eq!(
-            updated.phone.as_ref().map(|phone| phone.as_str()),
-            Some("+14155552671")
-        );
+        assert_eq!(updated.name.as_str(), "Initial");
+        assert_eq!(updated.phone.as_ref().map(|phone| phone.as_str()), None);
     }
 
     #[test]

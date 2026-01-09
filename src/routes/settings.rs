@@ -72,3 +72,26 @@ pub async fn save_important_fields(
         }
     }
 }
+
+#[post("/settings/cleanup")]
+/// Remove all clients and related data for the current hub.
+pub async fn cleanup_clients(
+    user: AuthenticatedUser,
+    repo: web::Data<DieselRepository>,
+) -> impl Responder {
+    match important_fields_service::cleanup_clients(&user, repo.get_ref()) {
+        Ok(()) => {
+            FlashMessage::success("Клиенты очищены.").send();
+            redirect("/settings")
+        }
+        Err(ServiceError::Unauthorized) => {
+            FlashMessage::error("Недостаточно прав.").send();
+            redirect("/na")
+        }
+        Err(err) => {
+            log::error!("Failed to cleanup clients: {err}");
+            FlashMessage::error("Не удалось очистить клиентов.").send();
+            redirect("/settings")
+        }
+    }
+}

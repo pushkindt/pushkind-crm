@@ -43,7 +43,7 @@ use crate::routes::main::{add_client, clients_upload, show_index};
 #[cfg(feature = "server")]
 use crate::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 #[cfg(feature = "server")]
-use crate::routes::settings::{save_important_fields, show_settings};
+use crate::routes::settings::{cleanup_clients, save_important_fields, show_settings};
 
 #[cfg(feature = "data")]
 pub mod domain;
@@ -130,6 +130,7 @@ pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
                     .service(attachment_client)
                     .service(show_settings)
                     .service(save_important_fields)
+                    .service(cleanup_clients)
                     .service(managers)
                     .service(add_manager)
                     .service(managers_modal)
