@@ -73,6 +73,7 @@ mock! {
             updates: &UpdateClient,
         ) -> RepositoryResult<Client>;
         fn delete_client(&self, client_id: ClientId) -> RepositoryResult<()>;
+        fn delete_all_clients(&self, hub_id: HubId) -> RepositoryResult<()>;
     }
 
     impl ManagerWriter for Repository {

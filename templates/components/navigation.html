@@ -17,9 +17,6 @@
                         <li class="nav-item">
                             <a class="nav-link {%if current_page == 'settings'%}active{%endif%}" href="/managers">Менеджеры</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-nowrap {%if current_page == 'important_fields'%}active{%endif%}" href="/important-fields">Важные поля</a>
-                        </li>
                     {% endif %}
                 </ul>
                 <form class="d-flex w-100" role="search" action="/">
@@ -36,6 +33,14 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><h6 class="dropdown-header">{{current_user.email}}</h6></li>
                     <li><hr class="dropdown-divider"></li>
+                    {% if 'crm_admin' in current_user.roles %}
+                        <li>
+                            <a class="dropdown-item icon-link" href="/settings">
+                                <i class="bi bi-wrench-adjustable-circle mb-2"></i>
+                                Настройки
+                            </a>
+                        </li>
+                    {% endif %}
                     <li>
                         <a class="dropdown-item icon-link" href="{{home_url}}">
                             <i class="bi bi-house mb-2"></i>

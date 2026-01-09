@@ -544,6 +544,36 @@ impl ClientWriter for DieselRepository {
         })
         .map_err(RepositoryError::from)
     }
+
+    fn delete_all_clients(&self, hub_id: HubId) -> RepositoryResult<()> {
+        use crate::schema::{client_events, client_fields, client_manager, clients};
+
+        let mut conn = self.conn()?;
+
+        conn.transaction::<(), diesel::result::Error, _>(|conn| {
+            let client_ids = || {
+                clients::table
+                    .filter(clients::hub_id.eq(hub_id.get()))
+                    .select(clients::id)
+            };
+            diesel::delete(
+                client_events::table.filter(client_events::client_id.eq_any(client_ids())),
+            )
+            .execute(conn)?;
+            diesel::delete(
+                client_manager::table.filter(client_manager::client_id.eq_any(client_ids())),
+            )
+            .execute(conn)?;
+            diesel::delete(
+                client_fields::table.filter(client_fields::client_id.eq_any(client_ids())),
+            )
+            .execute(conn)?;
+            diesel::delete(clients::table.filter(clients::hub_id.eq(hub_id.get())))
+                .execute(conn)?;
+            Ok(())
+        })
+        .map_err(RepositoryError::from)
+    }
 }
 
 impl ImportantFieldReader for DieselRepository {

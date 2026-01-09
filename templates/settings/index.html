@@ -21,6 +21,16 @@
                             </div>
                             <button type="submit" class="btn btn-primary">Сохранить</button>
                         </form>
+                        <hr class="my-4">
+                        <form method="POST" action="/settings/cleanup">
+                            <button
+                                type="submit"
+                                class="btn btn-outline-danger"
+                                onclick="return confirm('Удалить всех клиентов и связанные записи?');"
+                            >
+                                Очистить клиентов
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

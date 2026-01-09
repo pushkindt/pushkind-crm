@@ -7,7 +7,7 @@ use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::types::HubId;
 use crate::dto::important_fields::ImportantFieldsPageData;
 use crate::forms::important_fields::{ImportantFieldsForm, ImportantFieldsPayload};
-use crate::repository::{ImportantFieldReader, ImportantFieldWriter};
+use crate::repository::{ClientWriter, ImportantFieldReader, ImportantFieldWriter};
 use crate::services::ServiceResult;
 
 /// Loads the existing important field names for the admin interface.
@@ -56,6 +56,23 @@ where
             log::error!("Failed to save important fields: {err}");
             err
         })?;
+
+    Ok(())
+}
+
+/// Removes all client data for the user's hub.
+pub fn cleanup_clients<R>(user: &AuthenticatedUser, repo: &R) -> ServiceResult<()>
+where
+    R: ClientWriter + ?Sized,
+{
+    ensure_role(user, SERVICE_ADMIN_ROLE)?;
+
+    let hub_id = HubId::new(user.hub_id)?;
+
+    repo.delete_all_clients(hub_id).map_err(|err| {
+        log::error!("Failed to delete all clients: {err}");
+        err
+    })?;
 
     Ok(())
 }
@@ -162,6 +179,31 @@ mod tests {
         };
 
         save_important_fields(form, &user, &repo).expect("should save fields");
+    }
+
+    /// Ensures cleanup fails for users lacking the admin role.
+    #[test]
+    fn cleanup_requires_admin_role() {
+        let mut repo = MockRepository::new();
+        repo.expect_delete_all_clients().times(0);
+        let user = viewer_user();
+
+        let result = cleanup_clients(&user, &repo);
+
+        assert!(matches!(result, Err(ServiceError::Unauthorized)));
+    }
+
+    /// Confirms cleanup deletes all clients for the hub.
+    #[test]
+    fn cleanup_deletes_all_clients() {
+        let mut repo = MockRepository::new();
+        repo.expect_delete_all_clients()
+            .withf(|hub_id| hub_id == &HubId::new(42).expect("valid hub id"))
+            .times(1)
+            .returning(|_| Ok(()));
+        let user = admin_user();
+
+        cleanup_clients(&user, &repo).expect("should cleanup clients");
     }
 
     /// Checks that loading returns already saved field names.
