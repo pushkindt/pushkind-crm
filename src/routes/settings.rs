@@ -13,7 +13,7 @@ use crate::services::{ServiceError, settings as important_fields_service};
 
 #[get("/settings")]
 /// Show the list of configured important fields for the current user.
-pub async fn show_important_fields(
+pub async fn show_settings(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
     flash_messages: IncomingFlashMessages,
