@@ -5,7 +5,11 @@
 
 {% elif event_type == "Task" %}
     <p>
-        <strong>{{ event_data["subject"] }}</strong>
+        {% if todo_service_url and event_data["public_id"] %}
+            <a href='{{todo_service_url}}?public_id={{ event_data["public_id"] | safe }}' target='_blank' rel='noopener noreferrer'><strong>{{ event_data["subject"] }}</strong></a>
+        {% else %}
+            <strong>{{ event_data["subject"] }}</strong>
+        {% endif%}
     </p>
     {% if event_data["status"] %}
         <p><span class="text-muted">Статус:</span>
