@@ -1,0 +1,4 @@
+DROP INDEX client_events_client_id_created_at_idx;
+DROP INDEX client_manager_manager_id_idx;
+DROP INDEX managers_hub_id_is_user_idx;
+DROP INDEX clients_hub_id_id_idx;
