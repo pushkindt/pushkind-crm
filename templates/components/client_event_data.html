@@ -7,6 +7,11 @@
     <p>
         <strong>{{ event_data["subject"] }}</strong>
     </p>
+    {% if event_data["status"] %}
+        <p><span class="text-muted">Статус:</span>
+            {% if event_data["status"] == "Pending" %}Ожидает{% elif event_data["status"] == "InProgress" %}В работе{% elif event_data["status"] == "Blocked" %}Заблокировано{% elif event_data["status"] == "Completed" %}Завершено{% elif event_data["status"] == "Archived" %}В архиве{% else %}{{ event_data["status"] }}{% endif %}
+        </p>
+    {% endif %}
     {% if event_data["track"] %}
         <p><span class="text-muted">Трек:</span> {{ event_data["track"] }}</p>
     {% endif %}
