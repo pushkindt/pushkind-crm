@@ -13,6 +13,7 @@ pub struct ServerConfig {
     pub zmq_emailer_sub: String,
     pub zmq_clients_sub: String,
     pub zmq_replier_sub: String,
+    pub zmq_tasks_sub: String,
     pub templates_dir: String,
     pub secret: String,
     pub auth_service_url: String,

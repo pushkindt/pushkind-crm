@@ -1,12 +1,35 @@
 {% if event_type == "DocumentLink" %}
-<p>
-    <a href="{{ event_data['url'] }}">{{ event_data["text"] }}</a>
-</p>
+    <p>
+        <a href="{{ event_data['url'] }}">{{ event_data["text"] }}</a>
+    </p>
+
+{% elif event_type == "Task" %}
+    <p>
+        <strong>{{ event_data["subject"] }}</strong>
+    </p>
+    {% if event_data["track"] %}
+        <p><span class="text-muted">Трек:</span> {{ event_data["track"] }}</p>
+    {% endif %}
+    {% if event_data["priority"] %}
+        <p><span class="text-muted">Приоритет:</span>
+            {% if event_data["priority"] == "Low" %}Низкий{% elif event_data["priority"] == "Middle" %}Средний{% elif event_data["priority"] == "High" %}Высокий{% else %}{{ event_data["priority"] }}{% endif %}
+        </p>
+    {% endif %}
+    {% if event_data["assignee"] %}
+        <p>
+            <span class="text-muted">Исполнитель:</span>
+            {% set manager = event_data["assignee"] %}
+            {% include 'components/user_popover.html' %}
+        </p>
+    {% endif %}
+    {% if event_data["text"] %}
+        {{ event_data["text"] | safe }}
+    {% endif %}
 {% else %}
-{% if event_data["subject"] is defined %}
-<p>
-    <strong>{{ event_data["subject"] }}</strong>
-</p>
-{% endif %}
-{{ event_data["text"] | safe }}
+    {% if event_data["subject"] is defined %}
+        <p>
+            <strong>{{ event_data["subject"] }}</strong>
+        </p>
+    {% endif %}
+    {{ event_data["text"] | safe }}
 {% endif %}

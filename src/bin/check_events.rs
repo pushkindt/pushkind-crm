@@ -9,6 +9,7 @@ use pushkind_common::{
     repository::errors::{RepositoryError, RepositoryResult},
 };
 use pushkind_emailer::models::zmq::{ZMQReplyMessage, ZMQSendEmailMessage, ZMQUnsubscribeMessage};
+use pushkind_todo::dto::zmq::ZmqTask;
 use serde_json::json;
 
 use pushkind_crm::models::config::ServerConfig;
@@ -21,17 +22,10 @@ use pushkind_crm::{
         client::NewClient,
         client_event::{ClientEventType, NewClientEvent},
         manager::NewManager,
-        types::{ClientEmail, ClientName, HubId, PhoneNumber},
+        types::{ClientEmail, ClientName, HubId, PhoneNumber, PublicId},
     },
     models::zmq::ZmqClientMessage,
 };
-
-fn is_duplicate_event<R>(repo: &R, new_event: &NewClientEvent) -> RepositoryResult<bool>
-where
-    R: ClientEventReader,
-{
-    repo.client_event_exists(new_event)
-}
 
 fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
 where
@@ -63,7 +57,7 @@ where
                     }),
                 );
 
-                if is_duplicate_event(&repo, &new_event)? {
+                if repo.client_event_exists(&new_event)? {
                     log::info!(
                         "Skipping duplicate email event for client {} and manager {}",
                         client.id,
@@ -86,6 +80,95 @@ where
             log::error!("Skipping unsupported email types");
         }
     }
+    Ok(())
+}
+
+fn process_task_message<R>(task: ZmqTask, repo: R) -> RepositoryResult<()>
+where
+    R: ClientEventWriter + ClientEventReader + ClientReader + ManagerWriter,
+{
+    let ZmqTask {
+        public_id: task_public_id,
+        hub_id: task_hub_id,
+        title,
+        priority,
+        status,
+        client,
+        assignee,
+        description,
+        track,
+        author,
+        ..
+    } = task;
+
+    let client_snapshot = match client {
+        Some(client) => client,
+        None => {
+            log::info!("Skipping task {} without client snapshot", task_public_id);
+            return Ok(());
+        }
+    };
+
+    let hub_id = HubId::new(task_hub_id).map_err(RepositoryError::from)?;
+    let public_id = match client_snapshot.public_id.parse::<PublicId>() {
+        Ok(public_id) => public_id,
+        Err(err) => {
+            log::warn!(
+                "Skipping task {} with invalid client public_id {}: {err}",
+                task_public_id,
+                client_snapshot.public_id
+            );
+            return Ok(());
+        }
+    };
+
+    let client = match repo.get_client_by_public_id(public_id, hub_id)? {
+        Some(client) => client,
+        None => {
+            log::info!(
+                "Skipping task {}: no CRM client for hub {} public_id {}",
+                task_public_id,
+                hub_id,
+                client_snapshot.public_id
+            );
+            return Ok(());
+        }
+    };
+
+    let manager_payload = NewManager::try_new(task_hub_id, author.name, author.email, false)
+        .map_err(RepositoryError::from)?;
+    let manager = repo.create_or_update_manager(&manager_payload)?;
+
+    let assignee = assignee.as_ref().map(|assignee| {
+        json!({
+            "name": assignee.name,
+            "email": assignee.email,
+        })
+    });
+    let priority: &'static str = priority.into();
+    let status: &'static str = status.into();
+    let event_data = json!({
+        "public_id": task_public_id,
+        "text": description.as_deref(),
+        "subject": title,
+        "track": track.as_deref(),
+        "priority": priority,
+        "status": status,
+        "assignee": assignee,
+    });
+
+    let event = NewClientEvent::new(client.id, manager.id, ClientEventType::Task, event_data);
+
+    if repo.client_event_exists(&event)? {
+        log::info!(
+            "Skipping duplicate task event for client {} and manager {}",
+            client.id,
+            manager.id
+        );
+        return Ok(());
+    }
+
+    let _event = repo.create_client_event(&event)?;
     Ok(())
 }
 
@@ -116,7 +199,7 @@ where
                     "text": ammonia::clean(&reply.message),
                 }),
             );
-            if is_duplicate_event(&repo, &event)? {
+            if repo.client_event_exists(&event)? {
                 log::info!(
                     "Skipping duplicate reply event for client {} and manager {}",
                     client.id,
@@ -162,7 +245,7 @@ where
                 }),
             );
 
-            if is_duplicate_event(&repo, &event)? {
+            if repo.client_event_exists(&event)? {
                 log::info!(
                     "Skipping duplicate unsubscribe event for client {} and manager {}",
                     client.id,
@@ -257,6 +340,12 @@ fn main() {
         .expect("Cannot connect to zmq port");
     clients.set_subscribe(b"").expect("SUBSCRIBE failed");
 
+    let tasks = context.socket(zmq::SUB).expect("Cannot create zmq socket");
+    tasks
+        .connect(&server_config.zmq_tasks_sub)
+        .expect("Cannot connect to zmq port");
+    tasks.set_subscribe(b"").expect("SUBSCRIBE failed");
+
     let pool = match establish_connection_pool(&server_config.database_url) {
         Ok(pool) => pool,
         Err(e) => {
@@ -309,6 +398,21 @@ fn main() {
         }
     });
 
+    let task_repo = repo.clone();
+    std::thread::spawn(move || {
+        loop {
+            let msg = tasks.recv_bytes(0).unwrap();
+            match serde_json::from_slice::<ZmqTask>(&msg) {
+                Ok(parsed) => {
+                    if let Err(e) = process_task_message(parsed, task_repo.clone()) {
+                        log::error!("Error processing task message: {e}");
+                    }
+                }
+                Err(e) => log::error!("Error receiving task message: {e}"),
+            }
+        }
+    });
+
     loop {
         let msg = responder.recv_bytes(0).unwrap();
         match serde_json::from_slice::<ZMQSendEmailMessage>(&msg) {
@@ -331,8 +435,12 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use pushkind_crm::domain::client::Client;
-    use pushkind_crm::domain::types::{ClientId, PublicId};
+    use pushkind_crm::domain::client_event::ClientEvent;
+    use pushkind_crm::domain::manager::Manager;
+    use pushkind_crm::domain::types::{ClientEventId, ClientId, ClientName, HubId, PublicId};
     use pushkind_crm::repository::mock::MockRepository;
+    use pushkind_todo::domain::task::{TaskPriority, TaskStatus};
+    use pushkind_todo::dto::zmq::{ZmqTask, ZmqTaskAssignee, ZmqTaskAuthor, ZmqTaskClient};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
@@ -498,5 +606,102 @@ mod tests {
         let client = snapshot.values().next().unwrap();
         assert_eq!(client.name.as_str(), "No Email");
         assert_eq!(client.hub_id.get(), 3);
+    }
+
+    #[test]
+    fn process_task_message_creates_event_for_matching_client() {
+        let mut repo = MockRepository::new();
+        let hub_id = HubId::new(1).expect("valid hub id");
+        let public_id = PublicId::new();
+        let client = Client {
+            id: ClientId::new(10).expect("valid client id"),
+            public_id: Some(public_id),
+            hub_id,
+            name: ClientName::new("Client").expect("valid name"),
+            email: None,
+            phone: None,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            fields: None,
+        };
+
+        let manager = Manager::try_new(
+            5,
+            hub_id.get(),
+            "Manager".to_string(),
+            "manager@example.com".to_string(),
+            false,
+        )
+        .expect("valid manager");
+
+        repo.expect_get_client_by_public_id()
+            .times(1)
+            .returning(move |pid, hid| {
+                if pid == public_id && hid == hub_id {
+                    Ok(Some(client.clone()))
+                } else {
+                    Ok(None)
+                }
+            });
+
+        repo.expect_create_or_update_manager()
+            .times(1)
+            .returning(move |_| Ok(manager.clone()));
+
+        repo.expect_client_event_exists()
+            .times(1)
+            .returning(|_| Ok(false));
+
+        repo.expect_create_client_event()
+            .times(1)
+            .withf(|event| {
+                event.event_type == ClientEventType::Task
+                    && event.event_data["public_id"] == json!("task-1")
+                    && event.event_data["subject"] == json!("Task title")
+                    && event.event_data["text"] == json!("Task description")
+                    && event.event_data["track"] == json!("Track A")
+                    && event.event_data["priority"] == json!("High")
+                    && event.event_data["status"] == json!("Pending")
+                    && event.event_data["assignee"]["name"] == json!("Assignee")
+                    && event.event_data["assignee"]["email"] == json!("assignee@example.com")
+            })
+            .returning(move |event| {
+                Ok(ClientEvent::new(
+                    ClientEventId::new(1).expect("valid event id"),
+                    event.client_id,
+                    event.manager_id,
+                    event.event_type.clone(),
+                    event.event_data.clone(),
+                    Utc::now().naive_utc(),
+                ))
+            });
+
+        let task = ZmqTask {
+            public_id: "task-1".to_string(),
+            hub_id: hub_id.get(),
+            title: "Task title".to_string(),
+            priority: TaskPriority::High,
+            status: TaskStatus::Pending,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            due_date: None,
+            completed_at: None,
+            author: ZmqTaskAuthor {
+                name: "Manager".to_string(),
+                email: "manager@example.com".to_string(),
+            },
+            client: Some(ZmqTaskClient {
+                name: "Client".to_string(),
+                public_id: public_id.to_string(),
+            }),
+            assignee: Some(ZmqTaskAssignee {
+                name: "Assignee".to_string(),
+                email: "assignee@example.com".to_string(),
+            }),
+            description: Some("Task description".to_string()),
+            track: Some("Track A".to_string()),
+        };
+
+        process_task_message(task, repo).expect("task processing failed");
     }
 }

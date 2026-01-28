@@ -81,6 +81,9 @@ The application is structured into layers with strict responsibilities:
    - Outbound emails queued over ZeroMQ.
    - Inbound replies/unsubscribes ingested by `check_events` worker.
    - Events are normalized and added to client timeline.
+6. **Task events**
+   - Task create/update notifications are consumed from `zmq_tasks_sub` by the `check_events`
+     worker and recorded as ClientEvents.
 
 ## Invariants
 
@@ -119,6 +122,29 @@ The application is structured into layers with strict responsibilities:
   ordered by `created_at` descending with ties left unspecified.
 - **Custom fields**: stored as key/value pairs keyed by `(client_id, field)` and MUST be
   unique per client; a denormalized `clients.fields` string MAY be maintained for search.
+
+### ClientEvent event_data JSON
+
+`client_events.event_data` stores a JSON object as text. The following formats are
+produced by current writers and should be preserved for compatibility:
+
+- **Comment / Call / Other**: free-form note text.
+  - Shape: `{"text": "<message>"}`.
+- **Task**: task entry with optional metadata.
+  - Shape: `{"public_id": "<task public id>", "text": "<description-or-null>", "subject": "<title>", "track": "<track-or-null>", "priority": "<priority>", "status": "<status>", "assignee": null | {"name": "<name>", "email": "<email>"}}` where `assignee` is either null or fully populated.
+- **Email (manual comment)**: comment-driven email entry.
+  - Shape: `{"text": "<message>", "subject": "<subject>"}` with `subject` optional.
+- **Email (outbound worker)**: ZeroMQ email queue events.
+  - Shape: `{"text": "<subject-or-null>"}` where `text` is the email subject (or `null`).
+- **DocumentLink**: attachment/link added via UI.
+  - Shape: `{"text": "<label>", "url": "<absolute-url>"}`.
+- **Reply**: inbound reply from mailer.
+  - Shape: `{"subject": "<subject>", "text": "<sanitized-body>"}`.
+- **Unsubscribed**: inbound unsubscribe notification.
+  - Shape: `{"text": "<reason>"}`.
+
+These schemas are not enforced by the type system; keep any new writers aligned
+with the shapes above or update this section when introducing new formats.
 
 ## API Surface
 

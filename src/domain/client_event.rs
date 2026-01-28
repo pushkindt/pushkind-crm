@@ -14,6 +14,7 @@ pub struct ClientEvent {
     pub client_id: ClientId,
     pub manager_id: ManagerId,
     pub event_type: ClientEventType,
+    /// JSON payload for the event; see SPEC.md for per-type formats.
     pub event_data: Value,
     pub created_at: NaiveDateTime,
 }
@@ -26,6 +27,7 @@ pub enum ClientEventType {
     Email,
     Reply,
     Unsubscribed,
+    Task,
     Other(String),
 }
 
@@ -34,6 +36,7 @@ pub struct NewClientEvent {
     pub client_id: ClientId,
     pub manager_id: ManagerId,
     pub event_type: ClientEventType,
+    /// JSON payload for the event; see SPEC.md for per-type formats.
     pub event_data: Value,
 }
 
@@ -125,6 +128,7 @@ impl Display for ClientEventType {
             ClientEventType::Email => write!(f, "Email"),
             ClientEventType::Reply => write!(f, "Reply"),
             ClientEventType::Unsubscribed => write!(f, "Unsubscribed"),
+            ClientEventType::Task => write!(f, "Task"),
             ClientEventType::Other(s) => write!(f, "{s}"),
         }
     }
@@ -132,14 +136,24 @@ impl Display for ClientEventType {
 
 impl From<&str> for ClientEventType {
     fn from(s: &str) -> Self {
-        match s.trim().to_lowercase().as_str() {
-            "comment" => ClientEventType::Comment,
-            "documentlink" => ClientEventType::DocumentLink,
-            "call" => ClientEventType::Call,
-            "email" => ClientEventType::Email,
-            "reply" => ClientEventType::Reply,
-            "unsubscribed" => ClientEventType::Unsubscribed,
-            _ => ClientEventType::Other(s.to_string()),
+        let trimmed = s.trim();
+
+        if trimmed.eq_ignore_ascii_case("comment") {
+            ClientEventType::Comment
+        } else if trimmed.eq_ignore_ascii_case("documentlink") {
+            ClientEventType::DocumentLink
+        } else if trimmed.eq_ignore_ascii_case("call") {
+            ClientEventType::Call
+        } else if trimmed.eq_ignore_ascii_case("email") {
+            ClientEventType::Email
+        } else if trimmed.eq_ignore_ascii_case("reply") {
+            ClientEventType::Reply
+        } else if trimmed.eq_ignore_ascii_case("unsubscribed") {
+            ClientEventType::Unsubscribed
+        } else if trimmed.eq_ignore_ascii_case("task") {
+            ClientEventType::Task
+        } else {
+            ClientEventType::Other(s.to_string())
         }
     }
 }
@@ -147,5 +161,85 @@ impl From<&str> for ClientEventType {
 impl From<String> for ClientEventType {
     fn from(s: String) -> Self {
         s.as_str().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn client_event_type_from_str_matches_known_types_case_insensitive() {
+        assert_eq!(ClientEventType::from("comment"), ClientEventType::Comment);
+        assert_eq!(ClientEventType::from("  CALL "), ClientEventType::Call);
+        assert_eq!(
+            ClientEventType::from("DocumentLink"),
+            ClientEventType::DocumentLink
+        );
+        assert_eq!(ClientEventType::from("EMAIL"), ClientEventType::Email);
+        assert_eq!(ClientEventType::from("Reply"), ClientEventType::Reply);
+        assert_eq!(
+            ClientEventType::from("Unsubscribed"),
+            ClientEventType::Unsubscribed
+        );
+        assert_eq!(ClientEventType::from("task"), ClientEventType::Task);
+    }
+
+    #[test]
+    fn client_event_type_from_str_preserves_original_for_other() {
+        let raw = "  custom-type  ";
+        assert_eq!(
+            ClientEventType::from(raw),
+            ClientEventType::Other(raw.to_string())
+        );
+    }
+
+    #[test]
+    fn client_event_type_from_string_delegates_to_str() {
+        let value = "Email".to_string();
+        assert_eq!(ClientEventType::from(value), ClientEventType::Email);
+    }
+
+    #[test]
+    fn client_event_type_display_renders_variants() {
+        assert_eq!(ClientEventType::Call.to_string(), "Call");
+        assert_eq!(
+            ClientEventType::Other("Custom".to_string()).to_string(),
+            "Custom"
+        );
+    }
+
+    #[test]
+    fn new_client_event_try_new_validates_ids() {
+        let event = NewClientEvent::try_new(1, 2, "comment", json!({"k": "v"}))
+            .expect("expected valid ids");
+
+        assert_eq!(event.client_id.get(), 1);
+        assert_eq!(event.manager_id.get(), 2);
+        assert_eq!(event.event_type, ClientEventType::Comment);
+    }
+
+    #[test]
+    fn new_client_event_try_new_rejects_non_positive_ids() {
+        let err = NewClientEvent::try_new(0, 1, "comment", json!({}))
+            .expect_err("expected invalid client id");
+        assert_eq!(err, TypeConstraintError::NonPositiveId);
+    }
+
+    #[test]
+    fn client_event_try_new_constructs_event() {
+        let created_at = chrono::DateTime::from_timestamp(0, 0)
+            .expect("expected valid timestamp")
+            .naive_utc();
+        let event = ClientEvent::try_new(3, 4, 5, "reply", json!({"msg": "hi"}), created_at)
+            .expect("expected valid event");
+
+        assert_eq!(event.id.get(), 3);
+        assert_eq!(event.client_id.get(), 4);
+        assert_eq!(event.manager_id.get(), 5);
+        assert_eq!(event.event_type, ClientEventType::Reply);
+        assert_eq!(event.event_data, json!({"msg": "hi"}));
+        assert_eq!(event.created_at, created_at);
     }
 }
