@@ -10,6 +10,8 @@ use pushkind_common::services::errors::ServiceError;
 use crate::domain::types::TypeConstraintError;
 #[cfg(feature = "server")]
 use crate::forms::FormError;
+#[cfg(feature = "server")]
+use crate::forms::store::StoreFormError;
 
 #[cfg(feature = "data")]
 impl From<TypeConstraintError> for ServiceError {
@@ -21,6 +23,13 @@ impl From<TypeConstraintError> for ServiceError {
 #[cfg(feature = "server")]
 impl From<FormError> for ServiceError {
     fn from(val: FormError) -> Self {
+        ServiceError::Form(val.to_string())
+    }
+}
+
+#[cfg(feature = "server")]
+impl From<StoreFormError> for ServiceError {
+    fn from(val: StoreFormError) -> Self {
         ServiceError::Form(val.to_string())
     }
 }

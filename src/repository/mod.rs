@@ -4,12 +4,15 @@ use pushkind_common::db::{DbConnection, DbPool};
 use pushkind_common::pagination::Pagination;
 use pushkind_common::repository::errors::RepositoryResult;
 
-use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId, PublicId};
+use crate::domain::types::{
+    ClientEmail, ClientId, HubId, ManagerEmail, ManagerId, PhoneNumber, PublicId,
+};
 use crate::domain::{
     client::{Client, NewClient, UpdateClient},
     client_event::{ClientEvent, ClientEventType, NewClientEvent},
     important_field::ImportantField as DomainImportantField,
     manager::{Manager, NewManager},
+    store_otp::{NewStoreOtp, StoreOtp},
 };
 
 pub mod client;
@@ -17,6 +20,7 @@ pub mod client_event;
 pub mod manager;
 #[cfg(feature = "test-mocks")]
 pub mod mock;
+pub mod store_otp;
 
 #[derive(Clone)]
 pub struct DieselRepository {
@@ -113,6 +117,11 @@ pub trait ClientReader {
         email: &ClientEmail,
         hub_id: HubId,
     ) -> RepositoryResult<Option<Client>>;
+    fn get_client_by_phone(
+        &self,
+        phone: &PhoneNumber,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Client>>;
     fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
     fn list_managers(&self, id: ClientId) -> RepositoryResult<Vec<Manager>>;
     fn check_client_assigned_to_manager(
@@ -178,4 +187,14 @@ pub trait ClientEventReader {
 
 pub trait ClientEventWriter {
     fn create_client_event(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
+}
+
+pub trait StoreOtpRepository {
+    fn get_store_otp(
+        &self,
+        hub_id: HubId,
+        phone: &PhoneNumber,
+    ) -> RepositoryResult<Option<StoreOtp>>;
+    fn upsert_store_otp(&self, new_otp: &NewStoreOtp) -> RepositoryResult<StoreOtp>;
+    fn delete_store_otp(&self, hub_id: HubId, phone: &PhoneNumber) -> RepositoryResult<()>;
 }

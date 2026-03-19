@@ -7,11 +7,13 @@ use crate::domain::client::{Client, NewClient, UpdateClient};
 use crate::domain::client_event::{ClientEvent, NewClientEvent};
 use crate::domain::important_field::ImportantField;
 use crate::domain::manager::{Manager, NewManager};
-use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId};
+use crate::domain::store_otp::{NewStoreOtp, StoreOtp};
+use crate::domain::types::{ClientEmail, ClientId, HubId, ManagerEmail, ManagerId, PhoneNumber};
 use crate::repository::PublicId;
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientListQuery, ClientReader,
     ClientWriter, ImportantFieldReader, ImportantFieldWriter, ManagerReader, ManagerWriter,
+    StoreOtpRepository,
 };
 
 mock! {
@@ -27,6 +29,11 @@ mock! {
         fn get_client_by_email(
             &self,
             email: &ClientEmail,
+            hub_id: HubId,
+        ) -> RepositoryResult<Option<Client>>;
+        fn get_client_by_phone(
+            &self,
+            phone: &PhoneNumber,
             hub_id: HubId,
         ) -> RepositoryResult<Option<Client>>;
         fn list_clients(&self, query: ClientListQuery) -> RepositoryResult<(usize, Vec<Client>)>;
@@ -95,5 +102,11 @@ mock! {
 
     impl ClientEventWriter for Repository {
         fn create_client_event(&self, client_event: &NewClientEvent) -> RepositoryResult<ClientEvent>;
+    }
+
+    impl StoreOtpRepository for Repository {
+        fn get_store_otp(&self, hub_id: HubId, phone: &PhoneNumber) -> RepositoryResult<Option<StoreOtp>>;
+        fn upsert_store_otp(&self, new_otp: &NewStoreOtp) -> RepositoryResult<StoreOtp>;
+        fn delete_store_otp(&self, hub_id: HubId, phone: &PhoneNumber) -> RepositoryResult<()>;
     }
 }

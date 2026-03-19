@@ -7,6 +7,23 @@ records, manager assignments, and client communication history. It provides
 browser-based workflows for operations teams and a lightweight JSON API for
 integrations.
 
+## Planned Storefront Auth Contract
+
+The feature spec [crm-direct-store-auth.md](/home/matrizaev/pushkind/specs/features/crm-direct-store-auth.md)
+defines the target storefront-auth ownership for CRM.
+
+- CRM is the planned owner of storefront auth/session/logout endpoints under `/api/v1/store/{hub_id}`.
+- CRM is the planned issuer of the browser `store-session` cookie used by the storefront across CRM and Orders subdomains.
+- The planned storefront JWT claim shape is:
+  - `sub`: CRM client `public_id` UUID string
+  - `hub_id`: hub identifier
+  - `name`: client display name
+  - `phone`: normalized E.164 phone number
+  - `email`: optional client email
+  - `exp`: expiration timestamp
+- Orders will consume the same JWT contract to resolve or lazily create its internal customer copy.
+- This section documents the target contract; the existing CRM implementation has not yet taken over storefront OTP/session behavior.
+
 ## Scope
 
 ### In scope

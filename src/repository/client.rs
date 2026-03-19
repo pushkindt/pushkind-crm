@@ -12,7 +12,7 @@ use pushkind_common::repository::errors::{RepositoryError, RepositoryResult};
 
 use crate::domain::important_field::ImportantField as DomainImportantField;
 use crate::domain::types::{
-    ClientEmail, ClientId, HubId, ManagerEmail, PublicId, TypeConstraintError,
+    ClientEmail, ClientId, HubId, ManagerEmail, PhoneNumber, PublicId, TypeConstraintError,
 };
 use crate::models::client::ClientField;
 use crate::models::important_field::{
@@ -122,6 +122,28 @@ impl ClientReader for DieselRepository {
         let mut conn = self.conn()?;
         let client = clients::table
             .filter(clients::email.eq(email.as_str()))
+            .filter(clients::hub_id.eq(hub_id.get()))
+            .first::<DbClient>(&mut conn)
+            .optional()?;
+
+        let client = match client {
+            Some(client) => Some(Client::try_from(client).map_err(RepositoryError::from)?),
+            None => None,
+        };
+
+        Ok(client)
+    }
+
+    fn get_client_by_phone(
+        &self,
+        phone: &PhoneNumber,
+        hub_id: HubId,
+    ) -> RepositoryResult<Option<Client>> {
+        use crate::schema::clients;
+
+        let mut conn = self.conn()?;
+        let client = clients::table
+            .filter(clients::phone.eq(phone.as_str()))
             .filter(clients::hub_id.eq(hub_id.get()))
             .first::<DbClient>(&mut conn)
             .optional()?;
