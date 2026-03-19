@@ -4,4 +4,6 @@ pub mod client;
 pub mod client_event;
 pub mod important_field;
 pub mod manager;
+pub mod store_otp;
+pub mod store_session;
 pub mod types;

@@ -5,4 +5,5 @@ pub mod client_event;
 pub mod config;
 pub mod important_field;
 pub mod manager;
+pub mod store_otp;
 pub mod zmq;

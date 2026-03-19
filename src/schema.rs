@@ -99,6 +99,16 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    store_otps (hub_id, phone) {
+        hub_id -> Integer,
+        phone -> Text,
+        code -> Text,
+        expires_at -> Timestamp,
+        last_sent_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(client_events -> clients (client_id));
 diesel::joinable!(client_events -> managers (manager_id));
 diesel::joinable!(client_fields -> clients (client_id));
@@ -117,4 +127,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     clients,
     important_fields,
     managers,
+    store_otps,
 );

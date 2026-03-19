@@ -43,7 +43,13 @@ use crate::routes::main::{add_client, clients_upload, show_index};
 #[cfg(feature = "server")]
 use crate::routes::managers::{add_manager, assign_manager, managers, managers_modal};
 #[cfg(feature = "server")]
+use crate::routes::rate_limit::{StoreOtpIpRateLimiter, TRUST_FORWARDED_HEADERS};
+#[cfg(feature = "server")]
 use crate::routes::settings::{cleanup_clients, save_important_fields, show_settings};
+#[cfg(feature = "server")]
+use crate::routes::store::{
+    get_store_session, logout_store_session, request_store_auth_otp, verify_store_auth_otp,
+};
 
 #[cfg(feature = "data")]
 pub mod domain;
@@ -83,6 +89,8 @@ pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
     .map_err(|e| std::io::Error::other(format!("Failed to start ZMQ sender: {e}")))?;
 
     let zmq_sender = Arc::new(zmq_sender);
+    let sms_sender = ZmqSender::start(ZmqSenderOptions::pub_default(&server_config.zmq_sms_pub))
+        .map_err(|e| std::io::Error::other(format!("Failed to start ZMQ SMS sender: {e}")))?;
 
     // Establish Diesel connection pool for the SQLite database.
     let pool = establish_connection_pool(&server_config.database_url).map_err(|e| {
@@ -101,6 +109,13 @@ pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
         .map_err(|e| std::io::Error::other(format!("Template parsing error(s): {e}")))?;
 
     let bind_address = (server_config.address.clone(), server_config.port);
+    let store_otp_rate_limiter = web::Data::new(StoreOtpIpRateLimiter::new());
+    if !TRUST_FORWARDED_HEADERS {
+        log::warn!(
+            "CRM store OTP rate limiter uses peer_addr() for client IP. \
+If this service runs behind a trusted reverse proxy, set TRUST_FORWARDED_HEADERS=true in src/routes/rate_limit.rs."
+        );
+    }
 
     HttpServer::new(move || {
         App::new()
@@ -117,6 +132,15 @@ pub async fn run(server_config: ServerConfig) -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .service(Files::new("/assets", "./assets"))
             .service(not_assigned)
+            .service(
+                web::scope("/api/v1/store")
+                    .app_data(store_otp_rate_limiter.clone())
+                    .app_data(web::Data::new(sms_sender.clone()))
+                    .service(request_store_auth_otp)
+                    .service(verify_store_auth_otp)
+                    .service(get_store_session)
+                    .service(logout_store_session),
+            )
             .service(web::scope("/api").service(api_v1_clients))
             .service(
                 web::scope("")

@@ -7,6 +7,7 @@ pub mod client;
 pub mod important_fields;
 pub mod main;
 pub mod managers;
+pub mod store;
 
 #[derive(Debug, Error)]
 /// Errors that can occur when processing form data.
