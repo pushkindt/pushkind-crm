@@ -89,7 +89,10 @@ export function SettingsBootstrap() {
         window.showFlashMessage?.(error.message, "danger");
       } else {
         console.error("Failed to save important fields.", error);
-        window.showFlashMessage?.("Не удалось сохранить важные поля.", "danger");
+        window.showFlashMessage?.(
+          "Не удалось сохранить важные поля.",
+          "danger",
+        );
       }
     } finally {
       setIsSaving(false);

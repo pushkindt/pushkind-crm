@@ -545,36 +545,36 @@ export function ClientBootstrap() {
                   {client.email ?? "Электронный адрес"}
                 </a>
               </div>
-                    <div className="col text-end">
-                      <div className="dropdown">
-                        <a
-                          className="dropdown-toggle"
-                          href="#"
-                          role="button"
-                          id="orderActionsLink"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                        >
-                          Действия
-                        </a>
-                        <ul
-                          className="dropdown-menu bg-light"
-                          aria-labelledby="orderActionsLink"
-                        >
-                          <li className="dropdown-item">
-                            <i className="bi bi-file" />{" "}
-                            <a
-                              href="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#attachmentModal"
-                            >
-                              вложение
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+              <div className="col text-end">
+                <div className="dropdown">
+                  <a
+                    className="dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="orderActionsLink"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    Действия
+                  </a>
+                  <ul
+                    className="dropdown-menu bg-light"
+                    aria-labelledby="orderActionsLink"
+                  >
+                    <li className="dropdown-item">
+                      <i className="bi bi-file" />{" "}
+                      <a
+                        href="#"
+                        data-bs-toggle="modal"
+                        data-bs-target="#attachmentModal"
+                      >
+                        вложение
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
             <div className="row">
               <div className="col">
                 <a

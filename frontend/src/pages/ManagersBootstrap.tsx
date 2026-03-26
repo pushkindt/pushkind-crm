@@ -54,8 +54,9 @@ export function ManagersBootstrap() {
   const [selectedUser, setSelectedUser] = useState<AuthUserSearchItem | null>(
     null,
   );
-  const [managerModalState, setManagerModalState] =
-    useState<ManagerModalState>({ status: "idle" });
+  const [managerModalState, setManagerModalState] = useState<ManagerModalState>(
+    { status: "idle" },
+  );
   const [clientQuery, setClientQuery] = useState("");
   const [clientSearchState, setClientSearchState] = useState<ClientSearchState>(
     {
@@ -261,7 +262,10 @@ export function ManagersBootstrap() {
         window.showFlashMessage?.(error.message, "danger");
       } else {
         console.error("Failed to assign manager clients.", error);
-        window.showFlashMessage?.("Не удалось сохранить назначения менеджера.", "danger");
+        window.showFlashMessage?.(
+          "Не удалось сохранить назначения менеджера.",
+          "danger",
+        );
       }
     } finally {
       setIsAssignSubmitting(false);

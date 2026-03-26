@@ -97,7 +97,10 @@ export function DashboardBootstrap() {
       try {
         await loadDashboard();
       } catch (error) {
-        console.error("Failed to refresh dashboard after adding client.", error);
+        console.error(
+          "Failed to refresh dashboard after adding client.",
+          error,
+        );
         window.location.reload();
       }
     } catch (error) {
@@ -121,13 +124,19 @@ export function DashboardBootstrap() {
     setUploadError(null);
 
     try {
-      const result = await postMultipartForm("/clients/upload", new FormData(form));
+      const result = await postMultipartForm(
+        "/clients/upload",
+        new FormData(form),
+      );
       window.showFlashMessage?.(result.message, "success");
       form.reset();
       try {
         await loadDashboard();
       } catch (error) {
-        console.error("Failed to refresh dashboard after uploading clients.", error);
+        console.error(
+          "Failed to refresh dashboard after uploading clients.",
+          error,
+        );
         window.location.reload();
       }
     } catch (error) {
