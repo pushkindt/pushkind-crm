@@ -222,12 +222,16 @@ export function DashboardBootstrap() {
                   href={`/client/${client.id}`}
                   key={client.id}
                 >
-                  <div className="col-sm">
+                  <div className="col-sm overflow-hidden">
                     <strong>{client.name}</strong>
                   </div>
-                  <div className="col-sm">{client.email ?? "—"}</div>
-                  <div className="col-sm">{client.phone ?? "—"}</div>
-                  <div className="col-sm">
+                  <div className="col-sm overflow-hidden">
+                    {client.email ?? "—"}
+                  </div>
+                  <div className="col-sm overflow-hidden">
+                    {client.phone ?? "—"}
+                  </div>
+                  <div className="col-sm overflow-hidden">
                     {client.fieldBadges.length > 0 ? (
                       client.fieldBadges.map((badge) => (
                         <span
