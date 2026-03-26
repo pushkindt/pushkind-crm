@@ -385,6 +385,23 @@ function isJsonResponse(response: Response): boolean {
   );
 }
 
+export const browserLocation = {
+  assign(url: string) {
+    window.location.assign(url);
+  },
+};
+
+function handleAuthRedirectResponse(response: Response): never {
+  browserLocation.assign(response.url);
+  throw new Error("Сессия истекла. Выполняется переход на страницу входа.");
+}
+
+function ensureMutationResponseIsNotAuthRedirect(response: Response) {
+  if (response.redirected && !isJsonResponse(response)) {
+    handleAuthRedirectResponse(response);
+  }
+}
+
 async function readJsonResponse<T>(response: Response, endpoint: string) {
   if (!isJsonResponse(response)) {
     throw new Error(
@@ -438,6 +455,8 @@ export async function postForm(
     body: body.toString(),
   });
 
+  ensureMutationResponseIsNotAuthRedirect(response);
+
   const payload = (await readJsonResponse(response, endpoint)) as
     | ApiMutationSuccess
     | ApiMutationError;
@@ -462,6 +481,8 @@ export async function postMultipartForm(
     body,
   });
 
+  ensureMutationResponseIsNotAuthRedirect(response);
+
   const payload = (await readJsonResponse(response, endpoint)) as
     | ApiMutationSuccess
     | ApiMutationError;
@@ -481,6 +502,8 @@ export async function postEmpty(endpoint: string): Promise<ApiMutationSuccess> {
     },
     credentials: "include",
   });
+
+  ensureMutationResponseIsNotAuthRedirect(response);
 
   const payload = (await readJsonResponse(response, endpoint)) as
     | ApiMutationSuccess

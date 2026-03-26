@@ -122,7 +122,8 @@ The application is structured into layers with strict responsibilities:
 - `SERVICE_ACCESS_ROLE` (`crm`) MUST be present for:
   - Dashboard and client-detail pages
   - Dashboard/client page-data APIs
-  - `/api/v1/clients`
+- `GET /api/v1/clients` MUST allow either `SERVICE_ACCESS_ROLE` (`crm`) or
+  `SERVICE_ADMIN_ROLE` (`crm_admin`).
 - `SERVICE_ADMIN_ROLE` (`crm_admin`) MUST be present for:
   - Managers and settings pages
   - Managers/settings page-data APIs
@@ -186,7 +187,7 @@ with the shapes above or update this section when introducing new formats.
 
 - `GET /api/v1/clients`
   - Returns filtered client list in JSON for integrations.
-  - Access controlled by `SERVICE_ACCESS_ROLE`.
+  - Access controlled by `SERVICE_ACCESS_ROLE` or `SERVICE_ADMIN_ROLE`.
   - Query parameters:
     - `public_id`: optional UUID string for exact match filtering.
 
@@ -197,7 +198,7 @@ with the shapes above or update this section when introducing new formats.
 | Condition | Status | Body |
 | --- | --- | --- |
 | Success | 200 | JSON array of clients |
-| Missing/invalid auth or missing `SERVICE_ACCESS_ROLE` | 401 | Empty body |
+| Missing/invalid auth or missing both `SERVICE_ACCESS_ROLE` and `SERVICE_ADMIN_ROLE` | 401 | Empty body |
 | Query deserialization failure | 400 | Framework default |
 | Other failures | 500 | Empty body |
 

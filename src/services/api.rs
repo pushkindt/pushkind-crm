@@ -5,7 +5,7 @@ use std::str::FromStr;
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
-use pushkind_common::routes::{check_role, ensure_role};
+use pushkind_common::routes::check_role;
 use serde::Deserialize;
 
 use crate::domain::types::{HubId, PublicId};
@@ -92,7 +92,9 @@ pub fn list_clients<R>(
 where
     R: ClientReader + ?Sized,
 {
-    ensure_role(user, SERVICE_ACCESS_ROLE)?;
+    if !has_shell_access(user) {
+        return Err(ServiceError::Unauthorized);
+    }
 
     let mut query = ClientListQuery::new(HubId::new(user.hub_id)?);
 
@@ -384,6 +386,26 @@ mod tests {
         let result = list_clients(ClientsQuery::default(), &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
+    }
+
+    #[test]
+    fn list_clients_allows_admin_only_users() {
+        let mut repo = MockRepository::new();
+        let expected_client = sample_client(1, 7);
+        repo.expect_list_clients()
+            .withf(|query| {
+                query.hub_id == HubId::new(7).expect("valid hub id")
+                    && query.manager_email.is_none()
+            })
+            .times(1)
+            .returning(move |_| Ok((1, vec![expected_client.clone()])));
+        let mut user = access_user();
+        user.roles = vec![SERVICE_ADMIN_ROLE.to_string()];
+
+        let response = list_clients(ClientsQuery::default(), &user, &repo).expect("response ok");
+
+        assert_eq!(response.total, 1);
+        assert_eq!(response.clients.len(), 1);
     }
 
     #[test]
