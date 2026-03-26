@@ -12,19 +12,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Build frontend assets
+        working-directory: ./frontend
+        run: npm run build
       - uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --all-features
       - uses: actions/upload-artifact@v4
         with:
+          name: pushkind-crm-frontend-dist
+          path: ./assets/dist
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
           name: pushkind-crm
           path: |
             ./target/release/pushkind-crm
             ./target/release/check_events
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -34,6 +51,10 @@ jobs:
         with:
           name: pushkind-crm
           path: ./target/release/
+      - uses: actions/download-artifact@v4
+        with:
+          name: pushkind-crm-frontend-dist
+          path: ./assets/dist/
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
@@ -49,7 +70,6 @@ jobs:
           scp ./target/release/check_events cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./config/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./assets/ cicd@crm.pushkind.com:/var/www8/html/
-          scp -r ./templates/ cicd@crm.pushkind.com:/var/www8/html/
           scp -r ./migrations/ cicd@crm.pushkind.com:/var/www8/html/
           ssh cicd@crm.pushkind.com "cd /var/www8/html/ && /home/cicd/.cargo/bin/diesel migration run --database-url app.db"
           ssh cicd@crm.pushkind.com "sudo /usr/bin/systemctl start pushkind-crm.service"

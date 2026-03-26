@@ -6,9 +6,7 @@ use pushkind_common::routes::ensure_role;
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::types::{HubId, ManagerId};
 use crate::dto::managers::{ManagerModalData, ManagersPageData};
-use crate::forms::managers::{
-    AddManagerForm, AddManagerPayload, AssignManagerForm, AssignManagerPayload,
-};
+use crate::forms::managers::{AddManagerPayload, AssignManagerPayload};
 use crate::repository::{ClientListQuery, ClientReader, ManagerReader, ManagerWriter};
 use crate::services::{ServiceError, ServiceResult};
 
@@ -27,13 +25,15 @@ where
 }
 
 /// Validates the incoming form and persists the manager entity.
-pub fn add_manager<R>(form: AddManagerForm, user: &AuthenticatedUser, repo: &R) -> ServiceResult<()>
+pub fn add_manager<R>(
+    payload: AddManagerPayload,
+    user: &AuthenticatedUser,
+    repo: &R,
+) -> ServiceResult<()>
 where
     R: ManagerWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
-
-    let payload = AddManagerPayload::try_from(form)?;
 
     let hub_id = HubId::new(user.hub_id)?;
 
@@ -70,7 +70,7 @@ where
 
 /// Assigns the provided client identifiers to the given manager.
 pub fn assign_manager<R>(
-    form: AssignManagerForm,
+    payload: AssignManagerPayload,
     user: &AuthenticatedUser,
     repo: &R,
 ) -> ServiceResult<()>
@@ -78,8 +78,6 @@ where
     R: ClientReader + ManagerReader + ManagerWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
-
-    let payload = AssignManagerPayload::try_from(form)?;
 
     let hub_id = HubId::new(user.hub_id)?;
 
@@ -106,9 +104,10 @@ mod tests {
     use crate::domain::client::Client;
     use crate::domain::manager::Manager;
     use crate::domain::types::{ClientId, HubId, ManagerEmail, ManagerId, ManagerName, PublicId};
+    use crate::forms::managers::{AddManagerForm, AssignManagerForm};
     use crate::repository::mock::MockRepository;
+    use crate::services::ServiceError;
     use chrono::Utc;
-    use pushkind_common::services::errors::ServiceError;
 
     fn admin_user() -> AuthenticatedUser {
         AuthenticatedUser {
@@ -183,12 +182,13 @@ mod tests {
             .times(1)
             .returning(move |_| Ok(manager.clone()));
         let user = admin_user();
-        let form = AddManagerForm {
+        let payload = AddManagerPayload::try_from(AddManagerForm {
             name: "Manager".to_string(),
             email: "manager@example.com".to_string(),
-        };
+        })
+        .expect("valid payload");
 
-        add_manager(form, &user, &repo).expect("manager created");
+        add_manager(payload, &user, &repo).expect("manager created");
     }
 
     #[test]
@@ -239,12 +239,13 @@ mod tests {
             });
         repo.expect_assign_clients_to_manager().times(0);
         let user = admin_user();
-        let form = AssignManagerForm {
+        let payload = AssignManagerPayload::try_from(AssignManagerForm {
             manager_id: 1,
             client_ids: vec![1, 2],
-        };
+        })
+        .expect("valid payload");
 
-        let result = assign_manager(form, &user, &repo);
+        let result = assign_manager(payload, &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Form(_))));
     }
@@ -266,11 +267,12 @@ mod tests {
             .times(1)
             .returning(|_, _| Ok(2));
         let user = admin_user();
-        let form = AssignManagerForm {
+        let payload = AssignManagerPayload::try_from(AssignManagerForm {
             manager_id: 2,
             client_ids: vec![3, 4],
-        };
+        })
+        .expect("valid payload");
 
-        assign_manager(form, &user, &repo).expect("assignment ok");
+        assign_manager(payload, &user, &repo).expect("assignment ok");
     }
 }

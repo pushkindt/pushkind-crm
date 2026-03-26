@@ -11,19 +11,19 @@ pub type StoreFormResult<T> = Result<T, StoreFormError>;
 
 #[derive(Debug, Error)]
 pub enum StoreFormError {
-    #[error("validation failed: {0}")]
+    #[error("Ошибка валидации формы: {0}")]
     Validation(#[from] ValidationErrors),
-    #[error("phone number is required")]
+    #[error("Укажите номер телефона.")]
     EmptyPhone,
-    #[error("phone number is invalid")]
+    #[error("Укажите корректный номер телефона.")]
     InvalidPhone,
-    #[error("otp must be a 6-digit code")]
+    #[error("Укажите корректный код подтверждения.")]
     InvalidOtp,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct StoreOtpRequestPayload {
-    #[validate(length(min = 1, max = PHONE_MAX_LEN_VALIDATOR))]
+    #[validate(length(min = 1, max = PHONE_MAX_LEN_VALIDATOR, message = "Укажите номер телефона."))]
     pub phone: String,
 }
 

@@ -10,7 +10,7 @@ use crate::domain::manager::NewManager;
 use crate::domain::types::{HubId, PublicId};
 use crate::dto::main::IndexPageData;
 pub use crate::dto::main::IndexQuery;
-use crate::forms::main::{AddClientForm, AddClientPayload, UploadClientsForm};
+use crate::forms::main::{AddClientPayload, UploadClientsForm};
 use crate::repository::{ClientListQuery, ClientReader, ClientWriter, ManagerWriter};
 use crate::services::{ServiceError, ServiceResult};
 use crate::{SERVICE_ACCESS_ROLE, SERVICE_ADMIN_ROLE, SERVICE_MANAGER_ROLE};
@@ -83,13 +83,15 @@ where
 }
 
 /// Validates the add-client form and persists a new client record.
-pub fn add_client<R>(form: AddClientForm, user: &AuthenticatedUser, repo: &R) -> ServiceResult<()>
+pub fn add_client<R>(
+    payload: AddClientPayload,
+    user: &AuthenticatedUser,
+    repo: &R,
+) -> ServiceResult<()>
 where
     R: ClientWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
-
-    let payload = AddClientPayload::try_from(form)?;
 
     let hub_id = HubId::new(user.hub_id)?;
 
@@ -129,9 +131,10 @@ mod tests {
     use crate::domain::client::Client;
     use crate::domain::manager::Manager;
     use crate::domain::types::{ClientName, HubId, ManagerEmail, ManagerName, PublicId};
+    use crate::forms::main::AddClientForm;
     use crate::repository::mock::MockRepository;
+    use crate::services::ServiceError;
     use chrono::Utc;
-    use pushkind_common::services::errors::ServiceError;
 
     fn access_user() -> AuthenticatedUser {
         AuthenticatedUser {
@@ -283,13 +286,14 @@ mod tests {
             .returning(|_| Ok(1));
 
         let user = admin_user();
-        let form = AddClientForm {
+        let payload = AddClientPayload::try_from(AddClientForm {
             name: "Alice".to_string(),
             email: Some("alice@example.com".to_string()),
             phone: None,
-        };
+        })
+        .expect("valid payload");
 
-        add_client(form, &user, &repo).expect("client created");
+        add_client(payload, &user, &repo).expect("client created");
     }
 
     #[test]

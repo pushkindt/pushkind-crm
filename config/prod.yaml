@@ -1,5 +1,8 @@
-domain: pushkind.com
-port: 9008
-auth_service_url: https://users.pushkind.com
-todo_service_url: https://todo.pushkind.com
-files_service_url: https://images.pushkind.com
+server:
+  port: 9008
+
+app:
+  domain: pushkind.com
+  auth_service_url: https://users.pushkind.com
+  todo_service_url: https://todo.pushkind.com
+  files_service_url: https://images.pushkind.com

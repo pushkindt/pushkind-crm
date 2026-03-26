@@ -117,8 +117,16 @@ The application is structured into layers with strict responsibilities:
 ## Authorization Rules
 
 - All access MUST be scoped to the user's Hub; cross-hub access MUST NOT occur.
-- `SERVICE_ACCESS_ROLE` (`crm`) MUST be present for all CRM pages and `/api/v1/*` endpoints.
+- React shell bootstrap via `GET /api/v1/iam` MUST allow either `SERVICE_ACCESS_ROLE` (`crm`)
+  or `SERVICE_ADMIN_ROLE` (`crm_admin`) so that admin-only users can load admin pages.
+- `SERVICE_ACCESS_ROLE` (`crm`) MUST be present for:
+  - Dashboard and client-detail pages
+  - Dashboard/client page-data APIs
+- `GET /api/v1/clients` MUST allow either `SERVICE_ACCESS_ROLE` (`crm`) or
+  `SERVICE_ADMIN_ROLE` (`crm_admin`).
 - `SERVICE_ADMIN_ROLE` (`crm_admin`) MUST be present for:
+  - Managers and settings pages
+  - Managers/settings page-data APIs
   - Client creation and bulk import
   - Manager administration (create/assign)
   - Important field configuration
@@ -167,14 +175,19 @@ with the shapes above or update this section when introducing new formats.
 
 ### HTML
 
-- Server-rendered pages backed by Tera templates and Bootstrap 5.
-- Flash messages and redirects handled at the route layer.
+- React-owned pages served as built static HTML documents from Vite output.
+- Bootstrap 5 remains the UI foundation for the current React pages.
+- HTML document routes SHOULD perform only the minimal access/existence checks needed before
+  serving the built document; page data MUST be fetched through `/api/v1/...` by the React page.
+- Initial page state is loaded from typed JSON APIs under `/api/v1/...`.
+- Mutating React-owned forms submit to existing POST endpoints and receive JSON
+  mutation responses instead of redirect+flash flows.
 
 ### JSON
 
 - `GET /api/v1/clients`
   - Returns filtered client list in JSON for integrations.
-  - Access controlled by `SERVICE_ACCESS_ROLE`.
+  - Access controlled by `SERVICE_ACCESS_ROLE` or `SERVICE_ADMIN_ROLE`.
   - Query parameters:
     - `public_id`: optional UUID string for exact match filtering.
 
@@ -185,7 +198,7 @@ with the shapes above or update this section when introducing new formats.
 | Condition | Status | Body |
 | --- | --- | --- |
 | Success | 200 | JSON array of clients |
-| Missing/invalid auth or missing `SERVICE_ACCESS_ROLE` | 401 | Empty body |
+| Missing/invalid auth or missing both `SERVICE_ACCESS_ROLE` and `SERVICE_ADMIN_ROLE` | 401 | Empty body |
 | Query deserialization failure | 400 | Framework default |
 | Other failures | 500 | Empty body |
 
@@ -194,9 +207,20 @@ with the shapes above or update this section when introducing new formats.
 | Condition | Status | Behavior |
 | --- | --- | --- |
 | Missing/invalid auth | 303 | Redirect to auth service (`next` param) |
-| Missing required role | 303 | Redirect with flash error (`/na` or `/`) |
-| Form validation failure | 303 | Redirect with flash error |
-| Other failures | 500 or 303 | Depends on handler |
+| Missing required role | 303 | Redirect to `/na` or `/` depending on handler |
+| Built frontend document missing | 503 | Plain-text service unavailable response |
+| Other failures | 500 | Empty body or framework default |
+
+### React mutation endpoints
+
+| Condition | Status | Body |
+| --- | --- | --- |
+| Success | 200/201 | JSON `{ message, redirect_to }` |
+| Validation failure | 400 | JSON `{ message, field_errors }` |
+| Missing required role | 403 | JSON error envelope |
+| Missing resource | 404 | JSON error envelope |
+| Conflict | 409 | JSON error envelope |
+| Other failures | 500 | JSON error envelope or empty body |
 
 ## Error Handling
 
