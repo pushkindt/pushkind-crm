@@ -16,10 +16,10 @@ use crate::forms::FormError;
 /// Form data used to add a new client.
 pub struct AddClientForm {
     /// Client's display name.
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Укажите имя."))]
     pub name: String,
     /// Client's email.
-    #[validate(email)]
+    #[validate(email(message = "Укажите корректный электронный адрес."))]
     #[serde(deserialize_with = "empty_string_as_none")]
     pub email: Option<String>,
     /// Contact phone number.
@@ -53,7 +53,7 @@ impl TryFrom<AddClientForm> for AddClientPayload {
         };
 
         if email.is_none() && phone.is_none() {
-            Err(FormError::InvalidEmail)
+            Err(FormError::MissingClientContact)
         } else {
             Ok(Self { name, email, phone })
         }

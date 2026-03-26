@@ -1,48 +1,33 @@
 //! Routes for the main dashboard and uploads.
 
 use actix_multipart::form::MultipartForm;
-use actix_web::{HttpResponse, Responder, get, post, web};
-use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
+use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::{base_context, redirect, render_template};
-use tera::Tera;
+use pushkind_common::routes::{check_role, redirect};
 
-use crate::dto::main::IndexQuery;
-use crate::forms::main::{AddClientForm, UploadClientsForm};
+use crate::SERVICE_ACCESS_ROLE;
+use crate::dto::api::{ApiMutationErrorDto, ApiMutationSuccessDto};
+use crate::forms::main::{AddClientForm, AddClientPayload, UploadClientsForm};
+use crate::frontend::{FrontendAssetError, open_frontend_html};
 use crate::repository::DieselRepository;
-use crate::services::{ServiceError, main as main_service};
+use crate::routes::{MutationResource, mutation_error_response};
+use crate::services::main as main_service;
 
 #[get("/")]
 /// Display the dashboard listing clients with optional search/pagination.
-pub async fn show_index(
-    params: web::Query<IndexQuery>,
-    user: AuthenticatedUser,
-    repo: web::Data<DieselRepository>,
-    flash_messages: IncomingFlashMessages,
-    server_config: web::Data<CommonServerConfig>,
-    tera: web::Data<Tera>,
-) -> impl Responder {
-    match main_service::load_index_page(params.into_inner(), &user, repo.get_ref()) {
-        Ok(data) => {
-            let mut context = base_context(
-                &flash_messages,
-                &user,
-                "index",
-                &server_config.auth_service_url,
-            );
-            context.insert("clients", &data.clients);
-            if let Some(search_query) = data.search_query.as_ref() {
-                context.insert("search_query", search_query);
-            }
-            render_template(&tera, "main/index.html", &context)
+pub async fn show_index(request: HttpRequest, user: AuthenticatedUser) -> impl Responder {
+    if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
+        return redirect("/na");
+    }
+
+    match open_frontend_html("assets/dist/app/index.html").await {
+        Ok(file) => file.into_response(&request),
+        Err(FrontendAssetError::Read(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+            HttpResponse::ServiceUnavailable()
+                .body("CRM frontend assets are not built yet. Run `cd frontend && npm run build`.")
         }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Недостаточно прав.").send();
-            redirect("/na")
-        }
-        Err(err) => {
-            log::error!("Failed to list clients: {err}");
+        Err(error) => {
+            log::error!("Failed to open CRM index document: {error}");
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -55,23 +40,22 @@ pub async fn add_client(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
 ) -> impl Responder {
-    match main_service::add_client(form, &user, repo.get_ref()) {
-        Ok(()) => {
-            FlashMessage::success("Клиент добавлен.").send();
-            redirect("/")
+    let payload = match AddClientPayload::try_from(form) {
+        Ok(payload) => payload,
+        Err(error) => {
+            log::error!("Invalid add-client data: {error}");
+            return HttpResponse::BadRequest().json(ApiMutationErrorDto::from(&error));
         }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Недостаточно прав.").send();
-            redirect("/na")
-        }
-        Err(ServiceError::Form(message)) => {
-            FlashMessage::error(message).send();
-            redirect("/")
-        }
+    };
+
+    match main_service::add_client(payload, &user, repo.get_ref()) {
+        Ok(()) => HttpResponse::Created().json(ApiMutationSuccessDto {
+            message: "Клиент добавлен.".to_string(),
+            redirect_to: None,
+        }),
         Err(err) => {
             log::error!("Failed to add a client: {err}");
-            FlashMessage::error("Ошибка при добавлении клиента").send();
-            redirect("/")
+            mutation_error_response(MutationResource::Client, &err)
         }
     }
 }
@@ -84,22 +68,13 @@ pub async fn clients_upload(
     MultipartForm(mut form): MultipartForm<UploadClientsForm>,
 ) -> impl Responder {
     match main_service::upload_clients(&mut form, &user, repo.get_ref()) {
-        Ok(()) => {
-            FlashMessage::success("Клиенты добавлены.").send();
-            redirect("/")
-        }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Недостаточно прав.").send();
-            redirect("/na")
-        }
-        Err(ServiceError::Form(message)) => {
-            FlashMessage::error(message).send();
-            redirect("/")
-        }
+        Ok(()) => HttpResponse::Ok().json(ApiMutationSuccessDto {
+            message: "Клиенты добавлены.".to_string(),
+            redirect_to: None,
+        }),
         Err(err) => {
             log::error!("Failed to add clients: {err}");
-            FlashMessage::error("Ошибка при добавлении клиентов").send();
-            redirect("/")
+            mutation_error_response(MutationResource::ClientImport, &err)
         }
     }
 }

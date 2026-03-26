@@ -6,7 +6,7 @@ use pushkind_common::routes::ensure_role;
 use crate::SERVICE_ADMIN_ROLE;
 use crate::domain::types::HubId;
 use crate::dto::important_fields::ImportantFieldsPageData;
-use crate::forms::important_fields::{ImportantFieldsForm, ImportantFieldsPayload};
+use crate::forms::important_fields::ImportantFieldsPayload;
 use crate::repository::{ClientWriter, ImportantFieldReader, ImportantFieldWriter};
 use crate::services::ServiceResult;
 
@@ -37,7 +37,7 @@ where
 
 /// Persists the sanitized list of important field names for the hub.
 pub fn save_important_fields<R>(
-    form: ImportantFieldsForm,
+    payload: ImportantFieldsPayload,
     user: &AuthenticatedUser,
     repo: &R,
 ) -> ServiceResult<()>
@@ -45,8 +45,6 @@ where
     R: ImportantFieldWriter + ?Sized,
 {
     ensure_role(user, SERVICE_ADMIN_ROLE)?;
-
-    let payload = ImportantFieldsPayload::try_from(form)?;
 
     let hub_id = HubId::new(user.hub_id)?;
     let fields = payload.into_domain(hub_id);
@@ -81,8 +79,9 @@ where
 mod tests {
     use super::*;
     use crate::domain::{important_field::ImportantField, types::HubId};
+    use crate::forms::important_fields::ImportantFieldsForm;
     use crate::repository::mock::MockRepository;
-    use pushkind_common::services::errors::ServiceError;
+    use crate::services::ServiceError;
 
     /// Builds an admin user for test scenarios.
     fn admin_user() -> AuthenticatedUser {
@@ -130,11 +129,12 @@ mod tests {
         let mut repo = MockRepository::new();
         repo.expect_replace_important_fields().times(0);
         let user = viewer_user();
-        let form = ImportantFieldsForm {
+        let payload = ImportantFieldsPayload::try_from(ImportantFieldsForm {
             fields: "Field".to_string(),
-        };
+        })
+        .expect("valid payload");
 
-        let result = save_important_fields(form, &user, &repo);
+        let result = save_important_fields(payload, &user, &repo);
 
         assert!(matches!(result, Err(ServiceError::Unauthorized)));
     }
@@ -174,11 +174,12 @@ mod tests {
             .times(1)
             .returning(|_, _| Ok(()));
         let user = admin_user();
-        let form = ImportantFieldsForm {
+        let payload = ImportantFieldsPayload::try_from(ImportantFieldsForm {
             fields: "Name\nPhone".to_string(),
-        };
+        })
+        .expect("valid payload");
 
-        save_important_fields(form, &user, &repo).expect("should save fields");
+        save_important_fields(payload, &user, &repo).expect("should save fields");
     }
 
     /// Ensures cleanup fails for users lacking the admin role.

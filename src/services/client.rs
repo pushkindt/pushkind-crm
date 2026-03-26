@@ -29,7 +29,6 @@ use crate::dto::client::{ClientFieldDisplay, ClientOperationOutcome, ClientPageD
 use crate::forms::client::AddAttachmentPayload;
 use crate::forms::client::AddCommentPayload;
 use crate::forms::client::SaveClientPayload;
-use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
 use crate::repository::{
     ClientEventListQuery, ClientEventReader, ClientEventWriter, ClientReader, ClientWriter,
     ImportantFieldReader, ManagerWriter,
@@ -109,6 +108,27 @@ where
         .ok_or(ServiceError::Unauthorized)
 }
 
+/// Performs the minimal access/existence check required before serving the client document.
+pub fn verify_client_page_access<R>(
+    client_id: i32,
+    user: &AuthenticatedUser,
+    repo: &R,
+) -> ServiceResult<()>
+where
+    R: ClientReader + ?Sized,
+{
+    ensure_role(user, SERVICE_ACCESS_ROLE)?;
+
+    let client_id = ClientId::new(client_id)?;
+    let hub_id = HubId::new(user.hub_id)?;
+
+    ensure_client_access(client_id, user, repo)?;
+
+    repo.get_client_by_id(client_id, hub_id)?
+        .map(|_| ())
+        .ok_or(ServiceError::NotFound)
+}
+
 /// Aggregates all data required by the client details page, applying access rules.
 pub fn load_client_details<R>(
     client_id: i32,
@@ -161,7 +181,7 @@ where
 /// Applies updates submitted through the save client form.
 pub fn save_client<R>(
     client_id: i32,
-    form: SaveClientForm,
+    payload: SaveClientPayload,
     user: &AuthenticatedUser,
     repo: &R,
 ) -> ServiceResult<ClientOperationOutcome>
@@ -172,8 +192,6 @@ where
 
     let client_id = ClientId::new(client_id)?;
     let hub_id = HubId::new(user.hub_id)?;
-
-    let payload = SaveClientPayload::try_from(form)?;
 
     let updates: UpdateClient = payload.into();
 
@@ -193,7 +211,7 @@ where
 /// Adds a comment or event for a client, sending emails when requested.
 pub async fn add_comment<R>(
     client_id: i32,
-    form: AddCommentForm,
+    payload: AddCommentPayload,
     user: &AuthenticatedUser,
     repo: &R,
     zmq_sender: &ZmqSender,
@@ -207,8 +225,6 @@ where
     let hub_id = HubId::new(user.hub_id)?;
 
     ensure_client_access(client_id, user, repo)?;
-
-    let payload = AddCommentPayload::try_from(form)?;
 
     let manager_payload = NewManager::try_from(user).map_err(|err| {
         log::error!("Failed to build manager from user: {err}");
@@ -229,22 +245,27 @@ where
 
         let fields: BTreeMap<String, String> = client.fields.clone().unwrap_or_default();
 
-        let hub_id = EmailerHubId::new(user.hub_id)?;
+        let hub_id = EmailerHubId::new(user.hub_id)
+            .map_err(|error| ServiceError::TypeConstraint(error.to_string()))?;
 
         let new_email = NewEmail {
-            message: EmailBody::new(payload.message.as_str())?,
+            message: EmailBody::new(payload.message.as_str())
+                .map_err(|error| ServiceError::TypeConstraint(error.to_string()))?,
             subject: payload
                 .subject
                 .as_deref()
                 .map(EmailSubject::new)
-                .transpose()?,
+                .transpose()
+                .map_err(|error| ServiceError::TypeConstraint(error.to_string()))?,
             attachment: None,
             attachment_name: None,
             attachment_mime: None,
             hub_id,
             recipients: vec![NewEmailRecipient {
-                address: RecipientEmail::new(client_email.clone().into_inner())?,
-                name: RecipientName::new(client.name.as_str())?,
+                address: RecipientEmail::new(client_email.clone().into_inner())
+                    .map_err(|error| ServiceError::TypeConstraint(error.to_string()))?,
+                name: RecipientName::new(client.name.as_str())
+                    .map_err(|error| ServiceError::TypeConstraint(error.to_string()))?,
                 fields,
             }],
         };
@@ -274,7 +295,7 @@ where
 /// Adds an attachment event for the client.
 pub fn add_attachment<R>(
     client_id: i32,
-    form: AddAttachmentForm,
+    payload: AddAttachmentPayload,
     user: &AuthenticatedUser,
     repo: &R,
 ) -> ServiceResult<ClientOperationOutcome>
@@ -287,8 +308,6 @@ where
     let hub_id = HubId::new(user.hub_id)?;
 
     ensure_client_access(client_id, user, repo)?;
-
-    let payload = AddAttachmentPayload::try_from(form)?;
 
     let manager_payload = NewManager::try_from(user).map_err(|err| {
         log::error!("Failed to build manager from user: {err}");

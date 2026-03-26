@@ -13,9 +13,9 @@ use crate::{
 
 #[derive(Deserialize, Validate)]
 pub struct AddManagerForm {
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Укажите имя."))]
     pub name: String,
-    #[validate(email)]
+    #[validate(email(message = "Укажите корректный электронный адрес."))]
     pub email: String,
 }
 
@@ -40,6 +40,8 @@ impl TryFrom<AddManagerForm> for AddManagerPayload {
     type Error = FormError;
 
     fn try_from(value: AddManagerForm) -> Result<Self, Self::Error> {
+        value.validate().map_err(FormError::Validation)?;
+
         let name = ManagerName::new(value.name).map_err(|_| FormError::InvalidName)?;
         let email = ManagerEmail::try_from(value.email).map_err(|_| FormError::InvalidEmail)?;
 

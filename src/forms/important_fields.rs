@@ -36,7 +36,9 @@ impl TryFrom<ImportantFieldsForm> for ImportantFieldsPayload {
         fields.dedup();
         let fields = fields
             .iter()
-            .map(|&field| ImportantFieldName::new(field).map_err(|_| FormError::InvalidName))
+            .map(|&field| {
+                ImportantFieldName::new(field).map_err(|_| FormError::InvalidImportantFieldName)
+            })
             .collect::<Result<Vec<ImportantFieldName>, FormError>>()?;
 
         Ok(Self { fields })

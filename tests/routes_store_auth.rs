@@ -4,17 +4,15 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use pushkind_crm::domain::client::NewClient;
 use pushkind_crm::domain::store_session::{STORE_SESSION_COOKIE_NAME, StoreSessionClaims};
-use pushkind_crm::models::config::ServerConfig;
+use pushkind_crm::models::config::AppConfig;
 use pushkind_crm::repository::{ClientReader, ClientWriter, DieselRepository};
 use pushkind_crm::routes::store::{get_store_session, logout_store_session};
 
 mod common;
 
-fn test_config() -> ServerConfig {
-    ServerConfig {
+fn test_config() -> AppConfig {
+    AppConfig {
         domain: "example.com".to_string(),
-        address: "127.0.0.1".to_string(),
-        port: 8080,
         database_url: "app.db".to_string(),
         zmq_emailer_pub: "tcp://127.0.0.1:5557".to_string(),
         zmq_emailer_sub: "tcp://127.0.0.1:5558".to_string(),
@@ -23,7 +21,6 @@ fn test_config() -> ServerConfig {
         zmq_replier_sub: "tcp://127.0.0.1:5560".to_string(),
         zmq_tasks_sub: "tcp://127.0.0.1:5564".to_string(),
         sms_sender: "cns.shared".to_string(),
-        templates_dir: "templates/**/*".to_string(),
         secret: "secret".to_string(),
         auth_service_url: "".to_string(),
         todo_service_url: "".to_string(),

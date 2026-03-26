@@ -15,7 +15,7 @@ use crate::domain::store_session::{
 };
 use crate::domain::types::{HubId, PhoneNumber, PublicId};
 use crate::dto::store::{StoreOtpAcceptResponse, StoreOtpVerifyResponse, StoreSessionUser};
-use crate::forms::store::{StoreOtpRequestPayload, StoreOtpVerifyPayload};
+use crate::forms::store::{StoreOtpRequestInput, StoreOtpVerifyInput};
 use crate::repository::{ClientReader, ClientWriter, StoreOtpRepository};
 use crate::services::{ServiceError, ServiceResult};
 
@@ -26,7 +26,7 @@ const OTP_INVALID_MESSAGE: &str = "Неверный или просроченн�
 
 pub async fn request_store_otp<R>(
     hub_id: i32,
-    payload: StoreOtpRequestPayload,
+    request: StoreOtpRequestInput,
     repo: &R,
     zmq_sender: &impl ZmqSenderTrait,
     sms_sender: &str,
@@ -34,7 +34,6 @@ pub async fn request_store_otp<R>(
 where
     R: StoreOtpRepository + ?Sized,
 {
-    let request = payload.into_request()?;
     let hub_id = HubId::new(hub_id)?;
     let phone = PhoneNumber::new(request.phone.clone())?;
     let now = Utc::now().naive_utc();
@@ -70,7 +69,7 @@ where
 
 pub fn verify_store_otp<R>(
     hub_id: i32,
-    payload: StoreOtpVerifyPayload,
+    request: StoreOtpVerifyInput,
     repo: &R,
     secret: &str,
     domain: &str,
@@ -78,7 +77,6 @@ pub fn verify_store_otp<R>(
 where
     R: ClientReader + ClientWriter + StoreOtpRepository + ?Sized,
 {
-    let request = payload.into_request()?;
     let hub_id = HubId::new(hub_id)?;
     let phone = PhoneNumber::new(request.phone.clone())?;
     let now = Utc::now().naive_utc();
@@ -280,7 +278,7 @@ mod tests {
             .block_on(async {
                 request_store_otp(
                     7,
-                    StoreOtpRequestPayload {
+                    StoreOtpRequestInput {
                         phone: "+15551234567".to_string(),
                     },
                     &repo,
@@ -323,7 +321,7 @@ mod tests {
 
         let (response, cookie) = verify_store_otp(
             7,
-            StoreOtpVerifyPayload {
+            StoreOtpVerifyInput {
                 phone: "+15551234567".to_string(),
                 otp: "123456".to_string(),
             },
@@ -367,7 +365,7 @@ mod tests {
 
         let result = verify_store_otp(
             7,
-            StoreOtpVerifyPayload {
+            StoreOtpVerifyInput {
                 phone: "+15551234567".to_string(),
                 otp: "123456".to_string(),
             },

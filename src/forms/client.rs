@@ -18,10 +18,10 @@ use crate::forms::FormError;
 /// Form data for updating an existing client.
 pub struct SaveClientForm {
     /// Updated display name.
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Укажите имя."))]
     pub name: String,
     /// Updated email.
-    #[validate(email)]
+    #[validate(email(message = "Укажите корректный электронный адрес."))]
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pub email: Option<String>,
     /// Updated contact phone number.
@@ -47,10 +47,10 @@ pub struct AddCommentForm {
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pub subject: Option<String>,
     /// Comment text content.
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Введите сообщение."))]
     pub message: String,
     /// Type of event associated with the comment.
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Выберите тип события."))]
     pub event_type: String,
 }
 
@@ -64,10 +64,10 @@ pub struct AddCommentPayload {
 /// Form data for adding an attachment to a client.
 pub struct AddAttachmentForm {
     /// Attachment description.
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Укажите название вложения."))]
     pub text: String,
     /// URL pointing to the attachment.
-    #[validate(url)]
+    #[validate(url(message = "Укажите корректный URL."))]
     pub url: String,
 }
 
@@ -127,11 +127,14 @@ impl TryFrom<AddCommentForm> for AddCommentPayload {
         form.validate().map_err(FormError::Validation)?;
 
         let subject = match form.subject {
-            Some(value) => Some(CommentSubject::new(value).map_err(|_| FormError::InvalidName)?),
+            Some(value) => {
+                Some(CommentSubject::new(value).map_err(|_| FormError::InvalidCommentSubject)?)
+            }
             None => None,
         };
 
-        let message = CommentMessage::new(form.message).map_err(|_| FormError::InvalidName)?;
+        let message =
+            CommentMessage::new(form.message).map_err(|_| FormError::InvalidCommentMessage)?;
 
         let event_type = ClientEventType::from(form.event_type.as_str());
 
@@ -150,7 +153,7 @@ impl TryFrom<AddAttachmentForm> for AddAttachmentPayload {
     fn try_from(form: AddAttachmentForm) -> Result<Self, Self::Error> {
         form.validate().map_err(FormError::Validation)?;
 
-        let text = AttachmentName::new(form.text).map_err(|_| FormError::InvalidName)?;
+        let text = AttachmentName::new(form.text).map_err(|_| FormError::InvalidAttachmentName)?;
         let url = AttachmentUrl::new(form.url).map_err(|_| FormError::InvalidUrl)?;
 
         Ok(AddAttachmentPayload { text, url })

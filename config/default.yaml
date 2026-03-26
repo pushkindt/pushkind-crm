@@ -1,16 +1,18 @@
-domain: ""
-address: 127.0.0.1
-port: 80
-database_url: app.db
-zmq_emailer_pub: tcp://127.0.0.1:5557
-zmq_emailer_sub: tcp://127.0.0.1:5558
-zmq_sms_pub: tcp://127.0.0.1:5561
-zmq_clients_sub: tcp://127.0.0.1:5566
-zmq_replier_sub: tcp://127.0.0.1:5560
-zmq_tasks_sub: "tcp://127.0.0.1:5564"
-sms_sender: cns.shared
-templates_dir: templates/**/*
-secret: env::APP_SECRET
-auth_service_url: ""
-todo_service_url: ""
-files_service_url: ""
+server:
+  address: 127.0.0.1
+  port: 80
+
+app:
+  domain: ""
+  database_url: app.db
+  zmq_emailer_pub: tcp://127.0.0.1:5557
+  zmq_emailer_sub: tcp://127.0.0.1:5558
+  zmq_sms_pub: tcp://127.0.0.1:5561
+  zmq_clients_sub: tcp://127.0.0.1:5566
+  zmq_replier_sub: tcp://127.0.0.1:5560
+  zmq_tasks_sub: "tcp://127.0.0.1:5564"
+  sms_sender: cns.shared
+  secret: env::APP_APP.SECRET
+  auth_service_url: ""
+  todo_service_url: ""
+  files_service_url: ""

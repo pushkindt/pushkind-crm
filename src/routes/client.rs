@@ -2,61 +2,49 @@
 
 use std::sync::Arc;
 
-use actix_web::{HttpResponse, Responder, get, post, web};
-use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
+use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
-use pushkind_common::models::config::CommonServerConfig;
-use pushkind_common::routes::{base_context, redirect, render_template};
+use pushkind_common::routes::redirect;
 use pushkind_common::zmq::ZmqSender;
-use tera::Tera;
 
-use crate::forms::client::{AddAttachmentForm, AddCommentForm, SaveClientForm};
-use crate::models::config::ServerConfig;
+use crate::dto::api::{ApiMutationErrorDto, ApiMutationSuccessDto};
+use crate::forms::client::{
+    AddAttachmentForm, AddAttachmentPayload, AddCommentForm, AddCommentPayload, SaveClientForm,
+    SaveClientPayload,
+};
+use crate::frontend::{FrontendAssetError, open_frontend_html};
 use crate::repository::DieselRepository;
+use crate::routes::{MutationResource, mutation_error_response};
 use crate::services::{ServiceError, client as client_service};
 
 #[get("/client/{client_id}")]
 /// Render the detail page for a single client, including events and attachments.
 pub async fn show_client(
+    request: HttpRequest,
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
-    flash_messages: IncomingFlashMessages,
-    common_config: web::Data<CommonServerConfig>,
-    server_config: web::Data<ServerConfig>,
-    tera: web::Data<Tera>,
 ) -> impl Responder {
     let client_id = client_id.into_inner();
     let repo = repo.get_ref();
 
-    match client_service::load_client_details(client_id, &user, repo) {
-        Ok(data) => {
-            let mut context = base_context(
-                &flash_messages,
-                &user,
-                "index",
-                &common_config.auth_service_url,
-            );
-            context.insert("client", &data.client);
-            context.insert("managers", &data.managers);
-            context.insert("events", &data.events_with_managers);
-            context.insert("documents", &data.documents);
-            context.insert("available_fields", &data.available_fields);
-            context.insert("important_fields", &data.important_fields);
-            context.insert("other_fields", &data.other_fields);
-            context.insert("todo_service_url", &server_config.todo_service_url);
-            context.insert("files_service_url", &server_config.files_service_url);
-
-            render_template(&tera, "client/index.html", &context)
-        }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Этот клиент для вас не доступен").send();
-            redirect("/")
-        }
-        Err(ServiceError::NotFound) => {
-            FlashMessage::error("Клиент не найден.").send();
-            redirect("/")
-        }
+    match client_service::verify_client_page_access(client_id, &user, repo) {
+        Ok(_) => match open_frontend_html("assets/dist/app/client.html").await {
+            Ok(file) => file.into_response(&request),
+            Err(FrontendAssetError::Read(error))
+                if error.kind() == std::io::ErrorKind::NotFound =>
+            {
+                HttpResponse::ServiceUnavailable().body(
+                    "CRM frontend assets are not built yet. Run `cd frontend && npm run build`.",
+                )
+            }
+            Err(error) => {
+                log::error!("Failed to open CRM client document: {error}");
+                HttpResponse::InternalServerError().finish()
+            }
+        },
+        Err(ServiceError::Unauthorized) => redirect("/"),
+        Err(ServiceError::NotFound) => redirect("/"),
         Err(err) => {
             log::error!("Failed to load client {client_id}: {err}");
             HttpResponse::InternalServerError().finish()
@@ -78,34 +66,27 @@ pub async fn save_client(
         Ok(form) => form,
         Err(err) => {
             log::error!("Error parsing form: {err}");
-            FlashMessage::error("Ошибка при обработке формы.").send();
-            return redirect("/clients");
+            return HttpResponse::BadRequest().json(ApiMutationErrorDto::default());
         }
     };
 
     let client_id = client_id.into_inner();
+    let payload = match SaveClientPayload::try_from(form) {
+        Ok(payload) => payload,
+        Err(error) => {
+            log::error!("Invalid save-client data for client {client_id}: {error}");
+            return HttpResponse::BadRequest().json(ApiMutationErrorDto::from(&error));
+        }
+    };
 
-    match client_service::save_client(client_id, form, &user, repo) {
-        Ok(result) => {
-            FlashMessage::success("Клиент обновлен.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id.get()))
-        }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Этот клиент для вас не доступен").send();
-            redirect("/")
-        }
-        Err(ServiceError::NotFound) => {
-            FlashMessage::error("Клиент не найден.").send();
-            redirect("/")
-        }
-        Err(ServiceError::Form(message)) => {
-            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
-            redirect(&format!("/client/{}", client_id))
-        }
+    match client_service::save_client(client_id, payload, &user, repo) {
+        Ok(_) => HttpResponse::Ok().json(ApiMutationSuccessDto {
+            message: "Клиент обновлен.".to_string(),
+            redirect_to: None,
+        }),
         Err(err) => {
             log::error!("Failed to update client {client_id}: {err}");
-            FlashMessage::error("Ошибка при обновлении клиента").send();
-            redirect(&format!("/client/{}", client_id))
+            mutation_error_response(MutationResource::Client, &err)
         }
     }
 }
@@ -122,32 +103,22 @@ pub async fn comment_client(
     let repo = repo.get_ref();
     let client_id = client_id.into_inner();
     let sender = zmq_sender.get_ref().as_ref();
+    let payload = match AddCommentPayload::try_from(form) {
+        Ok(payload) => payload,
+        Err(error) => {
+            log::error!("Invalid comment data for client {client_id}: {error}");
+            return HttpResponse::BadRequest().json(ApiMutationErrorDto::from(&error));
+        }
+    };
 
-    match client_service::add_comment(client_id, form, &user, repo, sender).await {
-        Ok(result) => {
-            FlashMessage::success("Событие добавлено.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id.get()))
-        }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Этот клиент для вас не доступен").send();
-            redirect("/")
-        }
-        Err(ServiceError::NotFound) => {
-            FlashMessage::error("Клиент не найден.").send();
-            redirect("/")
-        }
-        Err(ServiceError::Form(message)) => {
-            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
-            redirect(&format!("/client/{}", client_id))
-        }
-        Err(ServiceError::Internal) => {
-            FlashMessage::error("Ошибка при добавлении сообщения в очередь.").send();
-            redirect(&format!("/client/{}", client_id))
-        }
+    match client_service::add_comment(client_id, payload, &user, repo, sender).await {
+        Ok(_) => HttpResponse::Ok().json(ApiMutationSuccessDto {
+            message: "Событие добавлено.".to_string(),
+            redirect_to: None,
+        }),
         Err(err) => {
             log::error!("Failed to add comment for client {client_id}: {err}");
-            FlashMessage::error("Ошибка при добавлении события").send();
-            redirect(&format!("/client/{}", client_id))
+            mutation_error_response(MutationResource::ClientComment, &err)
         }
     }
 }
@@ -162,28 +133,22 @@ pub async fn attachment_client(
 ) -> impl Responder {
     let repo = repo.get_ref();
     let client_id = client_id.into_inner();
+    let payload = match AddAttachmentPayload::try_from(form) {
+        Ok(payload) => payload,
+        Err(error) => {
+            log::error!("Invalid attachment data for client {client_id}: {error}");
+            return HttpResponse::BadRequest().json(ApiMutationErrorDto::from(&error));
+        }
+    };
 
-    match client_service::add_attachment(client_id, form, &user, repo) {
-        Ok(result) => {
-            FlashMessage::success("Событие добавлено.".to_string()).send();
-            redirect(&format!("/client/{}", result.client_id.get()))
-        }
-        Err(ServiceError::Unauthorized) => {
-            FlashMessage::error("Этот клиент для вас не доступен").send();
-            redirect("/")
-        }
-        Err(ServiceError::NotFound) => {
-            FlashMessage::error("Клиент не найден.").send();
-            redirect("/")
-        }
-        Err(ServiceError::Form(message)) => {
-            FlashMessage::error(format!("Ошибка обработки формы: {message}")).send();
-            redirect(&format!("/client/{}", client_id))
-        }
+    match client_service::add_attachment(client_id, payload, &user, repo) {
+        Ok(_) => HttpResponse::Ok().json(ApiMutationSuccessDto {
+            message: "Событие добавлено.".to_string(),
+            redirect_to: None,
+        }),
         Err(err) => {
             log::error!("Failed to add attachment for client {client_id}: {err}");
-            FlashMessage::error("Ошибка при добавлении события").send();
-            redirect(&format!("/client/{}", client_id))
+            mutation_error_response(MutationResource::ClientComment, &err)
         }
     }
 }

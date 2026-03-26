@@ -12,7 +12,7 @@ use pushkind_emailer::models::zmq::{ZMQReplyMessage, ZMQSendEmailMessage, ZMQUns
 use pushkind_todo::dto::zmq::ZmqTask;
 use serde_json::json;
 
-use pushkind_crm::models::config::ServerConfig;
+use pushkind_crm::models::config::Settings;
 use pushkind_crm::repository::{
     ClientEventReader, ClientEventWriter, ClientReader, ClientWriter, DieselRepository,
     ManagerWriter,
@@ -313,40 +313,42 @@ fn main() {
         }
     };
 
-    let server_config = match settings.try_deserialize::<ServerConfig>() {
-        Ok(server_config) => server_config,
+    let settings = match settings.try_deserialize::<Settings>() {
+        Ok(settings) => settings,
         Err(err) => {
-            log::error!("Error loading server config: {}", err);
+            log::error!("Error loading app settings: {}", err);
             std::process::exit(1);
         }
     };
 
+    let app_config = settings.app;
+
     let context = zmq::Context::new();
     let responder = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     responder
-        .connect(&server_config.zmq_emailer_sub)
+        .connect(&app_config.zmq_emailer_sub)
         .expect("Cannot connect to zmq port");
     responder.set_subscribe(b"").expect("SUBSCRIBE failed");
 
     let replier = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     replier
-        .connect(&server_config.zmq_replier_sub)
+        .connect(&app_config.zmq_replier_sub)
         .expect("Cannot connect to zmq port");
     replier.set_subscribe(b"").expect("SUBSCRIBE failed");
 
     let clients = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     clients
-        .connect(&server_config.zmq_clients_sub)
+        .connect(&app_config.zmq_clients_sub)
         .expect("Cannot connect to zmq port");
     clients.set_subscribe(b"").expect("SUBSCRIBE failed");
 
     let tasks = context.socket(zmq::SUB).expect("Cannot create zmq socket");
     tasks
-        .connect(&server_config.zmq_tasks_sub)
+        .connect(&app_config.zmq_tasks_sub)
         .expect("Cannot connect to zmq port");
     tasks.set_subscribe(b"").expect("SUBSCRIBE failed");
 
-    let pool = match establish_connection_pool(&server_config.database_url) {
+    let pool = match establish_connection_pool(&app_config.database_url) {
         Ok(pool) => pool,
         Err(e) => {
             log::error!("Failed to establish database connection: {e}");
