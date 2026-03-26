@@ -20,9 +20,9 @@ describe("mutation auth redirect handling", () => {
       .spyOn(browserLocation, "assign")
       .mockImplementation(() => undefined);
 
-    await expect(postForm("/client/1/save", new URLSearchParams())).rejects.toThrow(
-      "Сессия истекла.",
-    );
+    await expect(
+      postForm("/client/1/save", new URLSearchParams()),
+    ).rejects.toThrow("Сессия истекла.");
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(assignSpy).toHaveBeenCalledWith(
