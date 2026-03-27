@@ -3,6 +3,9 @@
 ## Status
 Stable
 
+## Date
+2026-03-27
+
 ## Summary
 Migrate the current Tera-based `pushkind-crm` frontend to React-managed UI
 components while preserving the existing Bootstrap styling, route structure,

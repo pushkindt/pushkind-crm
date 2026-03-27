@@ -28,6 +28,8 @@ and form-owned validation copy for React-owned flows.
   state.
 - New GET endpoints introduced for React-owned page data WILL be versioned
   under `/api/v1/`.
+- Those GET endpoints MUST prefer reusable resource-style contracts over
+  page-shaped bootstrap endpoints.
 - Validation copy for React-owned forms WILL live in `src/forms`.
 - The top navigation user dropdown WILL align with the reusable auth/files
   pattern and hydrate menu items from the auth menu API without blocking the

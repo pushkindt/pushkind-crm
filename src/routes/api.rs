@@ -26,25 +26,25 @@ pub async fn api_v1_iam(
     }
 }
 
-#[get("/v1/dashboard")]
-/// Return typed dashboard page data for React-owned CRM pages.
-pub async fn api_v1_dashboard(
+#[get("/v1/client-directory")]
+/// Return typed client directory data.
+pub async fn api_v1_client_directory(
     params: web::Query<IndexQuery>,
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
 ) -> impl Responder {
-    match api_service::get_dashboard_data(params.into_inner(), &user, repo.get_ref()) {
+    match api_service::get_client_directory_data(params.into_inner(), &user, repo.get_ref()) {
         Ok(response) => HttpResponse::Ok().json(response),
         Err(ServiceError::Unauthorized) => HttpResponse::Unauthorized().finish(),
         Err(err) => {
-            log::error!("Failed to load CRM dashboard data: {err}");
+            log::error!("Failed to load CRM client directory data: {err}");
             HttpResponse::InternalServerError().finish()
         }
     }
 }
 
-#[get("/v1/client/{client_id}")]
-/// Return typed client page data for React-owned CRM pages.
+#[get("/v1/clients/{client_id}")]
+/// Return typed client details data.
 pub async fn api_v1_client_details(
     client_id: web::Path<i32>,
     user: AuthenticatedUser,
@@ -61,19 +61,19 @@ pub async fn api_v1_client_details(
         Err(ServiceError::Unauthorized) => HttpResponse::Unauthorized().finish(),
         Err(ServiceError::NotFound) => HttpResponse::NotFound().finish(),
         Err(err) => {
-            log::error!("Failed to load CRM client page data: {err}");
+            log::error!("Failed to load CRM client details data: {err}");
             HttpResponse::InternalServerError().finish()
         }
     }
 }
 
 #[get("/v1/managers")]
-/// Return typed managers page data for React-owned CRM pages.
+/// Return typed manager collection data.
 pub async fn api_v1_managers(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
 ) -> impl Responder {
-    match api_service::get_managers_page_data(&user, repo.get_ref()) {
+    match api_service::get_manager_collection_data(&user, repo.get_ref()) {
         Ok(response) => HttpResponse::Ok().json(response),
         Err(ServiceError::Unauthorized) => HttpResponse::Unauthorized().finish(),
         Err(err) => {
@@ -101,17 +101,17 @@ pub async fn api_v1_manager_modal(
     }
 }
 
-#[get("/v1/settings")]
-/// Return typed settings page data for React-owned CRM pages.
-pub async fn api_v1_settings(
+#[get("/v1/important-fields")]
+/// Return typed important-field settings data.
+pub async fn api_v1_important_fields(
     user: AuthenticatedUser,
     repo: web::Data<DieselRepository>,
 ) -> impl Responder {
-    match api_service::get_settings_page_data(&user, repo.get_ref()) {
+    match api_service::get_important_field_settings_data(&user, repo.get_ref()) {
         Ok(response) => HttpResponse::Ok().json(response),
         Err(ServiceError::Unauthorized) => HttpResponse::Unauthorized().finish(),
         Err(err) => {
-            log::error!("Failed to load CRM settings page data: {err}");
+            log::error!("Failed to load CRM important-field settings data: {err}");
             HttpResponse::InternalServerError().finish()
         }
     }

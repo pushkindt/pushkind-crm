@@ -4,18 +4,18 @@ import type { ChangeEvent, FormEvent } from "react";
 import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
-  fetchDashboardData,
+  fetchClientDirectoryData,
   isApiMutationError,
   postForm,
   postMultipartForm,
   toFieldErrorMap,
 } from "../lib/api";
-import type { DashboardData } from "../lib/models";
+import type { ClientDirectoryData } from "../lib/models";
 import { useCrmShell } from "../lib/useCrmShell";
 
 type DashboardState =
   | { status: "loading" }
-  | { status: "ready"; data: DashboardData }
+  | { status: "ready"; data: ClientDirectoryData }
   | { status: "error"; message: string };
 
 export function DashboardBootstrap() {
@@ -29,9 +29,12 @@ export function DashboardBootstrap() {
   const [isAddClientSubmitting, setIsAddClientSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploadSubmitting, setIsUploadSubmitting] = useState(false);
+  const canAddClient = shellState.status === "ready"
+    ? shellState.shell.currentUser.roles.includes("crm_admin")
+    : false;
 
   const loadDashboard = async () => {
-    const data = await fetchDashboardData(
+    const data = await fetchClientDirectoryData(
       new URLSearchParams(window.location.search),
     );
     setDashboardState({ status: "ready", data });
@@ -40,7 +43,7 @@ export function DashboardBootstrap() {
   useEffect(() => {
     let active = true;
 
-    void fetchDashboardData(new URLSearchParams(window.location.search))
+    void fetchClientDirectoryData(new URLSearchParams(window.location.search))
       .then((data) => {
         if (!active) {
           return;
@@ -192,7 +195,7 @@ export function DashboardBootstrap() {
     >
       <>
         <div className="container bg-white border rounded my-2">
-          {dashboardState.data.canAddClient ? (
+          {canAddClient ? (
             <div className="row">
               <div className="col text-center add-client-container">
                 <button
@@ -293,7 +296,7 @@ export function DashboardBootstrap() {
           ) : null}
         </div>
 
-        {dashboardState.data.canAddClient ? (
+        {canAddClient ? (
           <div
             className="modal fade"
             id="clientModal"

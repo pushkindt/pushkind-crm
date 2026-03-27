@@ -132,8 +132,6 @@ The application is structured into layers with strict responsibilities:
   - Important field configuration
 - `SERVICE_MANAGER_ROLE` (`crm_manager`) MUST restrict access to assigned clients on the
   client detail and mutation endpoints.
-- `/api/v1/clients` currently enforces `SERVICE_ACCESS_ROLE` only and returns all clients
-  in the user's Hub.
 
 ## Data Model
 
@@ -185,6 +183,20 @@ with the shapes above or update this section when introducing new formats.
 
 ### JSON
 
+- `GET /api/v1/client-directory`
+  - Returns the paginated CRM client directory resource used by the dashboard React page.
+  - Query parameters:
+    - `search`: optional free-form search string.
+    - `public_id`: optional UUID string for exact match filtering.
+    - `page`: optional page number.
+- `GET /api/v1/clients/{client_id}`
+  - Returns the CRM client-details resource used by the client page.
+- `GET /api/v1/managers`
+  - Returns the manager collection resource used by the managers page.
+- `GET /api/v1/managers/{manager_id}`
+  - Returns the manager assignment resource used by the manager modal.
+- `GET /api/v1/important-fields`
+  - Returns the important-field settings resource used by the settings page.
 - `GET /api/v1/clients`
   - Returns filtered client list in JSON for integrations.
   - Access controlled by `SERVICE_ACCESS_ROLE` or `SERVICE_ADMIN_ROLE`.
@@ -200,6 +212,25 @@ with the shapes above or update this section when introducing new formats.
 | Success | 200 | JSON array of clients |
 | Missing/invalid auth or missing both `SERVICE_ACCESS_ROLE` and `SERVICE_ADMIN_ROLE` | 401 | Empty body |
 | Query deserialization failure | 400 | Framework default |
+| Other failures | 500 | Empty body |
+
+### Other React data APIs
+
+The following typed JSON endpoints follow the same general failure shape:
+
+- `GET /api/v1/iam`
+- `GET /api/v1/client-directory`
+- `GET /api/v1/clients/{client_id}`
+- `GET /api/v1/managers`
+- `GET /api/v1/managers/{manager_id}`
+- `GET /api/v1/important-fields`
+- `GET /api/v1/no-access`
+
+| Condition | Status | Body |
+| --- | --- | --- |
+| Success | 200 | JSON DTO payload |
+| Missing/invalid auth or missing required role | 401 | Empty body |
+| Missing resource | 404 | Empty body |
 | Other failures | 500 | Empty body |
 
 ### HTML endpoints (non-API)

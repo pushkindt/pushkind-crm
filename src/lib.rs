@@ -9,8 +9,8 @@ use crate::models::config::{AppConfig, Settings};
 use crate::repository::DieselRepository;
 #[cfg(feature = "server")]
 use crate::routes::api::{
-    api_v1_client_details, api_v1_clients, api_v1_dashboard, api_v1_iam, api_v1_manager_modal,
-    api_v1_managers, api_v1_no_access, api_v1_settings,
+    api_v1_client_details, api_v1_client_directory, api_v1_clients, api_v1_iam,
+    api_v1_important_fields, api_v1_manager_modal, api_v1_managers, api_v1_no_access,
 };
 #[cfg(feature = "server")]
 use crate::routes::aux::not_assigned;
@@ -147,12 +147,12 @@ If this service runs behind a trusted reverse proxy, set TRUST_FORWARDED_HEADERS
                 web::scope("/api")
                     .service(api_v1_iam)
                     .service(api_v1_clients)
-                    .service(api_v1_dashboard)
+                    .service(api_v1_client_directory)
                     .service(api_v1_client_details)
                     .service(api_v1_managers)
                     .service(api_v1_manager_modal)
                     .service(api_v1_no_access)
-                    .service(api_v1_settings),
+                    .service(api_v1_important_fields),
             )
             .service(
                 web::scope("")
