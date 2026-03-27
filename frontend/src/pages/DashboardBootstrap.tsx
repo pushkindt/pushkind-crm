@@ -29,9 +29,10 @@ export function DashboardBootstrap() {
   const [isAddClientSubmitting, setIsAddClientSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploadSubmitting, setIsUploadSubmitting] = useState(false);
-  const canAddClient = shellState.status === "ready"
-    ? shellState.shell.currentUser.roles.includes("crm_admin")
-    : false;
+  const canAddClient =
+    shellState.status === "ready"
+      ? shellState.shell.currentUser.roles.includes("crm_admin")
+      : false;
 
   const loadDashboard = async () => {
     const data = await fetchClientDirectoryData(
