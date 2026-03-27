@@ -4,18 +4,18 @@ import type { FormEvent } from "react";
 import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
+  fetchImportantFieldSettingsData,
   isApiMutationError,
-  fetchSettingsData,
   postEmpty,
   postForm,
   toFieldErrorMap,
 } from "../lib/api";
-import type { SettingsData } from "../lib/models";
+import type { ImportantFieldSettingsData } from "../lib/models";
 import { useCrmShell } from "../lib/useCrmShell";
 
 type SettingsState =
   | { status: "loading" }
-  | { status: "ready"; data: SettingsData }
+  | { status: "ready"; data: ImportantFieldSettingsData }
   | { status: "error"; message: string };
 
 export function SettingsBootstrap() {
@@ -31,7 +31,7 @@ export function SettingsBootstrap() {
   useEffect(() => {
     let active = true;
 
-    void fetchSettingsData()
+    void fetchImportantFieldSettingsData()
       .then((data) => {
         if (!active) {
           return;

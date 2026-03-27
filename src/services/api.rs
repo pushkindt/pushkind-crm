@@ -10,9 +10,9 @@ use serde::Deserialize;
 
 use crate::domain::types::{HubId, PublicId};
 use crate::dto::api::{
-    ClientDetailsDto, ClientDetailsHeaderDto, ClientEventDto, ClientFieldDisplayDto,
-    ClientListItemDto, DashboardPageDto, ManagerModalDto, ManagerWithClientsDto, ManagersPageDto,
-    NoAccessPageDto, PaginatedClientListDto, SettingsPageDto,
+    ClientDetailsDto, ClientDetailsHeaderDto, ClientDirectoryDto, ClientEventDto,
+    ClientFieldDisplayDto, ClientListItemDto, ImportantFieldSettingsDto, ManagerCollectionDto,
+    ManagerModalDto, ManagerWithClientsDto, NoAccessPageDto, PaginatedClientListDto,
 };
 pub use crate::dto::api::{ClientsQuery, ClientsResponse, IamDto, NavigationItemDto};
 use crate::models::config::AppConfig;
@@ -134,16 +134,15 @@ where
     Ok(ClientsResponse { total, clients })
 }
 
-/// Returns typed page data for the CRM dashboard.
-pub fn get_dashboard_data<R>(
+/// Returns typed client directory data.
+pub fn get_client_directory_data<R>(
     params: main::IndexQuery,
     user: &AuthenticatedUser,
     repo: &R,
-) -> ServiceResult<DashboardPageDto>
+) -> ServiceResult<ClientDirectoryDto>
 where
     R: crate::repository::ClientReader + crate::repository::ManagerWriter + ?Sized,
 {
-    let can_add_client = check_role(SERVICE_ADMIN_ROLE, &user.roles);
     let data = main::load_index_page(params, user, repo)?;
     let paginated_clients: SerializedPaginated<crate::domain::client::Client> =
         serde_json::from_value(
@@ -151,7 +150,7 @@ where
         )
         .map_err(|_| ServiceError::Internal)?;
 
-    Ok(DashboardPageDto {
+    Ok(ClientDirectoryDto {
         search_query: data.search_query,
         clients: PaginatedClientListDto {
             items: paginated_clients
@@ -162,7 +161,6 @@ where
             pages: paginated_clients.pages,
             page: paginated_clients.page,
         },
-        can_add_client,
     })
 }
 
@@ -211,17 +209,17 @@ where
     })
 }
 
-/// Returns typed page data for the CRM managers page.
-pub fn get_managers_page_data<R>(
+/// Returns typed manager collection data.
+pub fn get_manager_collection_data<R>(
     user: &AuthenticatedUser,
     repo: &R,
-) -> ServiceResult<ManagersPageDto>
+) -> ServiceResult<ManagerCollectionDto>
 where
     R: crate::repository::ManagerReader + ?Sized,
 {
     let data = managers::list_managers(user, repo)?;
 
-    Ok(ManagersPageDto {
+    Ok(ManagerCollectionDto {
         managers: data
             .managers
             .iter()
@@ -250,17 +248,17 @@ where
     })
 }
 
-/// Returns typed page data for the settings page.
-pub fn get_settings_page_data<R>(
+/// Returns typed important-field settings data.
+pub fn get_important_field_settings_data<R>(
     user: &AuthenticatedUser,
     repo: &R,
-) -> ServiceResult<SettingsPageDto>
+) -> ServiceResult<ImportantFieldSettingsDto>
 where
     R: crate::repository::ImportantFieldReader + ?Sized,
 {
     let data = settings::load_important_fields(user, repo)?;
 
-    Ok(SettingsPageDto {
+    Ok(ImportantFieldSettingsDto {
         fields_text: data.fields.join("\n"),
     })
 }

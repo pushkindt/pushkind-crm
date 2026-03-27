@@ -35,10 +35,9 @@ export type PaginatedClientList = {
   page: number;
 };
 
-export type DashboardData = {
+export type ClientDirectoryData = {
   searchQuery?: string;
   clients: PaginatedClientList;
-  canAddClient: boolean;
 };
 
 export type Manager = {
@@ -95,7 +94,7 @@ export type ManagerModalData = {
   clients: ClientListItem[];
 };
 
-export type SettingsData = {
+export type ImportantFieldSettingsData = {
   fieldsText: string;
 };
 

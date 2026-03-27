@@ -161,12 +161,11 @@ pub struct PaginatedClientListDto {
     pub page: usize,
 }
 
-/// Page-data payload for the CRM dashboard.
+/// Resource payload for the CRM client directory.
 #[derive(Debug, Serialize)]
-pub struct DashboardPageDto {
+pub struct ClientDirectoryDto {
     pub search_query: Option<String>,
     pub clients: PaginatedClientListDto,
-    pub can_add_client: bool,
 }
 
 /// A simplified manager representation for React page-data APIs.
@@ -294,9 +293,9 @@ pub struct ManagerWithClientsDto {
     pub clients: Vec<ClientListItemDto>,
 }
 
-/// Typed managers page payload for React-owned pages.
+/// Typed manager collection payload for React-owned pages.
 #[derive(Debug, Serialize)]
-pub struct ManagersPageDto {
+pub struct ManagerCollectionDto {
     pub managers: Vec<ManagerWithClientsDto>,
 }
 
@@ -307,8 +306,8 @@ pub struct ManagerModalDto {
     pub clients: Vec<ClientListItemDto>,
 }
 
-/// Typed settings page payload for React-owned pages.
+/// Typed important-field settings payload for React-owned pages.
 #[derive(Debug, Serialize)]
-pub struct SettingsPageDto {
+pub struct ImportantFieldSettingsDto {
     pub fields_text: String,
 }

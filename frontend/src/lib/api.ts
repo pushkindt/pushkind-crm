@@ -8,10 +8,10 @@ import type {
   ManagersData,
   ManagerWithClients,
   ClientListItem,
-  DashboardData,
+  ClientDirectoryData,
   NavigationItem,
   ShellData,
-  SettingsData,
+  ImportantFieldSettingsData,
   UserMenuItem,
 } from "./models";
 
@@ -183,14 +183,13 @@ function parseClientListItems(payload: unknown): ClientListItem[] {
   });
 }
 
-function parseDashboardData(payload: unknown): DashboardData {
+function parseClientDirectoryData(payload: unknown): ClientDirectoryData {
   if (!isRecord(payload) || !isRecord(payload.clients)) {
-    throw new Error("Invalid dashboard payload.");
+    throw new Error("Invalid client directory payload.");
   }
 
   return {
     searchQuery: readOptionalString(payload, "search_query"),
-    canAddClient: readBoolean(payload, "can_add_client"),
     clients: {
       items: parseClientListItems(payload.clients.items),
       page: readNumber(payload.clients, "page"),
@@ -327,9 +326,11 @@ function parseManagerModalData(payload: unknown): ManagerModalData {
   };
 }
 
-function parseSettingsData(payload: unknown): SettingsData {
+function parseImportantFieldSettingsData(
+  payload: unknown,
+): ImportantFieldSettingsData {
   if (!isRecord(payload)) {
-    throw new Error("Invalid settings payload.");
+    throw new Error("Invalid important-field settings payload.");
   }
 
   return {
@@ -521,20 +522,20 @@ export async function fetchShellData(): Promise<ShellData> {
   return parseShellData(payload);
 }
 
-export async function fetchDashboardData(
+export async function fetchClientDirectoryData(
   searchParams: URLSearchParams,
-): Promise<DashboardData> {
+): Promise<ClientDirectoryData> {
   const query = searchParams.toString();
   const payload = await fetchJson(
-    query ? `/api/v1/dashboard?${query}` : "/api/v1/dashboard",
+    query ? `/api/v1/client-directory?${query}` : "/api/v1/client-directory",
   );
-  return parseDashboardData(payload);
+  return parseClientDirectoryData(payload);
 }
 
 export async function fetchClientDetails(
   clientId: number,
 ): Promise<ClientDetails> {
-  const payload = await fetchJson(`/api/v1/client/${clientId}`);
+  const payload = await fetchJson(`/api/v1/clients/${clientId}`);
   return parseClientDetails(payload);
 }
 
@@ -559,9 +560,9 @@ export async function fetchManagerModalData(
   return parseManagerModalData(payload);
 }
 
-export async function fetchSettingsData(): Promise<SettingsData> {
-  const payload = await fetchJson("/api/v1/settings");
-  return parseSettingsData(payload);
+export async function fetchImportantFieldSettingsData(): Promise<ImportantFieldSettingsData> {
+  const payload = await fetchJson("/api/v1/important-fields");
+  return parseImportantFieldSettingsData(payload);
 }
 
 export async function fetchAuthUsers(
