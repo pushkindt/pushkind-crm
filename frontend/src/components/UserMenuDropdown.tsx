@@ -3,6 +3,14 @@ export interface UserMenuItem {
   url: string;
 }
 
+function menuItemIconClass(item: UserMenuItem) {
+  if (item.name === "Настройки") {
+    return "bi bi-gear";
+  }
+
+  return "bi bi-grid";
+}
+
 type UserMenuDropdownProps = {
   currentUserEmail: string;
   items: UserMenuItem[];
@@ -50,7 +58,7 @@ export function UserMenuDropdown({
         {items.map((item) => (
           <li key={`${item.url}-${item.name}`}>
             <a className="dropdown-item icon-link" href={item.url}>
-              <i className="bi bi-grid mb-2" />
+              <i className={`${menuItemIconClass(item)} mb-2`} />
               {item.name}
             </a>
           </li>
