@@ -9,7 +9,10 @@ describe("UserMenuDropdown", () => {
       <UserMenuDropdown
         currentUserEmail="user@example.com"
         homeUrl="https://users.pushkind.com"
-        items={[{ name: "CRM", url: "/crm" }]}
+        items={[
+          { name: "CRM", url: "/crm" },
+          { name: "Настройки", url: "/settings" },
+        ]}
         logoutAction="/logout"
       />,
     );
@@ -19,6 +22,9 @@ describe("UserMenuDropdown", () => {
     expect(markup).toContain("Домой");
     expect(markup).toContain("/crm");
     expect(markup).toContain("CRM");
+    expect(markup).toContain("/settings");
+    expect(markup).toContain("Настройки");
+    expect(markup).toContain("bi bi-gear mb-2");
     expect(markup).toContain("/logout");
     expect(markup).toContain("Выйти");
   });
