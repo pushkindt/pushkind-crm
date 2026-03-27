@@ -114,7 +114,7 @@ export function SettingsBootstrap() {
         window.showFlashMessage?.(error.message, "danger");
       } else {
         console.error("Failed to clean up CRM clients.", error);
-        window.showFlashMessage?.("Не удалось очистить клиентов.", "danger");
+        window.showFlashMessage?.("Не удалось удалить клиентов.", "danger");
       }
     } finally {
       setIsCleaning(false);
@@ -190,7 +190,7 @@ export function SettingsBootstrap() {
                     onClick={() => void handleCleanup()}
                     disabled={isCleaning}
                   >
-                    Очистить клиентов
+                    Удалить клиентов
                   </button>
                 </div>
               </div>
