@@ -171,10 +171,8 @@ export function DashboardBootstrap() {
       navigation={shellState.shell.navigation}
       currentUserEmail={shellState.shell.currentUser.email}
       homeUrl={shellState.shell.homeUrl}
-      menuItems={[
-        ...shellState.shell.localMenuItems,
-        ...shellState.authMenuItems,
-      ]}
+      localMenuItems={shellState.shell.localMenuItems}
+      fetchedMenuItems={shellState.authMenuItems}
       search={
         <form className="d-flex w-100" role="search" action="/">
           <div className="input-group me-2">

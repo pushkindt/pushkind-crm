@@ -522,10 +522,8 @@ export function ClientBootstrap() {
       navigation={shellState.shell.navigation}
       currentUserEmail={shellState.shell.currentUser.email}
       homeUrl={shellState.shell.homeUrl}
-      menuItems={[
-        ...shellState.shell.localMenuItems,
-        ...shellState.authMenuItems,
-      ]}
+      localMenuItems={shellState.shell.localMenuItems}
+      fetchedMenuItems={shellState.authMenuItems}
     >
       <div className="container my-2">
         <div className="row my-2">

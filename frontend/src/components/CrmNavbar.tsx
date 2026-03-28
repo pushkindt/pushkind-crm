@@ -7,7 +7,8 @@ type CrmNavbarProps = {
   navigation: NavigationItem[];
   currentUserEmail: string;
   homeUrl: string;
-  menuItems: UserMenuItem[];
+  localMenuItems: UserMenuItem[];
+  fetchedMenuItems: UserMenuItem[];
   search?: ReactNode;
 };
 
@@ -15,7 +16,8 @@ export function CrmNavbar({
   navigation,
   currentUserEmail,
   homeUrl,
-  menuItems,
+  localMenuItems,
+  fetchedMenuItems,
   search,
 }: CrmNavbarProps) {
   return (
@@ -51,8 +53,8 @@ export function CrmNavbar({
           <div className="ms-sm-2">
             <UserMenuDropdown
               currentUserEmail={currentUserEmail}
-              items={menuItems}
-              homeUrl={homeUrl}
+              localItems={[{ name: "Домой", url: homeUrl }, ...localMenuItems]}
+              fetchedItems={fetchedMenuItems}
               logoutAction="/logout"
             />
           </div>
