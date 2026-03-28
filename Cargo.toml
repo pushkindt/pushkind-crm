@@ -105,4 +105,9 @@ required-features = ["server"]
 
 [dev-dependencies]
 diesel_migrations = "2.3.1"
+reqwest = { version = "0.13.2", default-features = false, features = [
+    "cookies",
+    "json",
+    "multipart",
+] }
 tempfile = "3.27.0"

@@ -132,7 +132,8 @@ pub async fn api_v1_no_access(
 #[get("/v1/clients")]
 /// Return a JSON list of clients with optional search and pagination.
 ///
-/// Users without the `crm` role receive a `401 Unauthorized` response.
+/// Users without either the `crm` or `crm_admin` role receive a
+/// `401 Unauthorized` response.
 pub async fn api_v1_clients(
     params: web::Query<ClientsQuery>,
     user: AuthenticatedUser,
