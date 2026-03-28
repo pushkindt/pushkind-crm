@@ -194,10 +194,14 @@ Current client behavior is a mix of:
 - The top navigation MUST remain visually consistent with the current CRM UI.
 - The user dropdown SHOULD align with the reusable React dropdown already used
   in `pushkind-auth` and `pushkind-files`.
+- CRM-local dropdown items MUST render before items fetched from the auth menu
+  API.
 - Menu items beyond the always-present `Домой` link SHOULD come from the auth
   menu API.
 - Failure to load the auth menu MUST NOT make `pushkind-crm` unavailable; the
   page MUST still render and keep the `Домой` link and logout action.
+- The logout action MUST always render as the final dropdown action even if a
+  fetched menu payload contains a logout-like entry.
 
 ### 9. External Service Integration
 - The CRM client page MUST preserve links into `pushkind-todo` where currently
@@ -255,6 +259,8 @@ Current client behavior is a mix of:
   field-addressable validation errors.
 - The reusable user dropdown behaves consistently with `pushkind-auth` and
   `pushkind-files`.
+- The reusable user dropdown renders local CRM items before fetched auth-menu
+  items and keeps logout last.
 - The embedded files browser still works inside the client attachment modal.
 - No backend business rule is moved to the client.
 - The React frontend builds reproducibly and its assets are served by the

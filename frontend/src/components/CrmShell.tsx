@@ -26,7 +26,8 @@ type CrmShellProps = {
   navigation: NavigationItem[];
   currentUserEmail: string;
   homeUrl: string;
-  menuItems: UserMenuItem[];
+  localMenuItems: UserMenuItem[];
+  fetchedMenuItems: UserMenuItem[];
   search?: ReactNode;
   children: ReactNode;
 };
@@ -35,7 +36,8 @@ export function CrmShell({
   navigation,
   currentUserEmail,
   homeUrl,
-  menuItems,
+  localMenuItems,
+  fetchedMenuItems,
   search,
   children,
 }: CrmShellProps) {
@@ -80,7 +82,8 @@ export function CrmShell({
         navigation={navigation}
         currentUserEmail={currentUserEmail}
         homeUrl={homeUrl}
-        menuItems={menuItems}
+        localMenuItems={localMenuItems}
+        fetchedMenuItems={fetchedMenuItems}
         search={search}
       />
       {children}

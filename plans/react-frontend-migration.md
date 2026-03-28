@@ -208,6 +208,8 @@ Deliverables:
 - Reusable React user dropdown aligned with auth/files.
 - Auth menu hydration after initial page render, with resilient fallback to the
   always-present `Домой` link and logout action.
+- Shared dropdown ordering that keeps CRM-local items ahead of fetched auth
+  menu items and pins logout to the bottom.
 
 Exit criteria:
 - Shared shell behavior no longer depends on inline JavaScript in

@@ -4,6 +4,10 @@ export interface UserMenuItem {
 }
 
 function menuItemIconClass(item: UserMenuItem) {
+  if (item.name === "Домой") {
+    return "bi bi-house";
+  }
+
   if (item.name === "Настройки") {
     return "bi bi-gear";
   }
@@ -11,22 +15,38 @@ function menuItemIconClass(item: UserMenuItem) {
   return "bi bi-grid";
 }
 
+function isLogoutItem(item: UserMenuItem, logoutAction: string) {
+  const normalizedName = item.name.trim().toLowerCase();
+
+  return (
+    normalizedName === "выйти" ||
+    normalizedName === "logout" ||
+    item.url === logoutAction ||
+    item.url.endsWith("/logout")
+  );
+}
+
 type UserMenuDropdownProps = {
   currentUserEmail: string;
-  items: UserMenuItem[];
+  localItems: UserMenuItem[];
+  fetchedItems: UserMenuItem[];
   logoutAction: string;
-  homeUrl?: string;
-  homeLabel?: string;
 };
 
 export function UserMenuDropdown({
   currentUserEmail,
-  items,
+  localItems,
+  fetchedItems,
   logoutAction,
-  homeUrl,
-  homeLabel = "Домой",
 }: UserMenuDropdownProps) {
-  const hasNavigationItems = Boolean(homeUrl) || items.length > 0;
+  const visibleLocalItems = localItems.filter(
+    (item) => !isLogoutItem(item, logoutAction),
+  );
+  const visibleFetchedItems = fetchedItems.filter(
+    (item) => !isLogoutItem(item, logoutAction),
+  );
+  const hasNavigationItems =
+    visibleLocalItems.length > 0 || visibleFetchedItems.length > 0;
 
   return (
     <div className="dropdown-center">
@@ -47,16 +67,16 @@ export function UserMenuDropdown({
             <hr className="dropdown-divider" />
           </li>
         ) : null}
-        {homeUrl ? (
-          <li>
-            <a className="dropdown-item icon-link" href={homeUrl}>
-              <i className="bi bi-house mb-2" />
-              {homeLabel}
+        {visibleLocalItems.map((item) => (
+          <li key={`local-${item.url}-${item.name}`}>
+            <a className="dropdown-item icon-link" href={item.url}>
+              <i className={`${menuItemIconClass(item)} mb-2`} />
+              {item.name}
             </a>
           </li>
-        ) : null}
-        {items.map((item) => (
-          <li key={`${item.url}-${item.name}`}>
+        ))}
+        {visibleFetchedItems.map((item) => (
+          <li key={`fetched-${item.url}-${item.name}`}>
             <a className="dropdown-item icon-link" href={item.url}>
               <i className={`${menuItemIconClass(item)} mb-2`} />
               {item.name}
