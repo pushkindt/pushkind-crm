@@ -27,7 +27,7 @@ use pushkind_crm::{
     models::zmq::ZmqClientMessage,
 };
 
-fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
+pub(crate) fn process_email_event<R>(msg: ZMQSendEmailMessage, repo: R) -> RepositoryResult<()>
 where
     R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
 {
@@ -83,7 +83,7 @@ where
     Ok(())
 }
 
-fn process_task_message<R>(task: ZmqTask, repo: R) -> RepositoryResult<()>
+pub(crate) fn process_task_message<R>(task: ZmqTask, repo: R) -> RepositoryResult<()>
 where
     R: ClientEventWriter + ClientEventReader + ClientReader + ManagerWriter,
 {
@@ -172,7 +172,7 @@ where
     Ok(())
 }
 
-fn process_reply_message<R>(reply: ZMQReplyMessage, repo: R) -> RepositoryResult<()>
+pub(crate) fn process_reply_message<R>(reply: ZMQReplyMessage, repo: R) -> RepositoryResult<()>
 where
     R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
 {
@@ -214,7 +214,10 @@ where
     Ok(())
 }
 
-fn process_unsubscribe_message<R>(message: ZMQUnsubscribeMessage, repo: R) -> RepositoryResult<()>
+pub(crate) fn process_unsubscribe_message<R>(
+    message: ZMQUnsubscribeMessage,
+    repo: R,
+) -> RepositoryResult<()>
 where
     R: ClientEventWriter + ManagerWriter + ClientReader + ClientEventReader,
 {
