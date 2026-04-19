@@ -2,10 +2,10 @@
 
 use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::dto::mutation::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use pushkind_common::routes::{check_role, redirect};
 
 use crate::SERVICE_ADMIN_ROLE;
-use crate::dto::api::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use crate::forms::important_fields::{ImportantFieldsForm, ImportantFieldsPayload};
 use crate::frontend::{FrontendAssetError, open_frontend_html};
 use crate::repository::DieselRepository;
@@ -20,7 +20,7 @@ pub async fn show_settings(
     _repo: web::Data<DieselRepository>,
 ) -> impl Responder {
     if !check_role(SERVICE_ADMIN_ROLE, &user.roles) {
-        return redirect("/na");
+        return redirect("/na?required_role=crm_admin");
     }
 
     match open_frontend_html("assets/dist/app/settings.html").await {

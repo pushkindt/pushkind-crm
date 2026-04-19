@@ -59,7 +59,6 @@ fn form_body(fields: Vec<(impl Into<String>, impl Into<String>)>) -> String {
     serde_html_form::to_string(&fields).expect("Form body should serialize.")
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_logged_out_user_is_redirected_to_auth() {
     let app = common::spawn_app().await;
@@ -86,9 +85,20 @@ async fn test_crm_logged_out_user_is_redirected_to_auth() {
         .expect("Failed to request CRM directory API.");
 
     assert_eq!(api_response.status(), StatusCode::UNAUTHORIZED);
+
+    let mutation_response = client
+        .post(format!("{}/client/add", app.address()))
+        .header(header::ACCEPT, "application/json")
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(form_body(vec![("name", "Logged Out")]))
+        .send()
+        .await
+        .expect("Failed to request CRM mutation while logged out.");
+
+    assert_eq!(mutation_response.status(), StatusCode::UNAUTHORIZED);
+    assert!(mutation_response.headers().get(header::LOCATION).is_none());
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_admin_full_management_story() {
     let app = common::spawn_app().await;
@@ -544,7 +554,6 @@ async fn test_crm_admin_full_management_story() {
     assert!(remaining_clients.is_empty());
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_admin_public_id_pagination_and_cross_hub_isolation_story() {
     let app = common::spawn_app().await;
@@ -729,7 +738,6 @@ async fn test_crm_admin_public_id_pagination_and_cross_hub_isolation_story() {
     );
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_manager_user_scoped_access_story() {
     let app = common::spawn_app().await;
@@ -954,11 +962,10 @@ async fn test_crm_manager_user_scoped_access_story() {
     assert_eq!(managers_page_response.status(), StatusCode::OK);
     assert_eq!(
         managers_page_response.url().as_str(),
-        format!("{}/na", app.address())
+        format!("{}/na?required_role=crm_admin", app.address())
     );
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_admin_manager_assignment_replacement_and_not_found_story() {
     let app = common::spawn_app().await;
@@ -1170,7 +1177,6 @@ async fn test_crm_admin_manager_assignment_replacement_and_not_found_story() {
     assert_eq!(missing_manager_payload["message"], "Менеджер не найден.");
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_client_details_sanitize_and_order_events_story() {
     let app = common::spawn_app().await;
@@ -1349,7 +1355,6 @@ async fn test_crm_client_details_sanitize_and_order_events_story() {
     );
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_worker_event_ingestion_story() {
     let app = common::spawn_app().await;
@@ -1455,7 +1460,6 @@ async fn test_crm_worker_event_ingestion_story() {
     }));
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_basic_user_and_admin_only_access_stories() {
     let app = common::spawn_app().await;
@@ -1550,7 +1554,7 @@ async fn test_crm_basic_user_and_admin_only_access_stories() {
     assert_eq!(basic_managers_response.status(), StatusCode::OK);
     assert_eq!(
         basic_managers_response.url().as_str(),
-        format!("{}/na", app.address())
+        format!("{}/na?required_role=crm_admin", app.address())
     );
 
     let admin_only_client = common::build_reqwest_client();
@@ -1596,7 +1600,7 @@ async fn test_crm_basic_user_and_admin_only_access_stories() {
     assert_eq!(admin_only_index_response.status(), StatusCode::OK);
     assert_eq!(
         admin_only_index_response.url().as_str(),
-        format!("{}/na", app.address())
+        format!("{}/na?required_role=crm", app.address())
     );
 
     let admin_only_managers_response = admin_only_client
@@ -1638,7 +1642,6 @@ async fn test_crm_basic_user_and_admin_only_access_stories() {
     assert_eq!(admin_only_clients[0]["email"], "viewer-seed@example.com");
 }
 
-#[ignore = "local-only end-to-end test"]
 #[actix_web::test]
 async fn test_crm_basic_user_is_blocked_from_admin_management_apis_and_mutations() {
     let app = common::spawn_app().await;

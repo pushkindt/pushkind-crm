@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::dto::mutation::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use pushkind_common::routes::redirect;
 use pushkind_common::zmq::ZmqSender;
 
-use crate::dto::api::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use crate::forms::client::{
     AddAttachmentForm, AddAttachmentPayload, AddCommentForm, AddCommentPayload, SaveClientForm,
     SaveClientPayload,

@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use pushkind_common::dto::mutation::{ApiFieldErrorDto, ApiMutationErrorDto};
 use thiserror::Error;
 use validator::{ValidationError, ValidationErrors};
 
@@ -127,6 +128,22 @@ fn field_error(field: &'static str, message: impl Into<Cow<'static, str>>) -> Fo
     FormFieldError {
         field: Cow::Borrowed(field),
         message: message.into(),
+    }
+}
+
+impl From<&FormError> for ApiMutationErrorDto {
+    fn from(error: &FormError) -> Self {
+        Self {
+            message: "Ошибка валидации формы.".to_string(),
+            field_errors: error
+                .field_errors()
+                .into_iter()
+                .map(|error| ApiFieldErrorDto {
+                    field: error.field.to_string(),
+                    message: error.message.into_owned(),
+                })
+                .collect(),
+        }
     }
 }
 

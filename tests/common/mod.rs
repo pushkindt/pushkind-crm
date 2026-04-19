@@ -2,8 +2,10 @@
 
 //! Helpers for integration tests.
 
+use std::fs;
 use std::net::TcpListener;
-use std::sync::Arc;
+use std::path::Path;
+use std::sync::{Arc, Once};
 use std::time::Duration;
 
 use actix_cors::Cors;
@@ -12,7 +14,7 @@ use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::cookie::Key;
 use actix_web::rt::time::sleep;
 use actix_web::{
-    App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder, middleware, post, web,
+    App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder, get, middleware, post, web,
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use pushkind_common::db::{DbPool, establish_connection_pool};
@@ -38,6 +40,8 @@ use pushkind_crm::routes::settings::{cleanup_clients, save_important_fields, sho
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!(); // assumes migrations/ exists
 pub const HUB_ID: i32 = 7;
+
+static FRONTEND_ASSETS: Once = Once::new();
 
 /// Temporary database used in integration tests.
 pub struct TestDb {
@@ -121,22 +125,22 @@ async fn test_login(
     HttpResponse::Ok().finish()
 }
 
+#[get("/health")]
+async fn test_health() -> impl Responder {
+    HttpResponse::Ok().finish()
+}
+
 async fn wait_until_server_is_ready(address: &str) {
     let client = Client::builder()
         .redirect(Policy::none())
         .timeout(Duration::from_millis(100))
         .build()
         .expect("Failed to create the test HTTP client.");
-    let url = format!("{address}/");
+    let url = format!("{address}/health");
 
     for _ in 0..20 {
         match client.get(&url).send().await {
-            Ok(response)
-                if response.status() == StatusCode::SEE_OTHER
-                    || response.status() == StatusCode::OK =>
-            {
-                return;
-            }
+            Ok(response) if response.status() == StatusCode::OK => return,
             Ok(_) | Err(_) => sleep(Duration::from_millis(25)).await,
         }
     }
@@ -144,7 +148,49 @@ async fn wait_until_server_is_ready(address: &str) {
     panic!("Test server did not become ready at {url}");
 }
 
+fn ensure_test_frontend_assets() {
+    FRONTEND_ASSETS.call_once(|| {
+        let fixtures = [
+            (
+                "assets/dist/app/index.html",
+                "<!doctype html><html><head><title>CRM</title></head><body>crm-index</body></html>",
+            ),
+            (
+                "assets/dist/app/client.html",
+                "<!doctype html><html><head><title>CRM Client</title></head><body>crm-client</body></html>",
+            ),
+            (
+                "assets/dist/app/managers.html",
+                "<!doctype html><html><head><title>CRM Managers</title></head><body>crm-managers</body></html>",
+            ),
+            (
+                "assets/dist/app/settings.html",
+                "<!doctype html><html><head><title>CRM Settings</title></head><body>crm-settings</body></html>",
+            ),
+            (
+                "assets/dist/app/no-access.html",
+                "<!doctype html><html><head><title>CRM No Access</title></head><body>crm-no-access</body></html>",
+            ),
+        ];
+
+        for (path, contents) in fixtures {
+            let path = Path::new(path);
+            if path.exists() {
+                continue;
+            }
+
+            let parent = path
+                .parent()
+                .expect("frontend fixture path should include a parent directory");
+            fs::create_dir_all(parent).expect("failed to create frontend fixture directory");
+            fs::write(path, contents).expect("failed to write frontend fixture file");
+        }
+    });
+}
+
 pub async fn spawn_app() -> TestApp {
+    ensure_test_frontend_assets();
+
     let test_db = TestDb::new();
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind a random local port.");
     let port = listener
@@ -191,6 +237,7 @@ pub async fn spawn_app() -> TestApp {
             .wrap(middleware::Logger::default())
             .service(actix_files::Files::new("/assets", "./assets"))
             .service(test_login)
+            .service(test_health)
             .service(not_assigned)
             .service(
                 web::scope("/api")
@@ -203,22 +250,22 @@ pub async fn spawn_app() -> TestApp {
                     .service(api_v1_no_access)
                     .service(api_v1_important_fields),
             )
+            .service(add_client)
+            .service(clients_upload)
+            .service(save_client)
+            .service(comment_client)
+            .service(attachment_client)
+            .service(save_important_fields)
+            .service(cleanup_clients)
+            .service(add_manager)
+            .service(assign_manager)
             .service(
                 web::scope("")
                     .wrap(RedirectUnauthorized)
                     .service(show_index)
-                    .service(add_client)
-                    .service(clients_upload)
                     .service(show_client)
-                    .service(save_client)
-                    .service(comment_client)
-                    .service(attachment_client)
                     .service(show_settings)
-                    .service(save_important_fields)
-                    .service(cleanup_clients)
                     .service(managers)
-                    .service(add_manager)
-                    .service(assign_manager)
                     .service(logout),
             )
             .app_data(web::Data::new(repo.clone()))

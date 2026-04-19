@@ -1,24 +1,16 @@
-export type NavigationItem = {
-  name: string;
-  url: string;
-};
+import type {
+  FrontendNoAccessData,
+  FrontendShellCurrentUser,
+  FrontendShellData,
+  FrontendShellNavigationItem,
+  FrontendShellUserMenuItem,
+} from "@pushkind/frontend-shell/types";
 
-export type UserMenuItem = {
-  name: string;
-  url: string;
-};
-
-export type ShellData = {
-  currentUser: {
-    email: string;
-    name: string;
-    hubId: number;
-    roles: string[];
-  };
-  homeUrl: string;
-  navigation: NavigationItem[];
-  localMenuItems: UserMenuItem[];
-};
+export type NavigationItem = FrontendShellNavigationItem;
+export type UserMenuItem = FrontendShellUserMenuItem;
+export type CurrentUser = FrontendShellCurrentUser;
+export type ShellData = FrontendShellData;
+export type NoAccessData = FrontendNoAccessData<CurrentUser>;
 
 export type ClientListItem = {
   id: number;

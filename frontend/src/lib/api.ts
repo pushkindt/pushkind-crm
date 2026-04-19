@@ -1,65 +1,47 @@
+import {
+  browserLocation,
+  fetchHubMenuItems as fetchSharedHubMenuItems,
+  fetchJson as fetchSharedJson,
+  fetchNoAccessData as fetchSharedNoAccessData,
+  fetchShellData as fetchSharedShellData,
+} from "@pushkind/frontend-shell/shellApi";
+import {
+  isRecord,
+  parseStringMap,
+  readBoolean,
+  readNullableNumberArray,
+  readNumber,
+  readOptionalString,
+  readString,
+} from "@pushkind/frontend-shell/json";
+
+export { browserLocation };
+import {
+  type ApiFieldError,
+  type ApiMutationError,
+  type ApiMutationSuccess,
+  isApiMutationError,
+  postEmpty,
+  postForm,
+  postMultipartForm,
+  toFieldErrorMap,
+} from "@pushkind/frontend-shell/mutations";
 import type {
+  AuthUserSearchItem,
   ClientDetails,
+  ClientDirectoryData,
   ClientEvent,
   ClientFieldDisplay,
-  AuthUserSearchItem,
+  ClientListItem,
+  ImportantFieldSettingsData,
   Manager,
   ManagerModalData,
   ManagersData,
   ManagerWithClients,
-  ClientListItem,
-  ClientDirectoryData,
-  NavigationItem,
+  NoAccessData,
   ShellData,
-  ImportantFieldSettingsData,
   UserMenuItem,
 } from "./models";
-
-export interface ApiFieldError {
-  field: string;
-  message: string;
-}
-
-export interface ApiMutationSuccess {
-  message: string;
-  redirect_to: string | null;
-}
-
-export interface ApiMutationError {
-  message: string;
-  field_errors: ApiFieldError[];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function readString(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (typeof value !== "string") {
-    throw new Error(`Invalid API response: expected string at ${key}.`);
-  }
-
-  return value;
-}
-
-function readNumber(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (typeof value !== "number") {
-    throw new Error(`Invalid API response: expected number at ${key}.`);
-  }
-
-  return value;
-}
-
-function readStringArray(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error(`Invalid API response: expected string[] at ${key}.`);
-  }
-
-  return value;
-}
 
 function readOptionalStringArray(record: Record<string, unknown>, key: string) {
   const value = record[key];
@@ -71,93 +53,6 @@ function readOptionalStringArray(record: Record<string, unknown>, key: string) {
   }
 
   return value;
-}
-
-function readNullableNumberArray(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (
-    !Array.isArray(value) ||
-    value.some((item) => item !== null && typeof item !== "number")
-  ) {
-    throw new Error(
-      `Invalid API response: expected (number|null)[] at ${key}.`,
-    );
-  }
-
-  return value;
-}
-
-function readOptionalString(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (value == null) {
-    return undefined;
-  }
-  if (typeof value !== "string") {
-    throw new Error(`Invalid API response: expected string at ${key}.`);
-  }
-
-  return value;
-}
-
-function readBoolean(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  if (typeof value !== "boolean") {
-    throw new Error(`Invalid API response: expected boolean at ${key}.`);
-  }
-
-  return value;
-}
-
-function parseNavigationItems(payload: unknown): NavigationItem[] {
-  if (!Array.isArray(payload)) {
-    throw new Error("Invalid navigation payload.");
-  }
-
-  return payload.map((item) => {
-    if (!isRecord(item)) {
-      throw new Error("Invalid navigation item payload.");
-    }
-
-    return {
-      name: readString(item, "name"),
-      url: readString(item, "url"),
-    };
-  });
-}
-
-function parseShellData(payload: unknown): ShellData {
-  if (!isRecord(payload) || !isRecord(payload.current_user)) {
-    throw new Error("Invalid shell payload.");
-  }
-
-  return {
-    currentUser: {
-      email: readString(payload.current_user, "email"),
-      name: readString(payload.current_user, "name"),
-      hubId: readNumber(payload.current_user, "hub_id"),
-      roles: readStringArray(payload.current_user, "roles"),
-    },
-    homeUrl: readString(payload, "home_url"),
-    navigation: parseNavigationItems(payload.navigation),
-    localMenuItems: parseNavigationItems(payload.local_menu_items),
-  };
-}
-
-function parseMenuItems(payload: unknown): UserMenuItem[] {
-  if (!Array.isArray(payload)) {
-    throw new Error("Invalid auth menu payload.");
-  }
-
-  return payload.map((item) => {
-    if (!isRecord(item)) {
-      throw new Error("Invalid auth menu item payload.");
-    }
-
-    return {
-      name: readString(item, "name"),
-      url: readString(item, "url"),
-    };
-  });
 }
 
 function parseClientListItems(payload: unknown): ClientListItem[] {
@@ -242,18 +137,6 @@ function parseClientEvent(item: unknown): ClientEvent {
     createdAt: readString(item, "created_at"),
     manager: parseManager(item.manager),
   };
-}
-
-function parseStringMap(value: unknown) {
-  if (!isRecord(value)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => {
-      return typeof entry[1] === "string";
-    }),
-  );
 }
 
 function parseClientDetails(payload: unknown): ClientDetails {
@@ -361,165 +244,32 @@ function withBaseUrl(baseUrl: string, path: string) {
 }
 
 async function fetchJson(url: string) {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-    cache: "no-store",
-    credentials: "include",
+  return fetchSharedJson(url, {
+    unauthorizedMessage: "Недостаточно прав для доступа к CRM.",
   });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error("Недостаточно прав для доступа к CRM.");
-    }
-
-    throw new Error(`Request failed with status ${response.status}.`);
-  }
-
-  return response.json();
 }
 
-function isJsonResponse(response: Response): boolean {
-  return (
-    response.headers.get("content-type")?.includes("application/json") ?? false
-  );
-}
-
-export const browserLocation = {
-  assign(url: string) {
-    window.location.assign(url);
-  },
+export {
+  isApiMutationError,
+  postEmpty,
+  postForm,
+  postMultipartForm,
+  toFieldErrorMap,
 };
 
-function handleAuthRedirectResponse(response: Response): never {
-  browserLocation.assign(response.url);
-  throw new Error("Сессия истекла. Выполняется переход на страницу входа.");
-}
-
-function ensureMutationResponseIsNotAuthRedirect(response: Response) {
-  if (response.redirected && !isJsonResponse(response)) {
-    handleAuthRedirectResponse(response);
-  }
-}
-
-async function readJsonResponse<T>(response: Response, endpoint: string) {
-  if (!isJsonResponse(response)) {
-    throw new Error(
-      `Expected JSON response from ${endpoint} with status ${response.status}.`,
-    );
-  }
-
-  return (await response.json()) as T;
-}
-
-export function toFieldErrorMap(
-  error: ApiMutationError,
-): Record<string, string> {
-  return Object.fromEntries(
-    error.field_errors.map((fieldError) => [
-      fieldError.field,
-      fieldError.message,
-    ]),
-  );
-}
-
-export function isApiMutationError(error: unknown): error is ApiMutationError {
-  if (!isRecord(error)) {
-    return false;
-  }
-
-  return (
-    typeof error.message === "string" &&
-    Array.isArray(error.field_errors) &&
-    error.field_errors.every((fieldError) => {
-      return (
-        isRecord(fieldError) &&
-        typeof fieldError.field === "string" &&
-        typeof fieldError.message === "string"
-      );
-    })
-  );
-}
-
-export async function postForm(
-  endpoint: string,
-  body: URLSearchParams,
-): Promise<ApiMutationSuccess> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-    },
-    credentials: "include",
-    body: body.toString(),
-  });
-
-  ensureMutationResponseIsNotAuthRedirect(response);
-
-  const payload = (await readJsonResponse(response, endpoint)) as
-    | ApiMutationSuccess
-    | ApiMutationError;
-
-  if (!response.ok) {
-    throw payload as ApiMutationError;
-  }
-
-  return payload as ApiMutationSuccess;
-}
-
-export async function postMultipartForm(
-  endpoint: string,
-  body: FormData,
-): Promise<ApiMutationSuccess> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-    },
-    credentials: "include",
-    body,
-  });
-
-  ensureMutationResponseIsNotAuthRedirect(response);
-
-  const payload = (await readJsonResponse(response, endpoint)) as
-    | ApiMutationSuccess
-    | ApiMutationError;
-
-  if (!response.ok) {
-    throw payload as ApiMutationError;
-  }
-
-  return payload as ApiMutationSuccess;
-}
-
-export async function postEmpty(endpoint: string): Promise<ApiMutationSuccess> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-    },
-    credentials: "include",
-  });
-
-  ensureMutationResponseIsNotAuthRedirect(response);
-
-  const payload = (await readJsonResponse(response, endpoint)) as
-    | ApiMutationSuccess
-    | ApiMutationError;
-
-  if (!response.ok) {
-    throw payload as ApiMutationError;
-  }
-
-  return payload as ApiMutationSuccess;
-}
-
 export async function fetchShellData(): Promise<ShellData> {
-  const payload = await fetchJson("/api/v1/iam");
-  return parseShellData(payload);
+  return fetchSharedShellData<ShellData>(
+    "/api/v1/iam",
+    "Недостаточно прав для доступа к CRM.",
+  );
+}
+
+export async function fetchNoAccessData(): Promise<NoAccessData> {
+  const query = window.location.search;
+  return fetchSharedNoAccessData<NoAccessData>(
+    query ? `/api/v1/no-access${query}` : "/api/v1/no-access",
+    "Недостаточно прав для доступа к CRM.",
+  );
 }
 
 export async function fetchClientDirectoryData(
@@ -583,8 +333,8 @@ export async function fetchHubMenuItems(
   authBaseUrl: string,
   hubId: number,
 ): Promise<UserMenuItem[]> {
-  const payload = await fetchJson(
+  return fetchSharedHubMenuItems<UserMenuItem>(
     withBaseUrl(authBaseUrl, `/api/v1/hubs/${hubId}/menu-items`),
+    "Недостаточно прав для доступа к CRM.",
   );
-  return parseMenuItems(payload);
 }

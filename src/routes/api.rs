@@ -3,12 +3,18 @@
 use actix_web::{HttpResponse, Responder, get, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
 use pushkind_common::models::config::CommonServerConfig;
+use serde::Deserialize;
 
 use crate::dto::api::ClientsQuery;
 use crate::dto::main::IndexQuery;
 use crate::models::config::AppConfig;
 use crate::repository::DieselRepository;
 use crate::services::{ServiceError, api as api_service};
+
+#[derive(Debug, Default, Deserialize)]
+pub struct NoAccessQuery {
+    pub required_role: Option<String>,
+}
 
 #[get("/v1/iam")]
 /// Return typed shell data for React-owned CRM pages.
@@ -120,12 +126,14 @@ pub async fn api_v1_important_fields(
 #[get("/v1/no-access")]
 /// Return page data for the CRM no-access page.
 pub async fn api_v1_no_access(
+    query: web::Query<NoAccessQuery>,
     user: AuthenticatedUser,
     common_config: web::Data<CommonServerConfig>,
 ) -> impl Responder {
     HttpResponse::Ok().json(api_service::get_no_access_data(
         &user,
         common_config.get_ref(),
+        query.required_role.as_deref(),
     ))
 }
 

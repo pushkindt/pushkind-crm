@@ -3,6 +3,7 @@
 use std::str::FromStr;
 
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::dto::shell::{CurrentUserDto, IamDto, NavigationItemDto, NoAccessPageDto};
 use pushkind_common::models::config::CommonServerConfig;
 use pushkind_common::pagination::DEFAULT_ITEMS_PER_PAGE;
 use pushkind_common::routes::check_role;
@@ -12,9 +13,9 @@ use crate::domain::types::{HubId, PublicId};
 use crate::dto::api::{
     ClientDetailsDto, ClientDetailsHeaderDto, ClientDirectoryDto, ClientEventDto,
     ClientFieldDisplayDto, ClientListItemDto, ImportantFieldSettingsDto, ManagerCollectionDto,
-    ManagerModalDto, ManagerWithClientsDto, NoAccessPageDto, PaginatedClientListDto,
+    ManagerModalDto, ManagerWithClientsDto, PaginatedClientListDto,
 };
-pub use crate::dto::api::{ClientsQuery, ClientsResponse, IamDto, NavigationItemDto};
+pub use crate::dto::api::{ClientsQuery, ClientsResponse};
 use crate::models::config::AppConfig;
 use crate::repository::{ClientListQuery, ClientReader};
 use crate::services::{ServiceError, ServiceResult, client, main, managers, settings};
@@ -48,27 +49,28 @@ pub fn get_shell_data(
 
     if has_crm_access {
         navigation.push(NavigationItemDto {
-            name: "Клиенты",
-            url: "/",
+            name: "Клиенты".to_string(),
+            url: "/".to_string(),
         });
     }
 
     if is_admin {
         navigation.push(NavigationItemDto {
-            name: "Менеджеры",
-            url: "/managers",
+            name: "Менеджеры".to_string(),
+            url: "/managers".to_string(),
         });
         local_menu_items.push(NavigationItemDto {
-            name: "Настройки",
-            url: "/settings",
+            name: "Настройки".to_string(),
+            url: "/settings".to_string(),
         });
     }
 
     Ok(IamDto {
-        current_user: user.into(),
+        current_user: CurrentUserDto::from(user.clone()),
         home_url: common_config.auth_service_url.clone(),
         navigation,
         local_menu_items,
+        hub_name: "CRM".to_string(),
     })
 }
 
@@ -76,10 +78,12 @@ pub fn get_shell_data(
 pub fn get_no_access_data(
     user: &AuthenticatedUser,
     common_config: &CommonServerConfig,
+    required_role: Option<&str>,
 ) -> NoAccessPageDto {
     NoAccessPageDto {
-        current_user: user.into(),
+        current_user: CurrentUserDto::from(user.clone()),
         home_url: common_config.auth_service_url.clone(),
+        required_role: required_role.map(ToString::to_string),
     }
 }
 

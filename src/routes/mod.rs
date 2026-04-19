@@ -1,8 +1,8 @@
 //! Route modules wired into the Actix application.
 
 use actix_web::{HttpResponse, http::StatusCode};
+use pushkind_common::dto::mutation::ApiMutationErrorDto;
 
-use crate::dto::api::ApiMutationErrorDto;
 use crate::services::ServiceError;
 
 pub mod api;

@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import {
+  MarkdownPreview,
+  renderMarkdownToHtml,
+} from "@pushkind/frontend-shell/markdown";
 
 import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
   fetchClientDetails,
+  fetchHubMenuItems,
+  fetchShellData,
   isApiMutationError,
   postForm,
   toFieldErrorMap,
 } from "../lib/api";
-import type { ClientDetails, ClientEvent, Manager } from "../lib/models";
-import { useCrmShell } from "../lib/useCrmShell";
+import type {
+  ClientDetails,
+  ClientEvent,
+  Manager,
+  ShellData,
+  UserMenuItem,
+} from "../lib/models";
+import { useServiceShell } from "@pushkind/frontend-shell/useServiceShell";
 
 declare global {
   interface Window {
@@ -19,9 +31,6 @@ declare global {
       initialPath?: string,
       options?: { baseUrl?: string; historyMode?: "managed" | "disabled" },
     ) => unknown;
-    marked?: {
-      parse: (markdown: string) => string;
-    };
   }
 }
 
@@ -222,7 +231,13 @@ function renderEventTypeBadge(eventType: string) {
 }
 
 export function ClientBootstrap() {
-  const shellState = useCrmShell("Не удалось загрузить React-оболочку CRM.");
+  const shellState = useServiceShell<ShellData, UserMenuItem>({
+    errorMessage: "Не удалось загрузить React-оболочку CRM.",
+    menuLoadWarning:
+      "Failed to load auth navigation menu. Falling back to local CRM menu only.",
+    fetchShellData,
+    fetchHubMenuItems,
+  });
   const [clientState, setClientState] = useState<ClientState>({
     status: "loading",
   });
@@ -361,11 +376,7 @@ export function ClientBootstrap() {
   }, [clientState]);
 
   const renderedMessage = useMemo(() => {
-    if (window.marked?.parse) {
-      return window.marked.parse(message);
-    }
-
-    return message;
+    return renderMarkdownToHtml(message);
   }, [message]);
 
   const addEditableField = () => {
@@ -797,10 +808,10 @@ export function ClientBootstrap() {
                       aria-labelledby="preview-tab-comment"
                       tabIndex={0}
                     >
-                      <div
+                      <MarkdownPreview
                         className="border border-top-0 rounded rounded-top-0 p-2 crm-markdown-preview"
                         id="message-rendered"
-                        dangerouslySetInnerHTML={{ __html: renderedMessage }}
+                        source={message}
                       />
                     </div>
                   </div>
