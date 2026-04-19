@@ -49,6 +49,16 @@ type ManagerModalState =
   | { status: "ready"; data: ManagerModalData }
   | { status: "error"; managerName: string; message: string };
 
+function mergeClientsById(...clientGroups: ClientListItem[][]) {
+  const clientsById = new Map<number, ClientListItem>();
+
+  clientGroups.forEach((clients) => {
+    clients.forEach((client) => clientsById.set(client.id, client));
+  });
+
+  return Array.from(clientsById.values());
+}
+
 export function ManagersBootstrap() {
   const shellState = useServiceShell<ShellData, UserMenuItem>({
     errorMessage: "Не удалось загрузить React-оболочку CRM.",
@@ -79,6 +89,9 @@ export function ManagersBootstrap() {
     },
   );
   const [selectedClientIds, setSelectedClientIds] = useState<number[]>([]);
+  const [selectedClientOptions, setSelectedClientOptions] = useState<
+    ClientListItem[]
+  >([]);
   const [addManagerErrors, setAddManagerErrors] = useState<
     Record<string, string>
   >({});
@@ -200,15 +213,18 @@ export function ManagersBootstrap() {
     };
   }, [clientQuery, managerModalState]);
 
-  const selectedClients = useMemo(() => {
-    if (managerModalState.status !== "ready") {
-      return [];
-    }
+  const selectedClientIdSet = useMemo(
+    () => new Set(selectedClientIds),
+    [selectedClientIds],
+  );
 
-    return managerModalState.data.clients.filter((client) =>
-      selectedClientIds.includes(client.id),
-    );
-  }, [managerModalState, selectedClientIds]);
+  const selectedClients = useMemo(
+    () =>
+      selectedClientOptions.filter((client) =>
+        selectedClientIdSet.has(client.id),
+      ),
+    [selectedClientOptions, selectedClientIdSet],
+  );
 
   const clientOptions: DropdownMultiSelectOption[] = useMemo(() => {
     const all = [...selectedClients, ...clientSearchState.items];
@@ -296,6 +312,22 @@ export function ManagersBootstrap() {
     }
   }
 
+  function handleSelectedClientsChange(values: string[]) {
+    const nextSelectedClientIds = values.map(Number);
+    const nextSelectedClientIdSet = new Set(nextSelectedClientIds);
+    const initialClients =
+      managerModalState.status === "ready"
+        ? managerModalState.data.clients
+        : [];
+
+    setSelectedClientIds(nextSelectedClientIds);
+    setSelectedClientOptions((current) =>
+      mergeClientsById(current, initialClients, clientSearchState.items).filter(
+        (client) => nextSelectedClientIdSet.has(client.id),
+      ),
+    );
+  }
+
   function handleManagerModalOpen(managerId: number, managerName: string) {
     managerModalRequestId.current += 1;
     const requestId = managerModalRequestId.current;
@@ -304,6 +336,7 @@ export function ManagersBootstrap() {
     setClientQuery("");
     setClientSearchState({ status: "idle", items: [] });
     setSelectedClientIds([]);
+    setSelectedClientOptions([]);
     setManagerModalState({ status: "loading", managerName });
 
     void fetchManagerModalData(managerId)
@@ -314,6 +347,7 @@ export function ManagersBootstrap() {
 
         setManagerModalState({ status: "ready", data });
         setSelectedClientIds(data.clients.map((client) => client.id));
+        setSelectedClientOptions(data.clients);
       })
       .catch((error) => {
         if (managerModalRequestId.current !== requestId) {
@@ -523,9 +557,7 @@ export function ManagersBootstrap() {
                       <DropdownMultiSelect
                         options={clientOptions}
                         selectedValues={selectedClientIds.map(String)}
-                        onChange={(values) =>
-                          setSelectedClientIds(values.map(Number))
-                        }
+                        onChange={handleSelectedClientsChange}
                         onSearchChange={setClientQuery}
                         filterLocal={false}
                         placeholder="Выберите клиентов..."
