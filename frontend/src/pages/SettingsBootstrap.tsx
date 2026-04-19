@@ -4,14 +4,20 @@ import type { FormEvent } from "react";
 import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
+  fetchHubMenuItems,
   fetchImportantFieldSettingsData,
+  fetchShellData,
   isApiMutationError,
   postEmpty,
   postForm,
   toFieldErrorMap,
 } from "../lib/api";
-import type { ImportantFieldSettingsData } from "../lib/models";
-import { useCrmShell } from "../lib/useCrmShell";
+import type {
+  ImportantFieldSettingsData,
+  ShellData,
+  UserMenuItem,
+} from "../lib/models";
+import { useServiceShell } from "@pushkind/frontend-shell/useServiceShell";
 
 type SettingsState =
   | { status: "loading" }
@@ -19,7 +25,13 @@ type SettingsState =
   | { status: "error"; message: string };
 
 export function SettingsBootstrap() {
-  const shellState = useCrmShell("Не удалось загрузить React-оболочку CRM.");
+  const shellState = useServiceShell<ShellData, UserMenuItem>({
+    errorMessage: "Не удалось загрузить React-оболочку CRM.",
+    menuLoadWarning:
+      "Failed to load auth navigation menu. Falling back to local CRM menu only.",
+    fetchShellData,
+    fetchHubMenuItems,
+  });
   const [settingsState, setSettingsState] = useState<SettingsState>({
     status: "loading",
   });

@@ -6,10 +6,10 @@ architecture and conventions.
 
 ## Project Context
 
-`pushkind-crm` is a Rust 2024 Actix Web application that uses Diesel with
-SQLite, Tera templates, and the shared `pushkind-common` crate. The codebase is
+`pushkind-crm` is a Rust 2024 Actix Web application that uses Diesel with
+SQLite, React-frontend, and the shared `pushkind-common` crate. The codebase is
 layered into domain models, repository traits and implementations, service
-modules, DTOs, Actix routes, forms, and templates. Business logic belongs entirely in
+modules, DTOs, Actix routes, and forms. Business logic belongs entirely in
 the service layer; handlers and repositories must stay thin and focused on I/O
 concerns.
 
@@ -51,7 +51,7 @@ cargo fmt --all -- --check
   functions.
 - Services should return DTO-level structs when handing data to routes; perform
   domain-to-DTO conversion inside the service layer to keep handlers thin. DTOs
-  live in `src/dto` and are optimized for template rendering or JSON serialization.
+  live in `src/dto` and are optimized for JSON serialization for the React-frontend.
 - Service functions should accept trait bounds (e.g., `ClientReader + ClientWriter`)
   so the `DieselRepository` and `mockall`-powered fakes remain interchangeable.
 - Return domain structs or `()` from services; leave flash messaging and
@@ -78,15 +78,15 @@ cargo fmt --all -- --check
 - Check related records (e.g., users) before inserts or updates and convert
   missing dependencies into `RepositoryError::NotFound` instead of panicking.
 
-## HTTP and Template Guidelines
+## HTTP and Frontend Guidelines
 
 - Keep Actix handlers in `src/routes` as thin wrappers that extract inputs,
-  invoke a service, then render or redirect; no business logic belongs in the
+  invoke a service, then return a JSON response or redirect; no business logic belongs in the
   route layer.
 - Keep services free of HTTP presentation concerns; handlers are responsible
   for flash messaging and redirects.
-- Render templates with Tera contexts that only expose sanitized data. Use the
-  existing component templates under `templates/` for shared UI.
+- Return DTOs to the React-frontend that only expose sanitized data. Use the
+  shared component library in the frontend for a consistent UI.
 - Respect the authorization checks via `pushkind_common::routes::ensure_role` and
   the `SERVICE_ACCESS_ROLE` constant.
 

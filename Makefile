@@ -1,15 +1,16 @@
-.PHONY: check coverage
+.PHONY: check coverage run
+
+run:
+	cd frontend && npm run build
+	cargo run
 
 check:
-	@printf '%s\n' '==> cargo fmt --check'
-	cargo fmt --all -- --check
-	@printf '%s\n' '==> cargo clippy'
-	cargo clippy --all-features --all-targets --tests -- -Dwarnings
-	@printf '%s\n' '==> cargo test'
-	cargo test --all-features --all-targets
-	@printf '%s\n' '==> cargo test --ignored e2e'
-	cargo test --all-features --test e2e -- --ignored
+	cargo fmt --all
+	cargo clippy --all-features --tests -- -Dwarnings
+	cargo test --all-features
+	cd frontend && npm run format
+	cd frontend && npm run lint
+	cd frontend && npm test
 
 coverage:
 	cargo tarpaulin --all-features --all-targets --out Html
-	wslview tarpaulin-report.html

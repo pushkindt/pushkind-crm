@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 
-use pushkind_common::domain::auth::AuthenticatedUser;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -10,50 +9,6 @@ use crate::domain::client::Client;
 use crate::domain::client_event::ClientEvent;
 use crate::domain::manager::Manager;
 use crate::dto::client::ClientFieldDisplay;
-use crate::forms::FormError;
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ApiFieldErrorDto {
-    pub field: String,
-    pub message: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ApiMutationSuccessDto {
-    pub message: String,
-    pub redirect_to: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ApiMutationErrorDto {
-    pub message: String,
-    pub field_errors: Vec<ApiFieldErrorDto>,
-}
-
-impl Default for ApiMutationErrorDto {
-    fn default() -> Self {
-        Self {
-            message: "Ошибка валидации формы.".to_string(),
-            field_errors: Vec::new(),
-        }
-    }
-}
-
-impl From<&FormError> for ApiMutationErrorDto {
-    fn from(error: &FormError) -> Self {
-        Self {
-            message: "Ошибка валидации формы.".to_string(),
-            field_errors: error
-                .field_errors()
-                .into_iter()
-                .map(|error| ApiFieldErrorDto {
-                    field: error.field.to_string(),
-                    message: error.message.into_owned(),
-                })
-                .collect(),
-        }
-    }
-}
 
 /// Query parameters accepted by the `/api/v1/clients` service.
 #[derive(Debug, Default, Deserialize)]
@@ -72,49 +27,6 @@ pub struct ClientsResponse {
     pub total: usize,
     /// Page of clients requested by the caller.
     pub clients: Vec<Client>,
-}
-
-/// Shell user data required by React-owned CRM pages.
-#[derive(Debug, Serialize)]
-pub struct CurrentUserDto {
-    pub email: String,
-    pub name: String,
-    pub hub_id: i32,
-    pub roles: Vec<String>,
-}
-
-impl From<&AuthenticatedUser> for CurrentUserDto {
-    fn from(user: &AuthenticatedUser) -> Self {
-        Self {
-            email: user.email.clone(),
-            name: user.name.clone(),
-            hub_id: user.hub_id,
-            roles: user.roles.clone(),
-        }
-    }
-}
-
-/// A simple navigation item consumed by the shared CRM shell.
-#[derive(Debug, Serialize)]
-pub struct NavigationItemDto {
-    pub name: &'static str,
-    pub url: &'static str,
-}
-
-/// Shell payload for React-owned CRM pages.
-#[derive(Debug, Serialize)]
-pub struct IamDto {
-    pub current_user: CurrentUserDto,
-    pub home_url: String,
-    pub navigation: Vec<NavigationItemDto>,
-    pub local_menu_items: Vec<NavigationItemDto>,
-}
-
-/// Minimal page-data payload for the CRM no-access page.
-#[derive(Debug, Serialize)]
-pub struct NoAccessPageDto {
-    pub current_user: CurrentUserDto,
-    pub home_url: String,
 }
 
 /// A simplified client representation for React page-data APIs.

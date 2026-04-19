@@ -3,10 +3,10 @@
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
 use pushkind_common::domain::auth::AuthenticatedUser;
+use pushkind_common::dto::mutation::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use pushkind_common::routes::{check_role, redirect};
 
 use crate::SERVICE_ACCESS_ROLE;
-use crate::dto::api::{ApiMutationErrorDto, ApiMutationSuccessDto};
 use crate::forms::main::{AddClientForm, AddClientPayload, UploadClientsForm};
 use crate::frontend::{FrontendAssetError, open_frontend_html};
 use crate::repository::DieselRepository;
@@ -17,7 +17,7 @@ use crate::services::main as main_service;
 /// Display the dashboard listing clients with optional search/pagination.
 pub async fn show_index(request: HttpRequest, user: AuthenticatedUser) -> impl Responder {
     if !check_role(SERVICE_ACCESS_ROLE, &user.roles) {
-        return redirect("/na");
+        return redirect("/na?required_role=crm");
     }
 
     match open_frontend_html("assets/dist/app/index.html").await {

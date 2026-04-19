@@ -5,13 +5,19 @@ import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
   fetchClientDirectoryData,
+  fetchHubMenuItems,
+  fetchShellData,
   isApiMutationError,
   postForm,
   postMultipartForm,
   toFieldErrorMap,
 } from "../lib/api";
-import type { ClientDirectoryData } from "../lib/models";
-import { useCrmShell } from "../lib/useCrmShell";
+import type {
+  ClientDirectoryData,
+  ShellData,
+  UserMenuItem,
+} from "../lib/models";
+import { useServiceShell } from "@pushkind/frontend-shell/useServiceShell";
 
 type DashboardState =
   | { status: "loading" }
@@ -19,7 +25,13 @@ type DashboardState =
   | { status: "error"; message: string };
 
 export function DashboardBootstrap() {
-  const shellState = useCrmShell("Не удалось загрузить React-оболочку CRM.");
+  const shellState = useServiceShell<ShellData, UserMenuItem>({
+    errorMessage: "Не удалось загрузить React-оболочку CRM.",
+    menuLoadWarning:
+      "Failed to load auth navigation menu. Falling back to local CRM menu only.",
+    fetchShellData,
+    fetchHubMenuItems,
+  });
   const [dashboardState, setDashboardState] = useState<DashboardState>({
     status: "loading",
   });

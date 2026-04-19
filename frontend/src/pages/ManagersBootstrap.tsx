@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
+import {
+  DropdownMultiSelect,
+  type DropdownMultiSelectOption,
+} from "@pushkind/frontend-shell/DropdownMultiSelect";
 import { CrmShell } from "../components/CrmShell";
 import { CrmShellFatalState } from "../components/CrmShellFatalState";
 import {
   fetchAuthUsers,
   fetchClientsData,
+  fetchHubMenuItems,
   isApiMutationError,
   fetchManagerModalData,
   fetchManagersData,
+  fetchShellData,
   postForm,
   toFieldErrorMap,
 } from "../lib/api";
@@ -17,8 +23,10 @@ import type {
   ClientListItem,
   ManagerModalData,
   ManagersData,
+  ShellData,
+  UserMenuItem,
 } from "../lib/models";
-import { useCrmShell } from "../lib/useCrmShell";
+import { useServiceShell } from "@pushkind/frontend-shell/useServiceShell";
 
 type ManagersState =
   | { status: "loading" }
@@ -41,8 +49,24 @@ type ManagerModalState =
   | { status: "ready"; data: ManagerModalData }
   | { status: "error"; managerName: string; message: string };
 
+function mergeClientsById(...clientGroups: ClientListItem[][]) {
+  const clientsById = new Map<number, ClientListItem>();
+
+  clientGroups.forEach((clients) => {
+    clients.forEach((client) => clientsById.set(client.id, client));
+  });
+
+  return Array.from(clientsById.values());
+}
+
 export function ManagersBootstrap() {
-  const shellState = useCrmShell("Не удалось загрузить React-оболочку CRM.");
+  const shellState = useServiceShell<ShellData, UserMenuItem>({
+    errorMessage: "Не удалось загрузить React-оболочку CRM.",
+    menuLoadWarning:
+      "Failed to load auth navigation menu. Falling back to local CRM menu only.",
+    fetchShellData,
+    fetchHubMenuItems,
+  });
   const [managersState, setManagersState] = useState<ManagersState>({
     status: "loading",
   });
@@ -65,6 +89,9 @@ export function ManagersBootstrap() {
     },
   );
   const [selectedClientIds, setSelectedClientIds] = useState<number[]>([]);
+  const [selectedClientOptions, setSelectedClientOptions] = useState<
+    ClientListItem[]
+  >([]);
   const [addManagerErrors, setAddManagerErrors] = useState<
     Record<string, string>
   >({});
@@ -186,15 +213,28 @@ export function ManagersBootstrap() {
     };
   }, [clientQuery, managerModalState]);
 
-  const selectedClients = useMemo(() => {
-    if (managerModalState.status !== "ready") {
-      return [];
-    }
+  const selectedClientIdSet = useMemo(
+    () => new Set(selectedClientIds),
+    [selectedClientIds],
+  );
 
-    return managerModalState.data.clients.filter((client) =>
-      selectedClientIds.includes(client.id),
-    );
-  }, [managerModalState, selectedClientIds]);
+  const selectedClients = useMemo(
+    () =>
+      selectedClientOptions.filter((client) =>
+        selectedClientIdSet.has(client.id),
+      ),
+    [selectedClientOptions, selectedClientIdSet],
+  );
+
+  const clientOptions: DropdownMultiSelectOption[] = useMemo(() => {
+    const all = [...selectedClients, ...clientSearchState.items];
+    const uniqueMap = new Map(all.map((c) => [c.id, c]));
+    return Array.from(uniqueMap.values()).map((client) => ({
+      value: String(client.id),
+      label: client.name,
+      details: [client.email ?? "—", client.phone ?? ""],
+    }));
+  }, [selectedClients, clientSearchState.items]);
 
   if (shellState.status === "loading" || managersState.status === "loading") {
     return null;
@@ -272,6 +312,22 @@ export function ManagersBootstrap() {
     }
   }
 
+  function handleSelectedClientsChange(values: string[]) {
+    const nextSelectedClientIds = values.map(Number);
+    const nextSelectedClientIdSet = new Set(nextSelectedClientIds);
+    const initialClients =
+      managerModalState.status === "ready"
+        ? managerModalState.data.clients
+        : [];
+
+    setSelectedClientIds(nextSelectedClientIds);
+    setSelectedClientOptions((current) =>
+      mergeClientsById(current, initialClients, clientSearchState.items).filter(
+        (client) => nextSelectedClientIdSet.has(client.id),
+      ),
+    );
+  }
+
   function handleManagerModalOpen(managerId: number, managerName: string) {
     managerModalRequestId.current += 1;
     const requestId = managerModalRequestId.current;
@@ -280,6 +336,7 @@ export function ManagersBootstrap() {
     setClientQuery("");
     setClientSearchState({ status: "idle", items: [] });
     setSelectedClientIds([]);
+    setSelectedClientOptions([]);
     setManagerModalState({ status: "loading", managerName });
 
     void fetchManagerModalData(managerId)
@@ -290,6 +347,7 @@ export function ManagersBootstrap() {
 
         setManagerModalState({ status: "ready", data });
         setSelectedClientIds(data.clients.map((client) => client.id));
+        setSelectedClientOptions(data.clients);
       })
       .catch((error) => {
         if (managerModalRequestId.current !== requestId) {
@@ -496,73 +554,20 @@ export function ManagersBootstrap() {
                   <div className="row mb-3">
                     <label className="col-md-2 col-form-label">Клиенты</label>
                     <div className="col-md-10">
-                      <input
-                        className="form-control my-1"
-                        placeholder="Поиск клиентов"
-                        value={clientQuery}
-                        onChange={(event) => setClientQuery(event.target.value)}
+                      <DropdownMultiSelect
+                        options={clientOptions}
+                        selectedValues={selectedClientIds.map(String)}
+                        onChange={handleSelectedClientsChange}
+                        onSearchChange={setClientQuery}
+                        filterLocal={false}
+                        placeholder="Выберите клиентов..."
+                        searchPlaceholder="Поиск клиентов..."
+                        emptyResultsLabel={
+                          clientSearchState.status === "loading"
+                            ? "Поиск..."
+                            : "Ничего не найдено"
+                        }
                       />
-                      {clientSearchState.items.length > 0 ? (
-                        <div className="list-group mb-3 shadow-sm">
-                          {clientSearchState.items.map((client) => (
-                            <button
-                              type="button"
-                              className="list-group-item list-group-item-action"
-                              key={client.id}
-                              onClick={() => {
-                                setSelectedClientIds((current) =>
-                                  current.includes(client.id)
-                                    ? current
-                                    : [...current, client.id],
-                                );
-                                setManagerModalState((current) =>
-                                  current.status === "ready"
-                                    ? {
-                                        status: "ready",
-                                        data: {
-                                          ...current.data,
-                                          clients: current.data.clients.some(
-                                            (item) => item.id === client.id,
-                                          )
-                                            ? current.data.clients
-                                            : [...current.data.clients, client],
-                                        },
-                                      }
-                                    : current,
-                                );
-                              }}
-                            >
-                              <strong>{client.name}</strong>
-                              <br />
-                              <small>
-                                {client.email ?? "—"} {client.phone ?? ""}
-                              </small>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <div className="d-flex flex-wrap gap-2">
-                        {selectedClients.map((client) => (
-                          <span
-                            className="badge text-bg-light d-inline-flex align-items-center gap-2"
-                            key={client.id}
-                          >
-                            {client.name}
-                            <button
-                              type="button"
-                              className="btn btn-sm p-0 border-0"
-                              onClick={() =>
-                                setSelectedClientIds((current) =>
-                                  current.filter((id) => id !== client.id),
-                                )
-                              }
-                            >
-                              <i className="bi bi-x-circle" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
                       {assignErrors.client_ids || assignErrors.manager_id ? (
                         <div className="text-danger small mt-2">
                           {assignErrors.client_ids || assignErrors.manager_id}
