@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
-  MarkdownPreview,
+  MarkdownComposer,
   renderMarkdownToHtml,
 } from "@pushkind/frontend-shell/markdown";
 
@@ -732,89 +732,49 @@ export function ClientBootstrap() {
                       ) : null}
                     </div>
                   </div>
-                  <ul className="nav nav-tabs" role="tablist">
-                    <li className="nav-item" role="presentation">
-                      <button
-                        className="nav-link active"
-                        id="editor-tab-comment"
-                        data-bs-toggle="tab"
-                        data-bs-target="#editor-tab-pane-comment"
-                        type="button"
-                        role="tab"
-                        aria-controls="editor-tab-pane-comment"
-                        aria-selected="true"
-                      >
-                        Маркдаун
-                      </button>
-                    </li>
-                    <li className="nav-item" role="presentation">
-                      <button
-                        className="nav-link"
-                        id="preview-tab-comment"
-                        data-bs-toggle="tab"
-                        data-bs-target="#preview-tab-pane-comment"
-                        type="button"
-                        role="tab"
-                        aria-controls="preview-tab-pane-comment"
-                        aria-selected="false"
-                      >
-                        Превью
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="tab-content mb-1">
-                    <div
-                      className="tab-pane fade show active"
-                      id="editor-tab-pane-comment"
-                      role="tabpanel"
-                      aria-labelledby="editor-tab-comment"
-                      tabIndex={0}
-                    >
-                      <textarea
-                        autoFocus
-                        className={
-                          commentErrors.message
-                            ? "form-control border-top-0 rounded-top-0 is-invalid"
-                            : "form-control border-top-0 rounded-top-0"
-                        }
-                        rows={10}
-                        id="message-input"
-                        required
-                        placeholder="Содержание в формате markdown"
-                        value={message}
-                        onChange={(event) => {
-                          setMessage(event.target.value);
-                          clearCommentError("message");
-                        }}
-                      />
-                      {commentErrors.message ? (
-                        <div className="invalid-feedback">
-                          {commentErrors.message}
-                        </div>
-                      ) : null}
-                      <input
-                        type="hidden"
-                        id="message"
-                        name="message"
-                        required
-                        value={renderedMessage}
-                        readOnly
-                      />
+                  <MarkdownComposer
+                    id="message-input"
+                    className="mb-1"
+                    value={message}
+                    onChange={(nextMessage) => {
+                      setMessage(nextMessage);
+                      clearCommentError("message");
+                    }}
+                    rows={10}
+                    required
+                    autoFocus
+                    placeholder="Содержание в формате markdown"
+                    textareaClassName={
+                      commentErrors.message ? "is-invalid" : undefined
+                    }
+                    previewClassName="crm-markdown-preview"
+                    editorLabel="Маркдаун"
+                    previewLabel="Превью"
+                    fileBrowserLabel="Файлы"
+                    emptyPreviewLabel="Пока нечего показывать."
+                    fileBrowser={
+                      clientState.data.filesServiceUrl
+                        ? {
+                            baseUrl: clientState.data.filesServiceUrl,
+                            helpText:
+                              "Загрузите или найдите файл, скопируйте ссылку и вставьте её в markdown как ссылку или изображение.",
+                          }
+                        : undefined
+                    }
+                  />
+                  {commentErrors.message ? (
+                    <div className="invalid-feedback d-block">
+                      {commentErrors.message}
                     </div>
-                    <div
-                      className="tab-pane fade"
-                      id="preview-tab-pane-comment"
-                      role="tabpanel"
-                      aria-labelledby="preview-tab-comment"
-                      tabIndex={0}
-                    >
-                      <MarkdownPreview
-                        className="border border-top-0 rounded rounded-top-0 p-2 crm-markdown-preview"
-                        id="message-rendered"
-                        source={message}
-                      />
-                    </div>
-                  </div>
+                  ) : null}
+                  <input
+                    type="hidden"
+                    id="message"
+                    name="message"
+                    required
+                    value={renderedMessage}
+                    readOnly
+                  />
                 </div>
                 <div className="col-sm-auto">
                   <div className="row">

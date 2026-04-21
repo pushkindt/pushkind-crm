@@ -2699,7 +2699,7 @@ dependencies = [
 [[package]]
 name = "pushkind-common"
 version = "0.1.0"
-source = "git+https://github.com/pushkindt/pushkind-common.git?branch=main#6596e0a62da0a411bef68c1110e9eeee944aad5f"
+source = "git+https://github.com/pushkindt/pushkind-common.git?branch=main#8db69a9f3e67eba0c150b6c78ec625e11656b091"
 dependencies = [
  "actix-files",
  "actix-identity",
@@ -3765,9 +3765,9 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "typenum"
-version = "1.19.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
+checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
 
 [[package]]
 name = "ucd-trie"
